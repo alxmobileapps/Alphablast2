@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   ShoppingBag,
   Coins,
@@ -16,12 +16,15 @@ import {
   Plus,
   Ban,
   ShieldCheck,
+  Play,
+  Volume2,
 } from 'lucide-react';
 import { PowerUpInventory, PowerUpType } from '../types';
 import { HammerIcon } from './HammerIcon';
 import { playRewardRefill, playSpecialCard, playWin } from '../utils/audio';
 import { haptics } from '../utils/haptics';
-import { purchaseIAP, purchaseMedianIAP, showMedianRewardedAd, restoreMedianPurchases } from '../utils/medianBridge';
+import { purchaseIAP, purchaseMedianIAP, restoreMedianPurchases } from '../utils/medianBridge';
+import { showUniversalRewardedAd } from '../utils/universalAds';
 
 interface ShopModalProps {
   isOpen: boolean;
@@ -62,7 +65,25 @@ export const ShopModal: React.FC<ShopModalProps> = ({
       return false;
     }
   });
-  const [isWatchingAd, setIsWatchingAd] = useState<boolean>(false);
+
+  // Sponsored Video Ad Player State
+  const [isVideoAdModalOpen, setIsVideoAdModalOpen] = useState<boolean>(false);
+  const [videoAdTimeLeft, setVideoAdTimeLeft] = useState<number>(5);
+  const [videoAdCompleted, setVideoAdCompleted] = useState<boolean>(false);
+
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (isVideoAdModalOpen && videoAdTimeLeft > 0) {
+      timer = setTimeout(() => {
+        setVideoAdTimeLeft((t) => t - 1);
+      }, 1000);
+    } else if (isVideoAdModalOpen && videoAdTimeLeft === 0 && !videoAdCompleted) {
+      setVideoAdCompleted(true);
+      haptics.specialCreated();
+      playRewardRefill();
+    }
+    return () => clearTimeout(timer);
+  }, [isVideoAdModalOpen, videoAdTimeLeft, videoAdCompleted]);
 
   if (!isOpen) return null;
 
@@ -77,7 +98,7 @@ export const ShopModal: React.FC<ShopModalProps> = ({
       return;
     }
     haptics.tap();
-    purchaseMedianIAP('com.wordblast.removeads', (success) => {
+    purchaseIAP('com.wordblast.removeads', (success, res) => {
       if (success) {
         if (onPurchaseRemoveAds) {
           onPurchaseRemoveAds();
@@ -86,7 +107,11 @@ export const ShopModal: React.FC<ShopModalProps> = ({
           showNotification('All Ads Removed! +100 Diamonds & Power-ups Set to 2!');
         }
       } else {
-        showNotification('Purchase cancelled or failed.');
+        if (res?.error && res.error !== 'Cancelled') {
+          showNotification(`Notice: ${res.error}`);
+        } else {
+          showNotification('Purchase cancelled.');
+        }
       }
     });
   };
@@ -164,20 +189,30 @@ export const ShopModal: React.FC<ShopModalProps> = ({
   };
 
   const handleWatchAdReward = () => {
-    setIsWatchingAd(true);
     haptics.tap();
-    showMedianRewardedAd(
-      () => {
-        setIsWatchingAd(false);
+    showUniversalRewardedAd({
+      name: 'shop_diamond_reward',
+      onReward: () => {
         onAddDiamonds(2);
         haptics.specialCreated();
         playWin();
         showNotification('Sponsored Ad Reward: +2 💎 Diamonds Added!');
       },
-      () => {
-        setIsWatchingAd(false);
-      }
-    );
+      onDismiss: () => {},
+      fallbackToInteractiveModal: () => {
+        setIsVideoAdModalOpen(true);
+        setVideoAdTimeLeft(5);
+        setVideoAdCompleted(false);
+      },
+    });
+  };
+
+  const handleClaimVideoAdReward = () => {
+    setIsVideoAdModalOpen(false);
+    onAddDiamonds(2);
+    haptics.specialCreated();
+    playWin();
+    showNotification('Sponsored Ad Reward: +2 💎 Diamonds Added!');
   };
 
   const handleDiamondPackPurchase = (amount: number, label: string, productId?: string) => {
@@ -314,20 +349,20 @@ export const ShopModal: React.FC<ShopModalProps> = ({
                 {hasRemovedAds ? <ShieldCheck className="w-7 h-7" /> : <Ban className="w-7 h-7" />}
               </div>
               <div className="text-left">
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1.5 flex-wrap">
                   <span className="font-black text-sm text-white">Remove All Ads</span>
                   <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-full uppercase ${
                     hasRemovedAds
                       ? 'bg-emerald-400 text-emerald-950'
-                      : 'bg-rose-400 text-rose-950'
+                      : 'bg-amber-400 text-amber-950'
                   }`}>
-                    {hasRemovedAds ? 'ACTIVE' : 'SPECIAL PACK'}
+                    {hasRemovedAds ? 'ACTIVE' : '$6.99 • VIP PACK'}
                   </span>
                 </div>
                 <p className="text-[11px] text-blue-200 mt-0.5">
                   {hasRemovedAds
                     ? 'All Ads Removed! Enjoy uninterrupted play.'
-                    : 'Remove all ads forever + Instantly get 100 💎 Diamonds + Power-ups balance set to 2 each!'}
+                    : 'Permanently removes all ads + Instantly get 100 💎 Diamonds + Power-ups balance set to 2 each!'}
                 </p>
               </div>
             </div>
@@ -349,7 +384,7 @@ export const ShopModal: React.FC<ShopModalProps> = ({
                   </>
                 ) : (
                   <>
-                    <span>Remove Ads</span>
+                    <span>$6.99 Buy</span>
                     <span>🚀</span>
                   </>
                 )}
@@ -653,59 +688,59 @@ export const ShopModal: React.FC<ShopModalProps> = ({
                   </div>
                   <div className="text-left">
                     <span className="font-black text-sm text-white block">Watch Sponsored Video</span>
-                    <span className="text-xs text-purple-300 font-bold">+2 Diamonds</span>
+                    <span className="text-xs text-purple-300 font-bold">+2 Diamonds Free</span>
                   </div>
                 </div>
 
                 <button
                   onClick={handleWatchAdReward}
-                  disabled={isWatchingAd}
-                  className="px-4 py-2 rounded-xl bg-purple-500 hover:bg-purple-400 text-white font-black text-xs sm:text-sm shadow-md flex items-center gap-1.5 transition-transform active:scale-95"
+                  className="px-4 py-2 rounded-xl bg-purple-500 hover:bg-purple-400 text-white font-black text-xs sm:text-sm shadow-md flex items-center gap-1.5 transition-transform active:scale-95 cursor-pointer"
                 >
-                  {isWatchingAd ? (
-                    <span>Watching...</span>
-                  ) : (
-                    <>
-                      <span>Watch</span>
-                      <span>📺</span>
-                    </>
-                  )}
+                  <Play className="w-3.5 h-3.5 fill-white" />
+                  <span>Watch Video</span>
                 </button>
               </div>
 
               {/* Diamond Packages (Instant Top-ups) */}
               <div className="pt-2 border-t border-[#1E3A8A]">
-                <span className="text-[10px] uppercase font-black tracking-wider text-blue-300 block text-left mb-2">
-                  Diamond Vault Packs
-                </span>
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="bg-[#081844] border border-[#1E3A8A] rounded-2xl p-3 flex flex-col items-center gap-2 text-center">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[10px] uppercase font-black tracking-wider text-blue-300 block text-left">
+                    Diamond Vault Packs (In-App Purchase)
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-2.5">
+                  <div className="bg-[#081844] border border-[#1E3A8A] rounded-2xl p-3 flex flex-col items-center gap-2 text-center relative overflow-hidden">
                     <span className="text-2xl">💎</span>
                     <div>
                       <span className="font-black text-xs text-white block">Starter Pack</span>
-                      <span className="text-xs text-cyan-300 font-bold">+10 Diamonds</span>
+                      <span className="text-xs text-cyan-300 font-bold block">+10 Diamonds</span>
+                      <span className="text-[10px] text-amber-300 font-black">$0.99 USD</span>
                     </div>
                     <button
                       onClick={() => handleDiamondPackPurchase(10, 'Starter Pack', 'com.wordblast.diamonds_10')}
                       className="w-full py-2 bg-gradient-to-r from-cyan-400 to-blue-400 hover:from-cyan-300 hover:to-blue-300 text-cyan-950 font-black text-xs rounded-xl shadow-md active:scale-95 transition-transform flex items-center justify-center gap-1 cursor-pointer"
                     >
-                      <span>Buy Pack</span>
-                      <span className="text-[10px] bg-cyan-950/30 text-cyan-900 px-1.5 py-0.5 rounded font-black">IAP</span>
+                      <span>$0.99 Buy</span>
+                      <span className="text-[9px] bg-cyan-950/30 text-cyan-900 px-1.5 py-0.5 rounded font-black">IAP</span>
                     </button>
                   </div>
 
-                  <div className="bg-[#081844] border border-[#1E3A8A] rounded-2xl p-3 flex flex-col items-center gap-2 text-center">
-                    <span className="text-2xl">✨💎✨</span>
+                  <div className="bg-[#081844] border border-[#1E3A8A] rounded-2xl p-3 flex flex-col items-center gap-2 text-center relative overflow-hidden">
+                    <span className="absolute top-1.5 right-1.5 text-[8px] bg-amber-400 text-amber-950 font-black px-1.5 py-0.2 rounded-full uppercase">
+                      BEST VALUE
+                    </span>
+                    <span className="text-2xl mt-1">✨💎✨</span>
                     <div>
                       <span className="font-black text-xs text-white block">Master Vault</span>
-                      <span className="text-xs text-cyan-300 font-bold">+50 Diamonds</span>
+                      <span className="text-xs text-cyan-300 font-bold block">+50 Diamonds</span>
+                      <span className="text-[10px] text-amber-300 font-black">$3.99 USD</span>
                     </div>
                     <button
                       onClick={() => handleDiamondPackPurchase(50, 'Master Vault', 'com.wordblast.diamonds_50')}
                       className="w-full py-2 bg-gradient-to-r from-amber-400 to-yellow-400 hover:from-amber-300 hover:to-yellow-300 text-amber-950 font-black text-xs rounded-xl shadow-md active:scale-95 transition-transform flex items-center justify-center gap-1 cursor-pointer"
                     >
-                      <span>Buy Vault</span>
-                      <span className="text-[10px] bg-amber-950/30 text-amber-900 px-1.5 py-0.5 rounded font-black">IAP</span>
+                      <span>$3.99 Buy</span>
+                      <span className="text-[9px] bg-amber-950/30 text-amber-900 px-1.5 py-0.5 rounded font-black">IAP</span>
                     </button>
                   </div>
                 </div>
@@ -729,6 +764,73 @@ export const ShopModal: React.FC<ShopModalProps> = ({
             Done
           </button>
         </div>
+
+        {/* SPONSORED VIDEO AD PLAYER OVERLAY */}
+        {isVideoAdModalOpen && (
+          <div className="absolute inset-0 z-50 bg-slate-950/95 flex flex-col items-center justify-center p-4 text-center animate-fade-in">
+            <div className="max-w-xs w-full bg-[#0E245C] border-2 border-purple-400 rounded-3xl p-5 shadow-2xl relative overflow-hidden flex flex-col items-center">
+              {/* Ad Header */}
+              <div className="w-full flex items-center justify-between mb-3 text-[10px] text-purple-300 font-bold uppercase tracking-wider">
+                <span className="bg-purple-950/80 px-2 py-0.5 rounded border border-purple-500/40 flex items-center gap-1">
+                  <Tv className="w-3 h-3 text-purple-300" />
+                  <span>Sponsored Video Ad</span>
+                </span>
+                <span className="font-mono text-xs bg-purple-400/20 text-purple-200 px-2 py-0.5 rounded-full font-black">
+                  {videoAdCompleted ? 'Completed' : `${videoAdTimeLeft}s`}
+                </span>
+              </div>
+
+              {/* Video Simulated Stage */}
+              <div className="w-full aspect-video bg-gradient-to-br from-indigo-950 to-slate-900 border-2 border-indigo-500/40 rounded-2xl flex flex-col items-center justify-center p-3 relative overflow-hidden shadow-inner mb-4">
+                {/* Background animated glow */}
+                <div className="absolute -top-10 -right-10 w-32 h-32 bg-purple-500/20 rounded-full blur-xl animate-pulse" />
+                <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-cyan-500/20 rounded-full blur-xl animate-pulse" />
+
+                {!videoAdCompleted ? (
+                  <>
+                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-purple-500 to-indigo-500 flex items-center justify-center text-white shadow-lg mb-2 animate-bounce">
+                      <Sparkles className="w-6 h-6" />
+                    </div>
+                    <span className="text-xs font-black text-white tracking-tight">WordBlast Turbo</span>
+                    <span className="text-[10px] text-purple-200 mt-0.5">Playing interactive game sponsor...</span>
+
+                    {/* Progress Bar */}
+                    <div className="w-3/4 h-2 bg-slate-800 rounded-full overflow-hidden mt-3 border border-purple-400/30">
+                      <div
+                        className="h-full bg-gradient-to-r from-purple-400 to-cyan-400 transition-all duration-1000 ease-linear"
+                        style={{ width: `${((5 - videoAdTimeLeft) / 5) * 100}%` }}
+                      />
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex flex-col items-center animate-scale-in">
+                    <div className="w-12 h-12 rounded-full bg-emerald-500 text-white flex items-center justify-center shadow-lg mb-2">
+                      <CheckCircle2 className="w-7 h-7" />
+                    </div>
+                    <span className="text-sm font-black text-emerald-300">Video Finished!</span>
+                    <span className="text-[11px] text-emerald-100 mt-0.5">Reward ready to collect</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Action Button */}
+              {videoAdCompleted ? (
+                <button
+                  onClick={handleClaimVideoAdReward}
+                  className="w-full py-3 bg-gradient-to-r from-emerald-400 to-teal-400 hover:from-emerald-300 hover:to-teal-300 text-emerald-950 font-black text-sm rounded-xl shadow-lg flex items-center justify-center gap-2 active:scale-95 transition-transform cursor-pointer animate-bounce"
+                >
+                  <Gift className="w-4 h-4" />
+                  <span>Claim +2 Diamonds 💎</span>
+                </button>
+              ) : (
+                <div className="text-[11px] text-blue-200/80 flex items-center gap-1.5 py-2">
+                  <span>Please watch until timer finishes</span>
+                  <span className="font-mono font-bold text-amber-300">({videoAdTimeLeft}s)</span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
