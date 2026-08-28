@@ -1,0 +1,213 @@
+<svg width="1080" height="1920" viewBox="0 0 1080 1920" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#071330" />
+      <stop offset="50%" stop-color="#0B1E4A" />
+      <stop offset="100%" stop-color="#050E24" />
+    </linearGradient>
+    <linearGradient id="primaryGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38BDF8" />
+      <stop offset="100%" stop-color="#0284C7" />
+    </linearGradient>
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FCD34D" />
+      <stop offset="100%" stop-color="#F59E0B" />
+    </linearGradient>
+    <linearGradient id="tileGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#1E3A8A" />
+      <stop offset="100%" stop-color="#0F172A" />
+    </linearGradient>
+    <linearGradient id="selectedGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#38BDF8" />
+      <stop offset="100%" stop-color="#0284C7" />
+    </linearGradient>
+    <linearGradient id="targetGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#34D399" />
+      <stop offset="100%" stop-color="#059669" />
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="16" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1080" height="1920" fill="url(#bgGrad)" />
+  <circle cx="200" cy="400" r="300" fill="#0284C7" fill-opacity="0.12" />
+  <circle cx="880" cy="1200" r="400" fill="#38BDF8" fill-opacity="0.08" />
+
+  <!-- App Header / Title -->
+  <g transform="translate(60, 90)">
+    <rect width="960" height="120" rx="30" fill="#0E2356" stroke="#1E3A8A" stroke-width="3" />
+    <text x="50" y="75" font-family="system-ui, -apple-system, sans-serif" font-weight="900" font-size="44" fill="#FFFFFF">✨ ALPHABLAST</text>
+    
+    <!-- Level Badge -->
+    <rect x="580" y="24" width="160" height="72" rx="20" fill="#0284C7" />
+    <text x="660" y="70" font-family="system-ui, -apple-system, sans-serif" font-weight="800" font-size="30" fill="#FFFFFF" text-anchor="middle">LEVEL 12</text>
+    
+    <!-- Score -->
+    <rect x="760" y="24" width="160" height="72" rx="20" fill="#F59E0B" />
+    <text x="840" y="70" font-family="system-ui, -apple-system, sans-serif" font-weight="900" font-size="30" fill="#071330" text-anchor="middle">⭐ 3,850</text>
+  </g>
+
+  <!-- Objective Card -->
+  <g transform="translate(60, 240)">
+    <rect width="960" height="150" rx="30" fill="#0C1D45" stroke="#0284C7" stroke-width="3" />
+    <text x="50" y="65" font-family="system-ui, -apple-system, sans-serif" font-weight="800" font-size="32" fill="#94A3B8">CATEGORY GOAL</text>
+    <text x="50" y="115" font-family="system-ui, -apple-system, sans-serif" font-weight="900" font-size="44" fill="#38BDF8">🦁 Safari Animals (3/5)</text>
+    
+    <!-- Progress Bar -->
+    <rect x="620" y="55" width="290" height="40" rx="20" fill="#071330" />
+    <rect x="620" y="55" width="174" height="40" rx="20" fill="url(#targetGrad)" />
+    <text x="765" y="84" font-family="system-ui, -apple-system, sans-serif" font-weight="800" font-size="22" fill="#FFFFFF" text-anchor="middle">60% Complete</text>
+  </g>
+
+  <!-- Word Forming Tray -->
+  <g transform="translate(60, 420)">
+    <rect width="960" height="110" rx="28" fill="#071330" stroke="#38BDF8" stroke-width="4" filter="url(#glow)" />
+    <text x="60" y="72" font-family="system-ui, -apple-system, sans-serif" font-weight="900" font-size="46" fill="#F8FAFC" letter-spacing="8">WORD: L • I • O • N</text>
+    <rect x="740" y="20" width="180" height="70" rx="22" fill="url(#primaryGrad)" />
+    <text x="830" y="65" font-family="system-ui, -apple-system, sans-serif" font-weight="900" font-size="30" fill="#FFFFFF" text-anchor="middle">+450 PTS</text>
+  </g>
+
+  <!-- 8x8 Game Board Container -->
+  <g transform="translate(60, 560)">
+    <rect width="960" height="960" rx="40" fill="#0A1838" stroke="#1E40AF" stroke-width="6" />
+    
+    <!-- Inner Grid Area -->
+    <g transform="translate(40, 40)">
+      <!-- Row 1 -->
+      <g transform="translate(0, 0)">
+        <rect width="95" height="95" rx="18" fill="url(#selectedGrad)" stroke="#E0F2FE" stroke-width="3" />
+        <text x="47" y="65" font-family="system-ui, -apple-system, sans-serif" font-weight="900" font-size="52" fill="#FFFFFF" text-anchor="middle">L</text>
+        <text x="80" y="30" font-family="system-ui, -apple-system, sans-serif" font-weight="700" font-size="18" fill="#BAE6FD">1</text>
+      </g>
+      <g transform="translate(112, 0)">
+        <rect width="95" height="95" rx="18" fill="url(#selectedGrad)" stroke="#E0F2FE" stroke-width="3" />
+        <text x="47" y="65" font-family="system-ui, -apple-system, sans-serif" font-weight="900" font-size="52" fill="#FFFFFF" text-anchor="middle">I</text>
+        <text x="80" y="30" font-family="system-ui, -apple-system, sans-serif" font-weight="700" font-size="18" fill="#BAE6FD">1</text>
+      </g>
+      <g transform="translate(224, 0)">
+        <rect width="95" height="95" rx="18" fill="url(#selectedGrad)" stroke="#E0F2FE" stroke-width="3" />
+        <text x="47" y="65" font-family="system-ui, -apple-system, sans-serif" font-weight="900" font-size="52" fill="#FFFFFF" text-anchor="middle">O</text>
+        <text x="80" y="30" font-family="system-ui, -apple-system, sans-serif" font-weight="700" font-size="18" fill="#BAE6FD">1</text>
+      </g>
+      <g transform="translate(336, 0)">
+        <rect width="95" height="95" rx="18" fill="url(#selectedGrad)" stroke="#E0F2FE" stroke-width="3" />
+        <text x="47" y="65" font-family="system-ui, -apple-system, sans-serif" font-weight="900" font-size="52" fill="#FFFFFF" text-anchor="middle">N</text>
+        <text x="80" y="30" font-family="system-ui, -apple-system, sans-serif" font-weight="700" font-size="18" fill="#BAE6FD">2</text>
+      </g>
+      <g transform="translate(448, 0)">
+        <rect width="95" height="95" rx="18" fill="url(#tileGrad)" stroke="#1E3A8A" stroke-width="2" />
+        <text x="47" y="65" font-family="system-ui, -apple-system, sans-serif" font-weight="900" font-size="52" fill="#FFFFFF" text-anchor="middle">T</text>
+      </g>
+      <g transform="translate(560, 0)">
+        <rect width="95" height="95" rx="18" fill="url(#tileGrad)" stroke="#1E3A8A" stroke-width="2" />
+        <text x="47" y="65" font-family="system-ui, -apple-system, sans-serif" font-weight="900" font-size="52" fill="#FFFFFF" text-anchor="middle">A</text>
+      </g>
+      <g transform="translate(672, 0)">
+        <rect width="95" height="95" rx="18" fill="url(#tileGrad)" stroke="#1E3A8A" stroke-width="2" />
+        <text x="47" y="65" font-family="system-ui, -apple-system, sans-serif" font-weight="900" font-size="52" fill="#FFFFFF" text-anchor="middle">P</text>
+      </g>
+      <g transform="translate(784, 0)">
+        <rect width="95" height="95" rx="18" fill="url(#goldGrad)" stroke="#FDE68A" stroke-width="3" />
+        <text x="47" y="65" font-family="system-ui, -apple-system, sans-serif" font-weight="900" font-size="52" fill="#071330" text-anchor="middle">★</text>
+      </g>
+
+      <!-- Row 2 -->
+      <g transform="translate(0, 112)"><rect width="95" height="95" rx="18" fill="url(#tileGrad)" stroke="#1E3A8A" stroke-width="2" /><text x="47" y="65" font-family="sans-serif" font-weight="900" font-size="52" fill="#FFF" text-anchor="middle">B</text></g>
+      <g transform="translate(112, 112)"><rect width="95" height="95" rx="18" fill="url(#tileGrad)" stroke="#1E3A8A" stroke-width="2" /><text x="47" y="65" font-family="sans-serif" font-weight="900" font-size="52" fill="#FFF" text-anchor="middle">E</text></g>
+      <g transform="translate(224, 112)"><rect width="95" height="95" rx="18" fill="url(#tileGrad)" stroke="#1E3A8A" stroke-width="2" /><text x="47" y="65" font-family="sans-serif" font-weight="900" font-size="52" fill="#FFF" text-anchor="middle">A</text></g>
+      <g transform="translate(336, 112)"><rect width="95" height="95" rx="18" fill="url(#tileGrad)" stroke="#1E3A8A" stroke-width="2" /><text x="47" y="65" font-family="sans-serif" font-weight="900" font-size="52" fill="#FFF" text-anchor="middle">R</text></g>
+      <g transform="translate(448, 112)"><rect width="95" height="95" rx="18" fill="url(#tileGrad)" stroke="#1E3A8A" stroke-width="2" /><text x="47" y="65" font-family="sans-serif" font-weight="900" font-size="52" fill="#FFF" text-anchor="middle">G</text></g>
+      <g transform="translate(560, 112)"><rect width="95" height="95" rx="18" fill="url(#tileGrad)" stroke="#1E3A8A" stroke-width="2" /><text x="47" y="65" font-family="sans-serif" font-weight="900" font-size="52" fill="#FFF" text-anchor="middle">E</text></g>
+      <g transform="translate(672, 112)"><rect width="95" height="95" rx="18" fill="url(#tileGrad)" stroke="#1E3A8A" stroke-width="2" /><text x="47" y="65" font-family="sans-serif" font-weight="900" font-size="52" fill="#FFF" text-anchor="middle">M</text></g>
+      <g transform="translate(784, 112)"><rect width="95" height="95" rx="18" fill="url(#tileGrad)" stroke="#1E3A8A" stroke-width="2" /><text x="47" y="65" font-family="sans-serif" font-weight="900" font-size="52" fill="#FFF" text-anchor="middle">S</text></g>
+
+      <!-- Row 3 -->
+      <g transform="translate(0, 224)"><rect width="95" height="95" rx="18" fill="url(#tileGrad)" stroke="#1E3A8A" stroke-width="2" /><text x="47" y="65" font-family="sans-serif" font-weight="900" font-size="52" fill="#FFF" text-anchor="middle">Z</text></g>
+      <g transform="translate(112, 224)"><rect width="95" height="95" rx="18" fill="url(#tileGrad)" stroke="#1E3A8A" stroke-width="2" /><text x="47" y="65" font-family="sans-serif" font-weight="900" font-size="52" fill="#FFF" text-anchor="middle">E</text></g>
+      <g transform="translate(224, 224)"><rect width="95" height="95" rx="18" fill="url(#tileGrad)" stroke="#1E3A8A" stroke-width="2" /><text x="47" y="65" font-family="sans-serif" font-weight="900" font-size="52" fill="#FFF" text-anchor="middle">B</text></g>
+      <g transform="translate(336, 224)"><rect width="95" height="95" rx="18" fill="url(#tileGrad)" stroke="#1E3A8A" stroke-width="2" /><text x="47" y="65" font-family="sans-serif" font-weight="900" font-size="52" fill="#FFF" text-anchor="middle">R</text></g>
+      <g transform="translate(448, 224)"><rect width="95" height="95" rx="18" fill="url(#tileGrad)" stroke="#1E3A8A" stroke-width="2" /><text x="47" y="65" font-family="sans-serif" font-weight="900" font-size="52" fill="#FFF" text-anchor="middle">A</text></g>
+      <g transform="translate(560, 224)"><rect width="95" height="95" rx="18" fill="url(#tileGrad)" stroke="#1E3A8A" stroke-width="2" /><text x="47" y="65" font-family="sans-serif" font-weight="900" font-size="52" fill="#FFF" text-anchor="middle">W</text></g>
+      <g transform="translate(672, 224)"><rect width="95" height="95" rx="18" fill="url(#tileGrad)" stroke="#1E3A8A" stroke-width="2" /><text x="47" y="65" font-family="sans-serif" font-weight="900" font-size="52" fill="#FFF" text-anchor="middle">O</text></g>
+      <g transform="translate(784, 224)"><rect width="95" height="95" rx="18" fill="url(#tileGrad)" stroke="#1E3A8A" stroke-width="2" /><text x="47" y="65" font-family="sans-serif" font-weight="900" font-size="52" fill="#FFF" text-anchor="middle">R</text></g>
+
+      <!-- Row 4 -->
+      <g transform="translate(0, 336)"><rect width="95" height="95" rx="18" fill="url(#tileGrad)" stroke="#1E3A8A" stroke-width="2" /><text x="47" y="65" font-family="sans-serif" font-weight="900" font-size="52" fill="#FFF" text-anchor="middle">D</text></g>
+      <g transform="translate(112, 336)"><rect width="95" height="95" rx="18" fill="url(#tileGrad)" stroke="#1E3A8A" stroke-width="2" /><text x="47" y="65" font-family="sans-serif" font-weight="900" font-size="52" fill="#FFF" text-anchor="middle">O</text></g>
+      <g transform="translate(224, 336)"><rect width="95" height="95" rx="18" fill="url(#tileGrad)" stroke="#1E3A8A" stroke-width="2" /><text x="47" y="65" font-family="sans-serif" font-weight="900" font-size="52" fill="#FFF" text-anchor="middle">G</text></g>
+      <g transform="translate(336, 336)"><rect width="95" height="95" rx="18" fill="url(#tileGrad)" stroke="#1E3A8A" stroke-width="2" /><text x="47" y="65" font-family="sans-serif" font-weight="900" font-size="52" fill="#FFF" text-anchor="middle">F</text></g>
+      <g transform="translate(448, 336)"><rect width="95" height="95" rx="18" fill="url(#tileGrad)" stroke="#1E3A8A" stroke-width="2" /><text x="47" y="65" font-family="sans-serif" font-weight="900" font-size="52" fill="#FFF" text-anchor="middle">O</text></g>
+      <g transform="translate(560, 336)"><rect width="95" height="95" rx="18" fill="url(#tileGrad)" stroke="#1E3A8A" stroke-width="2" /><text x="47" y="65" font-family="sans-serif" font-weight="900" font-size="52" fill="#FFF" text-anchor="middle">X</text></g>
+      <g transform="translate(672, 336)"><rect width="95" height="95" rx="18" fill="url(#tileGrad)" stroke="#1E3A8A" stroke-width="2" /><text x="47" y="65" font-family="sans-serif" font-weight="900" font-size="52" fill="#FFF" text-anchor="middle">Y</text></g>
+      <g transform="translate(784, 336)"><rect width="95" height="95" rx="18" fill="url(#tileGrad)" stroke="#1E3A8A" stroke-width="2" /><text x="47" y="65" font-family="sans-serif" font-weight="900" font-size="52" fill="#FFF" text-anchor="middle">K</text></g>
+
+      <!-- Row 5 to 8 (Simulated remaining board) -->
+      <g transform="translate(0, 448)"><rect width="95" height="95" rx="18" fill="url(#tileGrad)" stroke="#1E3A8A" stroke-width="2" /><text x="47" y="65" font-family="sans-serif" font-weight="900" font-size="52" fill="#FFF" text-anchor="middle">C</text></g>
+      <g transform="translate(112, 448)"><rect width="95" height="95" rx="18" fill="url(#tileGrad)" stroke="#1E3A8A" stroke-width="2" /><text x="47" y="65" font-family="sans-serif" font-weight="900" font-size="52" fill="#FFF" text-anchor="middle">A</text></g>
+      <g transform="translate(224, 448)"><rect width="95" height="95" rx="18" fill="url(#tileGrad)" stroke="#1E3A8A" stroke-width="2" /><text x="47" y="65" font-family="sans-serif" font-weight="900" font-size="52" fill="#FFF" text-anchor="middle">T</text></g>
+      <g transform="translate(336, 448)"><rect width="95" height="95" rx="18" fill="url(#tileGrad)" stroke="#1E3A8A" stroke-width="2" /><text x="47" y="65" font-family="sans-serif" font-weight="900" font-size="52" fill="#FFF" text-anchor="middle">S</text></g>
+      <g transform="translate(448, 448)"><rect width="95" height="95" rx="18" fill="url(#tileGrad)" stroke="#1E3A8A" stroke-width="2" /><text x="47" y="65" font-family="sans-serif" font-weight="900" font-size="52" fill="#FFF" text-anchor="middle">P</text></g>
+      <g transform="translate(560, 448)"><rect width="95" height="95" rx="18" fill="url(#tileGrad)" stroke="#1E3A8A" stroke-width="2" /><text x="47" y="65" font-family="sans-serif" font-weight="900" font-size="52" fill="#FFF" text-anchor="middle">I</text></g>
+      <g transform="translate(672, 448)"><rect width="95" height="95" rx="18" fill="url(#tileGrad)" stroke="#1E3A8A" stroke-width="2" /><text x="47" y="65" font-family="sans-serif" font-weight="900" font-size="52" fill="#FFF" text-anchor="middle">G</text></g>
+      <g transform="translate(784, 448)"><rect width="95" height="95" rx="18" fill="url(#tileGrad)" stroke="#1E3A8A" stroke-width="2" /><text x="47" y="65" font-family="sans-serif" font-weight="900" font-size="52" fill="#FFF" text-anchor="middle">S</text></g>
+
+      <g transform="translate(0, 560)"><rect width="95" height="95" rx="18" fill="url(#tileGrad)" stroke="#1E3A8A" stroke-width="2" /><text x="47" y="65" font-family="sans-serif" font-weight="900" font-size="52" fill="#FFF" text-anchor="middle">F</text></g>
+      <g transform="translate(112, 560)"><rect width="95" height="95" rx="18" fill="url(#tileGrad)" stroke="#1E3A8A" stroke-width="2" /><text x="47" y="65" font-family="sans-serif" font-weight="900" font-size="52" fill="#FFF" text-anchor="middle">I</text></g>
+      <g transform="translate(224, 560)"><rect width="95" height="95" rx="18" fill="url(#tileGrad)" stroke="#1E3A8A" stroke-width="2" /><text x="47" y="65" font-family="sans-serif" font-weight="900" font-size="52" fill="#FFF" text-anchor="middle">S</text></g>
+      <g transform="translate(336, 560)"><rect width="95" height="95" rx="18" fill="url(#tileGrad)" stroke="#1E3A8A" stroke-width="2" /><text x="47" y="65" font-family="sans-serif" font-weight="900" font-size="52" fill="#FFF" text-anchor="middle">H</text></g>
+      <g transform="translate(448, 560)"><rect width="95" height="95" rx="18" fill="url(#tileGrad)" stroke="#1E3A8A" stroke-width="2" /><text x="47" y="65" font-family="sans-serif" font-weight="900" font-size="52" fill="#FFF" text-anchor="middle">U</text></g>
+      <g transform="translate(560, 560)"><rect width="95" height="95" rx="18" fill="url(#tileGrad)" stroke="#1E3A8A" stroke-width="2" /><text x="47" y="65" font-family="sans-serif" font-weight="900" font-size="52" fill="#FFF" text-anchor="middle">N</text></g>
+      <g transform="translate(672, 560)"><rect width="95" height="95" rx="18" fill="url(#tileGrad)" stroke="#1E3A8A" stroke-width="2" /><text x="47" y="65" font-family="sans-serif" font-weight="900" font-size="52" fill="#FFF" text-anchor="middle">T</text></g>
+      <g transform="translate(784, 560)"><rect width="95" height="95" rx="18" fill="url(#tileGrad)" stroke="#1E3A8A" stroke-width="2" /><text x="47" y="65" font-family="sans-serif" font-weight="900" font-size="52" fill="#FFF" text-anchor="middle">!</text></g>
+
+      <g transform="translate(0, 672)"><rect width="95" height="95" rx="18" fill="url(#tileGrad)" stroke="#1E3A8A" stroke-width="2" /><text x="47" y="65" font-family="sans-serif" font-weight="900" font-size="52" fill="#FFF" text-anchor="middle">E</text></g>
+      <g transform="translate(112, 672)"><rect width="95" height="95" rx="18" fill="url(#tileGrad)" stroke="#1E3A8A" stroke-width="2" /><text x="47" y="65" font-family="sans-serif" font-weight="900" font-size="52" fill="#FFF" text-anchor="middle">L</text></g>
+      <g transform="translate(224, 672)"><rect width="95" height="95" rx="18" fill="url(#tileGrad)" stroke="#1E3A8A" stroke-width="2" /><text x="47" y="65" font-family="sans-serif" font-weight="900" font-size="52" fill="#FFF" text-anchor="middle">E</text></g>
+      <g transform="translate(336, 672)"><rect width="95" height="95" rx="18" fill="url(#tileGrad)" stroke="#1E3A8A" stroke-width="2" /><text x="47" y="65" font-family="sans-serif" font-weight="900" font-size="52" fill="#FFF" text-anchor="middle">P</text></g>
+      <g transform="translate(448, 672)"><rect width="95" height="95" rx="18" fill="url(#tileGrad)" stroke="#1E3A8A" stroke-width="2" /><text x="47" y="65" font-family="sans-serif" font-weight="900" font-size="52" fill="#FFF" text-anchor="middle">H</text></g>
+      <g transform="translate(560, 672)"><rect width="95" height="95" rx="18" fill="url(#tileGrad)" stroke="#1E3A8A" stroke-width="2" /><text x="47" y="65" font-family="sans-serif" font-weight="900" font-size="52" fill="#FFF" text-anchor="middle">A</text></g>
+      <g transform="translate(672, 672)"><rect width="95" height="95" rx="18" fill="url(#tileGrad)" stroke="#1E3A8A" stroke-width="2" /><text x="47" y="65" font-family="sans-serif" font-weight="900" font-size="52" fill="#FFF" text-anchor="middle">N</text></g>
+      <g transform="translate(784, 672)"><rect width="95" height="95" rx="18" fill="url(#tileGrad)" stroke="#1E3A8A" stroke-width="2" /><text x="47" y="65" font-family="sans-serif" font-weight="900" font-size="52" fill="#FFF" text-anchor="middle">T</text></g>
+
+      <g transform="translate(0, 784)"><rect width="95" height="95" rx="18" fill="url(#tileGrad)" stroke="#1E3A8A" stroke-width="2" /><text x="47" y="65" font-family="sans-serif" font-weight="900" font-size="52" fill="#FFF" text-anchor="middle">W</text></g>
+      <g transform="translate(112, 784)"><rect width="95" height="95" rx="18" fill="url(#tileGrad)" stroke="#1E3A8A" stroke-width="2" /><text x="47" y="65" font-family="sans-serif" font-weight="900" font-size="52" fill="#FFF" text-anchor="middle">O</text></g>
+      <g transform="translate(224, 784)"><rect width="95" height="95" rx="18" fill="url(#tileGrad)" stroke="#1E3A8A" stroke-width="2" /><text x="47" y="65" font-family="sans-serif" font-weight="900" font-size="52" fill="#FFF" text-anchor="middle">L</text></g>
+      <g transform="translate(336, 784)"><rect width="95" height="95" rx="18" fill="url(#tileGrad)" stroke="#1E3A8A" stroke-width="2" /><text x="47" y="65" font-family="sans-serif" font-weight="900" font-size="52" fill="#FFF" text-anchor="middle">F</text></g>
+      <g transform="translate(448, 784)"><rect width="95" height="95" rx="18" fill="url(#tileGrad)" stroke="#1E3A8A" stroke-width="2" /><text x="47" y="65" font-family="sans-serif" font-weight="900" font-size="52" fill="#FFF" text-anchor="middle">R</text></g>
+      <g transform="translate(560, 784)"><rect width="95" height="95" rx="18" fill="url(#tileGrad)" stroke="#1E3A8A" stroke-width="2" /><text x="47" y="65" font-family="sans-serif" font-weight="900" font-size="52" fill="#FFF" text-anchor="middle">A</text></g>
+      <g transform="translate(672, 784)"><rect width="95" height="95" rx="18" fill="url(#tileGrad)" stroke="#1E3A8A" stroke-width="2" /><text x="47" y="65" font-family="sans-serif" font-weight="900" font-size="52" fill="#FFF" text-anchor="middle">Y</text></g>
+      <g transform="translate(784, 784)"><rect width="95" height="95" rx="18" fill="url(#tileGrad)" stroke="#1E3A8A" stroke-width="2" /><text x="47" y="65" font-family="sans-serif" font-weight="900" font-size="52" fill="#FFF" text-anchor="middle">S</text></g>
+    </g>
+  </g>
+
+  <!-- Power-Ups Tray -->
+  <g transform="translate(60, 1560)">
+    <rect width="960" height="230" rx="36" fill="#0C1F4D" stroke="#1E3A8A" stroke-width="3" />
+    <text x="50" y="55" font-family="system-ui, -apple-system, sans-serif" font-weight="800" font-size="28" fill="#94A3B8">POWER-UPS &amp; BOOSTERS</text>
+    
+    <!-- 4 Power Up Buttons -->
+    <g transform="translate(40, 80)">
+      <rect width="195" height="120" rx="24" fill="#071330" stroke="#0284C7" stroke-width="2" />
+      <text x="97" y="65" font-family="sans-serif" font-size="44" text-anchor="middle">🔨</text>
+      <text x="97" y="100" font-family="sans-serif" font-weight="800" font-size="20" fill="#38BDF8" text-anchor="middle">Hammer</text>
+    </g>
+    <g transform="translate(265, 80)">
+      <rect width="195" height="120" rx="24" fill="#071330" stroke="#0284C7" stroke-width="2" />
+      <text x="97" y="65" font-family="sans-serif" font-size="44" text-anchor="middle">🔄</text>
+      <text x="97" y="100" font-family="sans-serif" font-weight="800" font-size="20" fill="#38BDF8" text-anchor="middle">Swap</text>
+    </g>
+    <g transform="translate(490, 80)">
+      <rect width="195" height="120" rx="24" fill="#071330" stroke="#0284C7" stroke-width="2" />
+      <text x="97" y="65" font-family="sans-serif" font-size="44" text-anchor="middle">🔤</text>
+      <text x="97" y="100" font-family="sans-serif" font-weight="800" font-size="20" fill="#38BDF8" text-anchor="middle">Replace</text>
+    </g>
+    <g transform="translate(715, 80)">
+      <rect width="195" height="120" rx="24" fill="#071330" stroke="#0284C7" stroke-width="2" />
+      <text x="97" y="65" font-family="sans-serif" font-size="44" text-anchor="middle">💡</text>
+      <text x="97" y="100" font-family="sans-serif" font-weight="800" font-size="20" fill="#38BDF8" text-anchor="middle">Hint</text>
+    </g>
+  </g>
+</svg>

@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+    <link rel="apple-touch-icon" href="/icon-192.png" />
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#0EA5E9" />
+    <meta name="application-name" content="AlphaBlast" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="AlphaBlast" />
+    <meta name="msapplication-TileColor" content="#071330" />
+    <title>AlphaBlast — Word Puzzle Game</title>
+    <meta name="description" content="AlphaBlast combines tile-swapping mechanics, category word objectives, and powerful special tiles on a dynamic board." />
+    <meta property="og:title" content="AlphaBlast — Word Puzzle Game" />
+    <meta property="og:description" content="AlphaBlast combines tile-swapping mechanics, category word objectives, and powerful special tiles on a dynamic board." />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,300..1000;1,300..1000&display=swap" rel="stylesheet" />
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js', { scope: '/' })
+            .then((registration) => {
+              console.log('ServiceWorker registered with scope:', registration.scope);
+            })
+            .catch((err) => {
+              console.log('SW registration failed:', err);
+            });
+        });
+      }
+    </script>
+    <!-- Google H5 Game Ads (Ad Placement API / PWABuilder & Web) -->
+    <script
+      async
+      data-ad-client="ca-pub-2452250229562082"
+      data-ad-frequency-hint="60s"
+      src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"
+      crossorigin="anonymous"
+    ></script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

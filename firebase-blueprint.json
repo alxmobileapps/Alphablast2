@@ -1,0 +1,51 @@
+{
+  "entities": {
+    "custom_categories": {
+      "title": "CustomCategory",
+      "description": "Temporary custom categories created by players that are publicly available for 1 hour",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique identifier for custom category" },
+        "name": { "type": "string", "description": "Category title name" },
+        "icon": { "type": "string", "description": "Category emoji icon" },
+        "targetCount": { "type": "number", "description": "Target word count to clear" },
+        "words": { "type": "array", "items": { "type": "string" }, "description": "List of valid uppercase theme words" },
+        "color": { "type": "string", "description": "UI badge theme color" },
+        "creatorName": { "type": "string", "description": "Name of the player who created it" },
+        "createdAt": { "type": "number", "description": "Timestamp in milliseconds when created" },
+        "expiresAt": { "type": "number", "description": "Timestamp in milliseconds when it expires (1 hour after creation)" },
+        "plays": { "type": "number", "description": "Number of times this community category was played" }
+      },
+      "required": ["id", "name", "icon", "targetCount", "words", "createdAt", "expiresAt"]
+    },
+    "app_config": {
+      "title": "AppConfig",
+      "description": "Global remote settings and dynamic AdMob / H5 Game configuration",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Config document identifier (e.g. ads)" },
+        "testMode": { "type": "boolean", "description": "Whether test ad units are forced" },
+        "h5ClientId": { "type": "string", "description": "Google AdSense / H5 Publisher ID" },
+        "admobAndroidAppId": { "type": "string", "description": "AdMob Android App ID" },
+        "admobAndroidBannerId": { "type": "string", "description": "AdMob Android Banner ID" },
+        "admobAndroidInterstitialId": { "type": "string", "description": "AdMob Android Interstitial ID" },
+        "admobAndroidRewardedId": { "type": "string", "description": "AdMob Android Rewarded ID" },
+        "admobIosAppId": { "type": "string", "description": "AdMob iOS App ID" },
+        "admobIosBannerId": { "type": "string", "description": "AdMob iOS Banner ID" },
+        "admobIosInterstitialId": { "type": "string", "description": "AdMob iOS Interstitial ID" },
+        "admobIosRewardedId": { "type": "string", "description": "AdMob iOS Rewarded ID" },
+        "updatedAt": { "type": "number", "description": "Last update timestamp" }
+      }
+    }
+  },
+  "firestore": {
+    "custom_categories": {
+      "entity": "custom_categories",
+      "description": "Collection of temporary 1-hour community categories"
+    },
+    "app_config": {
+      "entity": "app_config",
+      "description": "Collection containing remote app settings such as ads"
+    }
+  }
+}

@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.alxmobileapps.alphablast",
+      "sha256_cert_fingerprints": [
+        "C9:6C:4D:F9:59:16:AC:FC:91:42:9F:B6:0E:9E:F1:0F:12:9E:1E:EC:DC:7A:8F:55:17:12:32:37:11:55:EC:10"
+      ]
+    }
+  }
+]

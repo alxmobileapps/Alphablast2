@@ -1,0 +1,95 @@
+{
+  "id": "com.alxmobileapps.alphablast",
+  "name": "AlphaBlast — Word Puzzle Game",
+  "short_name": "AlphaBlast",
+  "description": "AlphaBlast is a fast-paced word puzzle game combining tile-swapping mechanics, explosive letter blast combos, and category objectives on an 8x8 board.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": [
+    "window-controls-overlay",
+    "standalone",
+    "minimal-ui"
+  ],
+  "orientation": "portrait",
+  "background_color": "#071330",
+  "theme_color": "#0EA5E9",
+  "lang": "en",
+  "dir": "ltr",
+  "categories": [
+    "games",
+    "puzzle",
+    "entertainment"
+  ],
+  "prefer_related_applications": false,
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Play AlphaBlast",
+      "short_name": "Play",
+      "description": "Start solving word blast puzzles right now",
+      "url": "/",
+      "icons": [
+        {
+          "src": "/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Global Leaderboard",
+      "short_name": "Ranks",
+      "description": "View global scores and category achievements",
+      "url": "/",
+      "icons": [
+        {
+          "src": "/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/screenshot-mobile.png",
+      "sizes": "1080x1920",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "AlphaBlast 8x8 Gameplay Board"
+    },
+    {
+      "src": "/screenshot-desktop.png",
+      "sizes": "1920x1080",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "AlphaBlast Desktop Dashboard & Objectives"
+    }
+  ]
+}

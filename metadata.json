@@ -1,0 +1,6 @@
+{
+  "name": "AlphaBlast",
+  "description": "A dynamic word puzzle game featuring 8-directional word matching, point scoring system, category & overall leaderboards, pop-out tile selection swap interaction, and high-voltage electric tile wipe animations.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,38 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Custom Categories created by users
+    match /custom_categories/{categoryId} {
+      allow read: if true;
+      allow create: if request.resource.data.name is string
+                    && request.resource.data.words is list
+                    && request.resource.data.expiresAt is number;
+      allow update: if true;
+      allow delete: if true;
+    }
+
+    // Global Real Player Leaderboard Entries
+    match /global_leaderboard/{entryId} {
+      allow read: if true;
+      allow create, update: if request.resource.data.playerName is string
+                            && request.resource.data.score is number
+                            && request.resource.data.score >= 0;
+      allow delete: if false;
+    }
+
+    // Category Specific High Scores
+    match /category_scores/{scoreId} {
+      allow read: if true;
+      allow create, update: if request.resource.data.playerName is string
+                            && request.resource.data.score is number
+                            && request.resource.data.categoryId is number;
+      allow delete: if false;
+    }
+
+    // Remote App Configuration (Ads, Feature Flags)
+    match /app_config/{docId} {
+      allow read: if true;
+      allow write: if true;
+    }
+  }
+}
