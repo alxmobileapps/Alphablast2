@@ -2289,7 +2289,11 @@ export default function App() {
               currentCategory={currentCategory}
               gameProgress={gameProgress}
               score={roundScore}
-              onPlayGame={() => setCurrentScreen('game')}
+              onPlayGame={() => {
+                // If round has not been started yet or was paused before GO!, show the ReadyPrompt with GO! button
+                setIsReadyPromptOpen(true);
+                setCurrentScreen('game');
+              }}
               onOpenCategories={() => setIsCategoryModalOpen(true)}
               onOpenProfile={() => setIsProfileOpen(true)}
               onOpenLeaderboard={() => setIsLeaderboardOpen(true)}
