@@ -22,7 +22,7 @@ import { ProfileModal } from './components/ProfileModal';
 import { SettingsModal } from './components/SettingsModal';
 import { BottomBannerAd } from './components/BottomBannerAd';
 import { InterstitialAdModal } from './components/InterstitialAdModal';
-import { isSwipeControlsEnabled } from './utils/settings';
+import { isSwipeControlsEnabled, isCluesEnabled as isCluesEnabledUtil } from './utils/settings';
 import { initUniversalAds } from './utils/universalAds';
 import { initRemoteAdsListener } from './utils/remoteAdsService';
 import { INITIAL_CATEGORIES } from './data/categories';
@@ -286,6 +286,7 @@ export default function App() {
   const [isProfileOpen, setIsProfileOpen] = useState<boolean>(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
   const [isSwipeEnabled, setIsSwipeEnabled] = useState<boolean>(() => isSwipeControlsEnabled());
+  const [isCluesEnabled, setIsCluesEnabled] = useState<boolean>(() => isCluesEnabledUtil());
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState<boolean>(false);
   const [editingCustomCategory, setEditingCustomCategory] = useState<Category | null>(null);
   const [timerSecondsRemaining, setTimerSecondsRemaining] = useState<number>(120);
@@ -454,6 +455,7 @@ export default function App() {
       const requiredIdleMs = isClueDismissedRef.current ? 12000 : 5000;
 
       if (
+        isCluesEnabled &&
         idleDuration >= requiredIdleMs &&
         !robotWordsRef.current &&
         !hasComputedRobotWordsRef.current &&
@@ -471,6 +473,7 @@ export default function App() {
       clearInterval(timer);
     };
   }, [
+    isCluesEnabled,
     isReadyPromptOpen,
     isAnimating,
     isRoundCompleteOpen,
@@ -2372,11 +2375,11 @@ export default function App() {
                   />
                 </div>
 
-                {/* Dedicated Space between Board and Power-ups with Clue Display */}
-                <div className="w-full min-h-[24px] sm:min-h-[30px] flex items-center justify-center shrink-0 px-2">
-                  {/* Inactivity Word Suggestion Clue Toast (shown here between board and power-ups) */}
-                  {robotWords && robotWords.length > 0 && (
-                    <div className="animate-scale-in">
+                {/* Elevated Power-Up Bar with Floating Yellow Inactivity Clue */}
+                <div className="w-full flex justify-center shrink-0 relative mt-0.5 sm:mt-1">
+                  {/* Floating Clue Toast overlapping into powerup buttons area (Yellow 10% opacity, no 1/3) */}
+                  {robotWords && robotWords.length > 0 && isCluesEnabled && (
+                    <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 z-20 pointer-events-auto">
                       <ThinkingRobot
                         possibleWords={robotWords}
                         onDismiss={handleDismissClue}
@@ -2386,23 +2389,22 @@ export default function App() {
 
                   {/* Active Power-up Clue message bar */}
                   {clue && !robotWords && (
-                    <div className="w-full max-w-[min(96vw,540px)] mx-auto bg-gradient-to-r from-[#0C2158]/95 via-[#1E3A8A]/95 to-[#0C2158]/95 border-2 border-[#FFD700] text-white rounded-full px-3.5 py-1 flex items-center justify-between text-xs font-black shadow-[0_4px_16px_rgba(0,0,0,0.5),0_0_12px_rgba(255,215,0,0.35)] shrink-0 animate-bounce">
-                      <span className="flex items-center gap-1.5 truncate">
-                        <span className="text-sm">💡</span>
-                        <span className="truncate text-amber-300">Clue: {clue.reason}</span>
-                      </span>
-                      <button
-                        onClick={() => setClue(null)}
-                        className="text-[10px] sm:text-xs text-rose-300 underline font-black ml-2 hover:text-white shrink-0 cursor-pointer"
-                      >
-                        Dismiss
-                      </button>
+                    <div className="absolute -top-6 left-1/2 -translate-x-1/2 w-full max-w-[min(96vw,500px)] z-20 pointer-events-auto">
+                      <div className="bg-yellow-400/15 backdrop-blur-md border border-yellow-400/40 text-yellow-200 rounded-full px-3 py-0.5 flex items-center justify-between text-[11px] sm:text-xs font-black shadow-lg animate-bounce">
+                        <span className="flex items-center gap-1.5 truncate">
+                          <span className="text-xs">💡</span>
+                          <span className="truncate text-yellow-300">Clue: {clue.reason}</span>
+                        </span>
+                        <button
+                          onClick={() => setClue(null)}
+                          className="text-[10px] sm:text-xs text-rose-300 underline font-black ml-2 hover:text-white shrink-0 cursor-pointer"
+                        >
+                          Dismiss
+                        </button>
+                      </div>
                     </div>
                   )}
-                </div>
 
-                {/* Bottom Area: Power-Ups Inventory Bar */}
-                <div className="w-full flex justify-center shrink-0">
                   <PowerUpBar
                     inventory={powerUps}
                     activePowerUp={activePowerUp}
@@ -2443,6 +2445,13 @@ export default function App() {
         onResetProgress={handleResetGameData}
         isSwipeEnabled={isSwipeEnabled}
         onToggleSwipe={setIsSwipeEnabled}
+        isCluesEnabled={isCluesEnabled}
+        onToggleClues={(enabled) => {
+          setIsCluesEnabled(enabled);
+          if (!enabled) {
+            setRobotWords(null);
+          }
+        }}
       />
 
       <AdModal

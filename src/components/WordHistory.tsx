@@ -63,23 +63,23 @@ export const WordHistory: React.FC<WordHistoryProps> = ({
     <>
       <div
         id="word-history-panel"
-        className="w-full max-w-[min(96vw,660px)] mx-auto bg-[#0B1E52]/90 backdrop-blur-md rounded-2xl px-2.5 sm:px-3 py-1.5 sm:py-2 border-2 border-[#193B8A] shadow-[0_8px_24px_rgba(0,0,0,0.4)] flex items-center gap-2 sm:gap-2.5 text-white select-none"
+        className="w-full max-w-[min(96vw,660px)] mx-auto bg-[#0B1E52]/90 backdrop-blur-md rounded-xl px-2 sm:px-2.5 py-1 sm:py-1 border border-[#193B8A] shadow-[0_4px_16px_rgba(0,0,0,0.3)] flex items-center gap-1.5 sm:gap-2 text-white select-none"
       >
         {/* Left Badges: Combined Category Goal Status or Timer & Formed Words Count */}
-        <div className="flex items-center gap-1.5 shrink-0 bg-[#081844] border border-[#1E3A8A] rounded-xl px-2 sm:px-2.5 py-1 shadow-inner">
+        <div className="flex items-center gap-1.5 shrink-0 bg-[#081844] border border-[#1E3A8A] rounded-lg px-1.5 sm:px-2 py-0.5 shadow-inner">
           {isTimerMode ? (
             /* Timer Rush Mode Countdown Badge */
             <div
               id="category-timer-status-badge"
-              className={`flex items-center gap-1.5 border px-2 py-0.5 rounded-lg text-xs font-black shadow-xs ${
+              className={`flex items-center gap-1 border px-1.5 py-0.5 rounded text-[11px] sm:text-xs font-black shadow-xs ${
                 (timerSecondsRemaining || 0) <= 20
                   ? 'bg-rose-950/80 border-rose-500 text-rose-300 animate-pulse'
                   : 'bg-[#0C2158] border-amber-400/40 text-amber-300'
               }`}
               title={`Timer remaining: ${formatTimer(timerSecondsRemaining)}`}
             >
-              <Clock className={`w-3.5 h-3.5 ${((timerSecondsRemaining || 0) <= 20) ? 'text-rose-400' : 'text-amber-400'}`} />
-              <span className="font-mono text-xs sm:text-sm font-black">
+              <Clock className={`w-3 h-3 ${((timerSecondsRemaining || 0) <= 20) ? 'text-rose-400' : 'text-amber-400'}`} />
+              <span className="font-mono text-xs font-black">
                 {formatTimer(timerSecondsRemaining)}
               </span>
             </div>
@@ -87,14 +87,14 @@ export const WordHistory: React.FC<WordHistoryProps> = ({
             /* Category Target Goal Progress (e.g. 0/10) */
             <div
               id="category-target-status-badge"
-              className="flex items-center gap-1.5 bg-[#0C2158] border border-[#1E3A8A] px-2 py-0.5 rounded-lg text-xs font-black shadow-xs"
+              className="flex items-center gap-1 bg-[#0C2158] border border-[#1E3A8A] px-1.5 py-0.5 rounded text-[11px] sm:text-xs font-black shadow-xs"
               title={`Category goal: ${categoryProgress} of ${category.targetCount} target words completed`}
             >
-              <span className="text-xs sm:text-sm">{category.icon}</span>
-              <span className="font-mono text-xs sm:text-sm font-black text-emerald-400">
+              <span className="text-xs">{category.icon}</span>
+              <span className="font-mono text-xs font-black text-emerald-400">
                 {categoryProgress}/{category.targetCount}
               </span>
-              <div className="w-10 sm:w-12 h-2 bg-[#081844] rounded-full overflow-hidden p-0.5 border border-[#193B8A]/80 hidden xs:block">
+              <div className="w-8 sm:w-10 h-1.5 bg-[#081844] rounded-full overflow-hidden p-0.5 border border-[#193B8A]/80 hidden xs:block">
                 <div
                   className="h-full rounded-full bg-gradient-to-r from-emerald-400 to-cyan-400 transition-all duration-300"
                   style={{ width: `${progressPercent}%` }}
@@ -105,11 +105,11 @@ export const WordHistory: React.FC<WordHistoryProps> = ({
 
           {/* Formed Words Total Count */}
           <div className="flex items-center gap-1">
-            <span className="text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wider text-blue-200 hidden sm:inline">
+            <span className="text-[8.5px] sm:text-[9px] font-extrabold uppercase tracking-wider text-blue-200 hidden sm:inline">
               WORDS
             </span>
             <span
-              className="text-[10px] sm:text-xs bg-[#059669] text-white font-mono px-1.5 sm:px-2 py-0.5 rounded-full font-black shadow-xs"
+              className="text-[9.5px] sm:text-[11px] bg-[#059669] text-white font-mono px-1.5 py-0.2 rounded-full font-black shadow-xs"
               title="Total words formed this round"
             >
               {history.length}
@@ -121,11 +121,11 @@ export const WordHistory: React.FC<WordHistoryProps> = ({
         <div
           ref={scrollContainerRef}
           id="word-history-list"
-          className="flex-1 flex items-center gap-2 overflow-x-auto py-0.5 custom-scrollbar scroll-smooth min-w-0"
+          className="flex-1 flex items-center gap-1.5 overflow-x-auto py-0.2 custom-scrollbar scroll-smooth min-w-0"
         >
           {history.length === 0 ? (
-            <div className="flex items-center gap-2 text-blue-300/70 text-xs font-bold px-2 py-0.5">
-              <Sparkles className="w-3.5 h-3.5 text-cyan-400 shrink-0 animate-pulse" />
+            <div className="flex items-center gap-1.5 text-blue-300/70 text-[11px] font-bold px-1.5 py-0.2">
+              <Sparkles className="w-3 h-3 text-cyan-400 shrink-0 animate-pulse" />
               <span className="truncate">Form words on the board to collect them here</span>
             </div>
           ) : (
@@ -134,15 +134,15 @@ export const WordHistory: React.FC<WordHistoryProps> = ({
                 key={item.id}
                 onClick={() => handleWordClick(item.word)}
                 title="Click for AI Meaning & Fun Trivia"
-                className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs sm:text-sm font-black border bg-[#0C2158] hover:bg-[#122E73] border-[#1E3A8A] hover:border-cyan-400 text-white shadow-xs shrink-0 whitespace-nowrap animate-word-pop transition-all active:scale-95 cursor-pointer"
+                className="flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-black border bg-[#0C2158] hover:bg-[#122E73] border-[#1E3A8A] hover:border-cyan-400 text-white shadow-xs shrink-0 whitespace-nowrap animate-word-pop transition-all active:scale-95 cursor-pointer"
               >
-                <span className="font-mono font-black tracking-wide text-cyan-200 uppercase">
+                <span className="font-mono font-black tracking-wide text-cyan-200 uppercase text-xs">
                   {item.word}
                 </span>
 
                 {/* Points badge */}
                 {item.points ? (
-                  <span className="text-[10px] font-mono font-black text-amber-300 bg-amber-400/15 border border-amber-400/30 px-1.5 py-0.2 rounded">
+                  <span className="text-[9px] font-mono font-black text-amber-300 bg-amber-400/15 border border-amber-400/30 px-1 py-0.2 rounded">
                     +{formatPoints(item.points)}
                   </span>
                 ) : null}

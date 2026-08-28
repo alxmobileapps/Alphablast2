@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { X, Volume2, VolumeX, Music, Smartphone, RotateCcw, ShieldAlert, ArrowLeftRight } from 'lucide-react';
+import { X, Volume2, VolumeX, Music, Smartphone, RotateCcw, ShieldAlert, ArrowLeftRight, Lightbulb } from 'lucide-react';
 import { isSoundEnabled, toggleSound, stopBackgroundMusic, startBackgroundMusic } from '../utils/audio';
-import { isSwipeControlsEnabled, setSwipeControlsEnabled } from '../utils/settings';
+import { isSwipeControlsEnabled, setSwipeControlsEnabled, isCluesEnabled as isCluesEnabledUtil, setCluesEnabled as setCluesEnabledUtil } from '../utils/settings';
 import { haptics } from '../utils/haptics';
 
 interface SettingsModalProps {
@@ -10,6 +10,8 @@ interface SettingsModalProps {
   onResetProgress?: () => void;
   isSwipeEnabled?: boolean;
   onToggleSwipe?: (enabled: boolean) => void;
+  isCluesEnabled?: boolean;
+  onToggleClues?: (enabled: boolean) => void;
 }
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({
@@ -18,12 +20,17 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onResetProgress,
   isSwipeEnabled,
   onToggleSwipe,
+  isCluesEnabled,
+  onToggleClues,
 }) => {
   const [sound, setSound] = useState<boolean>(() => isSoundEnabled());
   const [music, setMusic] = useState<boolean>(true);
   const [vibration, setVibration] = useState<boolean>(true);
   const [swipe, setSwipe] = useState<boolean>(() =>
     isSwipeEnabled !== undefined ? isSwipeEnabled : isSwipeControlsEnabled()
+  );
+  const [clues, setClues] = useState<boolean>(() =>
+    isCluesEnabled !== undefined ? isCluesEnabled : isCluesEnabledUtil()
   );
   const [confirmReset, setConfirmReset] = useState<boolean>(false);
 
@@ -64,6 +71,16 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     haptics.tap();
   };
 
+  const handleToggleClues = () => {
+    const next = !clues;
+    setClues(next);
+    setCluesEnabledUtil(next);
+    if (onToggleClues) {
+      onToggleClues(next);
+    }
+    haptics.tap();
+  };
+
   const handlePerformReset = () => {
     if (onResetProgress) {
       onResetProgress();
@@ -71,6 +88,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     setConfirmReset(false);
     onClose();
   };
+
 
   return (
     <div
@@ -224,7 +242,33 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               </button>
             </div>
 
-            {/* 5. Reset Data Section */}
+            {/* 5. Inactivity Word Clues (Default: ON) */}
+            <div className="bg-[#0C2158] border border-[#1E3A8A] rounded-2xl p-3.5 flex items-center justify-between shadow-inner">
+              <div className="flex items-center gap-3">
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center border ${
+                  clues ? 'bg-yellow-900/60 border-yellow-400 text-yellow-300' : 'bg-gray-800 border-gray-600 text-gray-400'
+                }`}>
+                  <Lightbulb className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="font-black text-sm text-white">Word Clues</div>
+                  <div className="text-[11px] text-cyan-200/70">Auto-suggest word clues when inactive</div>
+                </div>
+              </div>
+
+              <button
+                onClick={handleToggleClues}
+                className={`px-3.5 py-1.5 rounded-xl font-black text-xs transition-all cursor-pointer border ${
+                  clues
+                    ? 'bg-gradient-to-r from-yellow-500 to-amber-500 text-white border-yellow-300 shadow-md shadow-yellow-500/30'
+                    : 'bg-gray-700 text-gray-300 border-gray-600'
+                }`}
+              >
+                {clues ? 'ON' : 'OFF'}
+              </button>
+            </div>
+
+            {/* 6. Reset Data Section */}
             <div className="bg-[#0C2158] border border-[#1E3A8A] rounded-2xl p-3.5 shadow-inner">
               {confirmReset ? (
                 <div className="space-y-2 text-center animate-fade-in">
