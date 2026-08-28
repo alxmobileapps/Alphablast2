@@ -1,18 +1,20 @@
 import React, { useEffect } from 'react';
-import { Play, Zap } from 'lucide-react';
+import { Play, Home } from 'lucide-react';
 import { Category } from '../types';
-import { playPowerUp } from '../utils/audio';
+import { playPowerUp, playTileSelect } from '../utils/audio';
 
 interface ReadyPromptProps {
   isOpen: boolean;
   category: Category;
   onStart: () => void;
+  onHome?: () => void;
 }
 
 export const ReadyPrompt: React.FC<ReadyPromptProps> = ({
   isOpen,
   category,
   onStart,
+  onHome,
 }) => {
   // Listen for Enter / Space key to quick-start
   useEffect(() => {
@@ -38,6 +40,17 @@ export const ReadyPrompt: React.FC<ReadyPromptProps> = ({
       // Audio context might be waiting for interaction
     }
     onStart();
+  };
+
+  const handleHomeClick = () => {
+    try {
+      playTileSelect();
+    } catch {
+      // Audio fallback
+    }
+    if (onHome) {
+      onHome();
+    }
   };
 
   return (
@@ -84,16 +97,29 @@ export const ReadyPrompt: React.FC<ReadyPromptProps> = ({
             Form words in any of 8 directions. The timer starts when you press GO!
           </p>
 
-          {/* Action Button: "GO!" with 3D tactile board tile finish */}
-          <button
-            id="ready-prompt-go-button"
-            onClick={handleGo}
-            autoFocus
-            className="w-full py-3.5 sm:py-4 px-6 rounded-2xl bg-gradient-to-b from-[#38BDF8] via-[#0EA5E9] to-[#0284C7] hover:from-[#7DD3FC] hover:to-[#0EA5E9] border-t-2 border-l border-white/80 border-r border-[#075985] border-b-[5px] border-b-[#034C70] active:border-b-[2px] active:translate-y-[3px] text-white font-black text-2xl sm:text-3xl tracking-wider shadow-[0_8px_25px_rgba(2,132,199,0.6)] transition-all duration-150 flex items-center justify-center gap-3 cursor-pointer group"
-          >
-            <Play className="w-7 h-7 fill-white text-white transition-transform group-hover:scale-110 drop-shadow-[0_2px_4px_rgba(0,0,0,0.4)]" />
-            <span className="drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]">GO!</span>
-          </button>
+          {/* Action Row: Small Home Button + "GO!" Button with 3D tactile finish */}
+          <div className="flex items-center gap-2.5 sm:gap-3 w-full">
+            {onHome && (
+              <button
+                id="ready-prompt-home-button"
+                onClick={handleHomeClick}
+                title="Return to Home Menu"
+                className="h-[54px] sm:h-[60px] w-[54px] sm:w-[60px] shrink-0 rounded-2xl bg-gradient-to-b from-[#1E293B] via-[#0F172A] to-[#020617] hover:from-[#334155] hover:to-[#0F172A] border-t-2 border-l border-slate-500/70 border-r border-slate-800 border-b-[5px] border-b-black active:border-b-[2px] active:translate-y-[3px] text-slate-200 hover:text-white shadow-lg transition-all duration-150 flex items-center justify-center cursor-pointer group"
+              >
+                <Home className="w-6 h-6 sm:w-7 sm:h-7 text-cyan-300 group-hover:scale-110 drop-shadow transition-transform" />
+              </button>
+            )}
+
+            <button
+              id="ready-prompt-go-button"
+              onClick={handleGo}
+              autoFocus
+              className="flex-1 py-3.5 sm:py-4 px-4 sm:px-6 rounded-2xl bg-gradient-to-b from-[#38BDF8] via-[#0EA5E9] to-[#0284C7] hover:from-[#7DD3FC] hover:to-[#0EA5E9] border-t-2 border-l border-white/80 border-r border-[#075985] border-b-[5px] border-b-[#034C70] active:border-b-[2px] active:translate-y-[3px] text-white font-black text-2xl sm:text-3xl tracking-wider shadow-[0_8px_25px_rgba(2,132,199,0.6)] transition-all duration-150 flex items-center justify-center gap-3 cursor-pointer group"
+            >
+              <Play className="w-6 h-6 sm:w-7 sm:h-7 fill-white text-white transition-transform group-hover:scale-110 drop-shadow-[0_2px_4px_rgba(0,0,0,0.4)]" />
+              <span className="drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]">GO!</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>

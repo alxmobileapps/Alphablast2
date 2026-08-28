@@ -2605,6 +2605,10 @@ export default function App() {
           isOpen={isReadyPromptOpen}
           category={currentCategory}
           onStart={handleStartGameRound}
+          onHome={() => {
+            setIsReadyPromptOpen(false);
+            handleGoHome();
+          }}
         />
       )}
     </div>

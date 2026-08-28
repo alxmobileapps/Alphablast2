@@ -764,6 +764,36 @@ body {
   animation: cluePillPop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
 }
 
+@keyframes clueGlowPulseKeyframes {
+  0%, 100% {
+    box-shadow: 0 0 8px 1px rgba(250, 204, 21, 0.35), 0 2px 6px rgba(0, 0, 0, 0.4), inset 0 0 6px 1px rgba(250, 204, 21, 0.15);
+    border-color: rgba(250, 204, 21, 0.45);
+  }
+  50% {
+    box-shadow: 0 0 16px 3px rgba(250, 204, 21, 0.75), 0 2px 10px rgba(0, 0, 0, 0.5), inset 0 0 10px 2px rgba(250, 204, 21, 0.25);
+    border-color: rgba(253, 224, 71, 0.95);
+  }
+}
+
+.animate-clue-glow {
+  animation: clueGlowPulseKeyframes 1.6s ease-in-out infinite;
+}
+
+@keyframes clueSparkleTwinkle {
+  0%, 100% {
+    transform: scale(1) rotate(0deg);
+    filter: drop-shadow(0 0 3px rgba(250, 204, 21, 0.9));
+  }
+  50% {
+    transform: scale(1.25) rotate(15deg);
+    filter: drop-shadow(0 0 6px rgba(255, 255, 255, 1)) drop-shadow(0 0 10px rgba(250, 204, 21, 1));
+  }
+}
+
+.animate-clue-sparkle {
+  animation: clueSparkleTwinkle 1.2s ease-in-out infinite;
+}
+
 
 
 

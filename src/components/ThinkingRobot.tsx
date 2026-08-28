@@ -51,12 +51,12 @@ export const ThinkingRobot: React.FC<ThinkingRobotProps> = ({
           : 'opacity-100 scale-100 animate-scale-in'
       }`}
     >
-      {/* Floating Yellow Clue Pill with 10% opacity background & subtle border */}
-      <div className="flex items-center gap-1.5 px-3 py-0.5 bg-yellow-400/10 backdrop-blur-xs text-yellow-300 border border-yellow-400/30 rounded-full shadow-[0_2px_8px_rgba(234,179,8,0.15)] hover:bg-yellow-400/15 transition-all">
-        <Sparkles className="w-3 h-3 text-yellow-300 animate-pulse shrink-0" />
+      {/* Floating Yellow Clue Pill with 80% opacity background & glowing accent */}
+      <div className="flex items-center gap-1.5 px-3 py-0.5 bg-yellow-500/80 backdrop-blur-xs text-yellow-100 border border-yellow-300/80 rounded-full animate-clue-glow hover:bg-yellow-500/90 transition-all shadow-md">
+        <Sparkles className="w-3 h-3 text-yellow-200 animate-clue-sparkle shrink-0" />
         <span
           key={activeWord}
-          className="font-mono text-[11px] sm:text-xs font-black tracking-wider uppercase text-yellow-300 animate-clue-pop"
+          className="font-mono text-[11px] sm:text-xs font-black tracking-wider uppercase text-yellow-100 drop-shadow-[0_0_8px_rgba(250,204,21,0.6)] animate-clue-pop"
         >
           Clue: {activeWord}
         </span>
@@ -65,7 +65,7 @@ export const ThinkingRobot: React.FC<ThinkingRobotProps> = ({
             e.stopPropagation();
             onDismiss();
           }}
-          className="ml-0.5 w-3.5 h-3.5 rounded-full hover:bg-yellow-400/20 text-yellow-300/70 hover:text-yellow-200 flex items-center justify-center transition-colors cursor-pointer"
+          className="ml-0.5 w-3.5 h-3.5 rounded-full hover:bg-yellow-600/50 text-yellow-200 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
           title="Dismiss clue"
         >
           <X className="w-2.5 h-2.5" />
