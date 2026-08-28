@@ -939,6 +939,13 @@ export default function App() {
           );
 
           // Add to word history with calculated points
+          const specialCreatedValue: WordHistoryItem['specialCreated'] =
+            match.specialGenerated === 'board_clear'
+              ? 'board_clear'
+              : match.specialGenerated && match.specialGenerated !== 'none'
+              ? match.specialGenerated
+              : undefined;
+
           setWordHistory((prev) => [
             {
               id: `w-${Date.now()}-${Math.random()}`,
@@ -948,10 +955,7 @@ export default function App() {
               points: wordPts.points,
               baseLetterPoints: wordPts.baseLetterPoints,
               timestamp: Date.now(),
-              specialCreated:
-                match.specialGenerated === 'board_clear'
-                  ? 'board_clear'
-                  : match.specialGenerated || undefined,
+              specialCreated: specialCreatedValue,
             },
             ...prev,
           ]);
@@ -1427,18 +1431,6 @@ export default function App() {
         fusionDescription = `Twin Lasers Synthesized: Upgraded to Shining Star!`;
         fusionSubtext = 'UPGRADE';
         playShining();
-      } else if (t1.special === 'card' || t2.special === 'card') {
-        targetSpecial = 'card';
-        fusionIcon = '🎴';
-        fusionDescription = `Card Fusion: Letter Wipe Special Preserved!`;
-        fusionSubtext = 'SPECIAL CARD';
-        playSpecialCard();
-      } else if (t1.special === 'bomb' || t2.special === 'bomb') {
-        targetSpecial = 'bomb';
-        fusionIcon = '💥';
-        fusionDescription = `Bomb Fusion: Explosive Tile Preserved!`;
-        fusionSubtext = 'BOMB TILE';
-        playBomb();
       } else {
         targetSpecial = 'highlighted';
         fusionIcon = '⚡';

@@ -9,6 +9,7 @@ import {
   ChevronRight,
   Layers,
   Plus,
+  ShoppingBag,
 } from 'lucide-react';
 import { Category } from '../types';
 import { GameProgress } from '../utils/gameProgress';
@@ -183,7 +184,32 @@ export const HomeMenu: React.FC<HomeMenuProps> = ({
               <ChevronRight className="w-4 h-4 text-cyan-400/60 group-hover:text-cyan-300 group-hover:translate-x-0.5 transition-all shrink-0" />
             </button>
 
-            {/* 3. PROFILE BUTTON (Username & Category Stats) */}
+            {/* 3. DEDICATED STORE & BANK BUTTON */}
+            <button
+              id="menu-btn-store"
+              onClick={() => onOpenShop && handleAction(onOpenShop)}
+              className="w-full group p-2 sm:p-2.5 rounded-xl sm:rounded-2xl bg-[#0C2158] hover:bg-[#132E75] border border-[#1E3A8A] hover:border-amber-400 active:translate-y-[1px] shadow-inner transition-all cursor-pointer flex items-center justify-between text-left"
+            >
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-8 h-8 rounded-xl bg-[#071330] border border-amber-400/40 flex items-center justify-center text-base shrink-0 group-hover:scale-105 transition-transform">
+                  <ShoppingBag className="w-4 h-4 text-amber-300" />
+                </div>
+                <div className="min-w-0">
+                  <div className="text-xs sm:text-sm font-black text-white leading-tight flex items-center gap-1.5">
+                    <span>Store & Bank</span>
+                    <span className="text-[8px] sm:text-[9px] font-black uppercase bg-gradient-to-r from-amber-400 to-yellow-400 text-amber-950 px-1.5 py-0.2 rounded-md shadow-xs">
+                      STORE
+                    </span>
+                  </div>
+                  <div className="text-[10px] sm:text-[11px] text-amber-200/70 font-semibold truncate">
+                    Power-ups, coins, diamonds & packs
+                  </div>
+                </div>
+              </div>
+              <ChevronRight className="w-4 h-4 text-amber-400/60 group-hover:text-amber-300 group-hover:translate-x-0.5 transition-all shrink-0" />
+            </button>
+
+            {/* 4. PROFILE BUTTON (Username & Category Stats) */}
             <button
               id="menu-btn-profile"
               onClick={() => handleAction(onOpenProfile)}
@@ -205,7 +231,7 @@ export const HomeMenu: React.FC<HomeMenuProps> = ({
               <ChevronRight className="w-4 h-4 text-cyan-400/60 group-hover:text-cyan-300 group-hover:translate-x-0.5 transition-all shrink-0" />
             </button>
 
-            {/* 4. LEADERBOARD BUTTON */}
+            {/* 5. LEADERBOARD BUTTON */}
             <button
               id="menu-btn-leaderboard"
               onClick={() => handleAction(onOpenLeaderboard)}
@@ -227,7 +253,7 @@ export const HomeMenu: React.FC<HomeMenuProps> = ({
               <ChevronRight className="w-4 h-4 text-amber-400/60 group-hover:text-amber-300 group-hover:translate-x-0.5 transition-all shrink-0" />
             </button>
 
-            {/* 5. HOW TO PLAY BUTTON */}
+            {/* 6. HOW TO PLAY BUTTON */}
             <button
               id="menu-btn-how-to-play"
               onClick={() => handleAction(onOpenHelp)}
@@ -249,7 +275,7 @@ export const HomeMenu: React.FC<HomeMenuProps> = ({
               <ChevronRight className="w-4 h-4 text-emerald-400/60 group-hover:text-emerald-300 group-hover:translate-x-0.5 transition-all shrink-0" />
             </button>
 
-            {/* 6. SETTINGS BUTTON */}
+            {/* 7. SETTINGS BUTTON */}
             <button
               id="menu-btn-settings"
               onClick={() => handleAction(onOpenSettings)}
