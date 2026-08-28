@@ -145,7 +145,11 @@ export default function App() {
   const roundScoreRef = useRef<number>(0);
   const [totalScore, setTotalScore] = useState<number>(0);
   const [adRefillsUsed, setAdRefillsUsed] = useState<number>(0);
-  const [board, setBoard] = useState<Tile[][]>(() => generateInitialBoard(INITIAL_CATEGORIES[0]?.id || 1));
+  const [board, setBoard] = useState<Tile[][]>(() => {
+    const saved = loadGameProgress();
+    const targetId = saved.lastPlayedCategoryId || 1;
+    return generateInitialBoard(targetId);
+  });
   const [wordHistory, setWordHistory] = useState<WordHistoryItem[]>([]);
   const [powerUps, setPowerUps] = useState<PowerUpInventory>(() => {
     const saved = loadGameProgress();
@@ -181,12 +185,16 @@ export default function App() {
 
   // Real-time Statement Banner State
   const [boardBanner, setBoardBanner] = useState<BoardBanner | null>(() => {
-    const initCat = INITIAL_CATEGORIES[0];
+    const saved = loadGameProgress();
+    const targetId = saved.lastPlayedCategoryId || 1;
+    const initCat = INITIAL_CATEGORIES.find((c) => c.id === targetId) || INITIAL_CATEGORIES[0];
     const targetCount = initCat?.targetCount || 5;
     const catName = initCat?.name || 'Animals';
     return {
       id: 'b-init',
-      text: `Find ${targetCount} words related to "${catName}"!`,
+      text: initCat?.gameMode === 'timer'
+        ? `Find as many words related to "${catName}" as you can!`
+        : `Find ${targetCount} words related to "${catName}"!`,
       icon: initCat?.icon || '🎯',
       type: 'category',
       subtext: 'GOAL',
