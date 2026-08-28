@@ -29,6 +29,19 @@ body {
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif !important;
 }
 
+/* Lively & playful game font families */
+.font-game-display {
+  font-family: 'Fredoka', 'Nunito', system-ui, sans-serif !important;
+}
+
+.font-game-title {
+  font-family: 'Titan One', 'Fredoka', cursive, sans-serif !important;
+}
+
+.font-game-heading {
+  font-family: 'Righteous', 'Fredoka', cursive, sans-serif !important;
+}
+
 @layer utilities {
   .custom-scrollbar::-webkit-scrollbar {
     width: 6px;
