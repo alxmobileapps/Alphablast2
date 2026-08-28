@@ -21,7 +21,7 @@ import { PowerUpInventory, PowerUpType } from '../types';
 import { HammerIcon } from './HammerIcon';
 import { playRewardRefill, playSpecialCard, playWin } from '../utils/audio';
 import { haptics } from '../utils/haptics';
-import { purchaseMedianIAP, showMedianRewardedAd, restoreMedianPurchases } from '../utils/medianBridge';
+import { purchaseIAP, purchaseMedianIAP, showMedianRewardedAd, restoreMedianPurchases } from '../utils/medianBridge';
 
 interface ShopModalProps {
   isOpen: boolean;
@@ -180,16 +180,21 @@ export const ShopModal: React.FC<ShopModalProps> = ({
     );
   };
 
-  const handleSimulatedDiamondBuy = (amount: number, label: string, productId?: string) => {
+  const handleDiamondPackPurchase = (amount: number, label: string, productId?: string) => {
     haptics.tap();
-    purchaseMedianIAP(productId || `com.wordblast.diamonds_${amount}`, (success) => {
+    const pid = productId || `com.wordblast.diamonds_${amount}`;
+    purchaseIAP(pid, (success, res) => {
       if (success) {
         onAddDiamonds(amount);
         haptics.specialCreated();
         playWin();
-        showNotification(`Unlocked ${label}: +${amount} 💎 Diamonds Added!`);
+        showNotification(`Purchased ${label}! +${amount} 💎 Diamonds Added!`);
       } else {
-        showNotification('Purchase cancelled.');
+        if (res?.error && res.error !== 'Cancelled') {
+          showNotification(`Purchase notice: ${res.error}`);
+        } else {
+          showNotification('Purchase cancelled.');
+        }
       }
     });
   };
@@ -681,10 +686,11 @@ export const ShopModal: React.FC<ShopModalProps> = ({
                       <span className="text-xs text-cyan-300 font-bold">+10 Diamonds</span>
                     </div>
                     <button
-                      onClick={() => handleSimulatedDiamondBuy(10, 'Starter Pack')}
-                      className="w-full py-1.5 bg-cyan-400 hover:bg-cyan-300 text-cyan-950 font-black text-xs rounded-xl shadow-xs active:scale-95 transition-transform"
+                      onClick={() => handleDiamondPackPurchase(10, 'Starter Pack', 'com.wordblast.diamonds_10')}
+                      className="w-full py-2 bg-gradient-to-r from-cyan-400 to-blue-400 hover:from-cyan-300 hover:to-blue-300 text-cyan-950 font-black text-xs rounded-xl shadow-md active:scale-95 transition-transform flex items-center justify-center gap-1 cursor-pointer"
                     >
-                      Collect Pack
+                      <span>Buy Pack</span>
+                      <span className="text-[10px] bg-cyan-950/30 text-cyan-900 px-1.5 py-0.5 rounded font-black">IAP</span>
                     </button>
                   </div>
 
@@ -695,10 +701,11 @@ export const ShopModal: React.FC<ShopModalProps> = ({
                       <span className="text-xs text-cyan-300 font-bold">+50 Diamonds</span>
                     </div>
                     <button
-                      onClick={() => handleSimulatedDiamondBuy(50, 'Master Vault')}
-                      className="w-full py-1.5 bg-gradient-to-r from-amber-400 to-yellow-400 text-amber-950 font-black text-xs rounded-xl shadow-xs active:scale-95 transition-transform"
+                      onClick={() => handleDiamondPackPurchase(50, 'Master Vault', 'com.wordblast.diamonds_50')}
+                      className="w-full py-2 bg-gradient-to-r from-amber-400 to-yellow-400 hover:from-amber-300 hover:to-yellow-300 text-amber-950 font-black text-xs rounded-xl shadow-md active:scale-95 transition-transform flex items-center justify-center gap-1 cursor-pointer"
                     >
-                      Collect Vault
+                      <span>Buy Vault</span>
+                      <span className="text-[10px] bg-amber-950/30 text-amber-900 px-1.5 py-0.5 rounded font-black">IAP</span>
                     </button>
                   </div>
                 </div>
@@ -709,10 +716,15 @@ export const ShopModal: React.FC<ShopModalProps> = ({
 
         {/* Footer */}
         <div className="p-3 border-t border-[#1E3A8A] bg-[#071330] flex items-center justify-between text-xs text-blue-200">
-          <span>Converted leftovers: 1 tile/powerup = 1 🪙</span>
+          <button
+            onClick={handleRestorePurchases}
+            className="text-[11px] text-blue-300 hover:text-white underline underline-offset-2 transition-colors cursor-pointer"
+          >
+            Restore Purchases
+          </button>
           <button
             onClick={onClose}
-            className="px-4 py-1.5 bg-[#0E286C] hover:bg-[#143588] text-white font-bold rounded-xl border border-[#204090] text-xs active:scale-95"
+            className="px-4 py-1.5 bg-[#0E286C] hover:bg-[#143588] text-white font-bold rounded-xl border border-[#204090] text-xs active:scale-95 cursor-pointer"
           >
             Done
           </button>
