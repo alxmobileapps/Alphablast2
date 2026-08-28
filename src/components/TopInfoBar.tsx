@@ -1,6 +1,6 @@
 import React from 'react';
-import { X, Sparkles, Hammer, Edit3, ArrowLeftRight, Lightbulb, Info } from 'lucide-react';
-import { BoardBanner, PowerUpType } from '../types';
+import { X, Sparkles, Hammer, Edit3, ArrowLeftRight, Lightbulb, Target } from 'lucide-react';
+import { BoardBanner, PowerUpType, Category } from '../types';
 
 export interface SpecialTileInfo {
   title: string;
@@ -17,6 +17,7 @@ interface TopInfoBarProps {
   selectedTileForSwap?: { row: number; col: number } | null;
   banner?: BoardBanner | null;
   tutorialTip?: string | null;
+  category?: Category | null;
   onDismissTutorialTip?: () => void;
   onDismissBanner?: () => void;
 }
@@ -28,6 +29,7 @@ export const TopInfoBar: React.FC<TopInfoBarProps> = ({
   selectedTileForSwap,
   banner,
   tutorialTip,
+  category,
   onDismissTutorialTip,
   onDismissBanner,
 }) => {
@@ -136,17 +138,26 @@ export const TopInfoBar: React.FC<TopInfoBarProps> = ({
       </div>
     );
   } else {
-    // 5. Default Informational Guide & Special Tile Tip (Fills the space gracefully when idle)
+    // 5. First Round Tip: Dynamic Category Goal Tip
+    const targetCount = category?.targetCount || 5;
+    const catName = category?.name || 'Theme';
+    const catIcon = category?.icon || '🎯';
+    const isTimerMode = category?.gameMode === 'timer';
+
     content = (
-      <div className="w-full max-w-full px-3 py-1.5 rounded-xl sm:rounded-2xl border border-[#2A4365]/50 bg-gradient-to-r from-[#0C2158]/95 via-[#162E6C]/95 to-[#0C2158]/95 backdrop-blur-md text-white shadow-[0_3px_10px_rgba(0,0,0,0.15)] flex items-center justify-between gap-2 text-xs">
-        <div className="flex items-center gap-1.5 min-w-0">
-          <Sparkles className="w-3.5 h-3.5 text-amber-300 shrink-0 animate-pulse" />
-          <span className="text-[10px] sm:text-[11px] font-bold text-slate-200 truncate">
-            Tap any special tile (<span className="text-amber-300 font-extrabold">💣 💳 🌟 ⚡</span>) to view powers • 4+ letter words create specials!
+      <div className="w-full max-w-full px-3 py-1.5 rounded-xl sm:rounded-2xl border border-[#38BDF8]/40 bg-gradient-to-r from-[#071948]/95 via-[#0C276D]/95 to-[#071948]/95 backdrop-blur-md text-white shadow-[0_3px_12px_rgba(14,165,233,0.2)] flex items-center justify-between gap-2 text-xs animate-fade-in">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="text-sm shrink-0 drop-shadow animate-pulse">{catIcon}</span>
+          <span className="text-[11px] sm:text-xs font-black text-slate-100 truncate">
+            {isTimerMode ? (
+              <>Find as many words related to <span className="text-amber-300 font-black uppercase tracking-wide">"{catName}"</span> as you can!</>
+            ) : (
+              <>Find {targetCount} words related to <span className="text-amber-300 font-black uppercase tracking-wide">"{catName}"</span>!</>
+            )}
           </span>
         </div>
-        <span className="text-[9px] font-extrabold uppercase tracking-wider text-cyan-300 px-1.5 py-0.5 rounded bg-cyan-950/80 border border-cyan-400/40 shrink-0 shadow-inner">
-          Tip
+        <span className="text-[9px] font-black uppercase tracking-wider text-cyan-300 px-2 py-0.5 rounded-full bg-cyan-950/80 border border-cyan-400/50 shrink-0 shadow-inner">
+          TIP
         </span>
       </div>
     );

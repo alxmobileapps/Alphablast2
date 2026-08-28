@@ -180,12 +180,17 @@ export default function App() {
   const lastTutorialActivityRef = useRef<number>(Date.now());
 
   // Real-time Statement Banner State
-  const [boardBanner, setBoardBanner] = useState<BoardBanner | null>({
-    id: 'b-init',
-    text: `Category Goal: Find ${INITIAL_CATEGORIES[0]?.targetCount || 5} "${INITIAL_CATEGORIES[0]?.name || 'Animals'}" words!`,
-    icon: '🎯',
-    type: 'category',
-    subtext: 'GOAL',
+  const [boardBanner, setBoardBanner] = useState<BoardBanner | null>(() => {
+    const initCat = INITIAL_CATEGORIES[0];
+    const targetCount = initCat?.targetCount || 5;
+    const catName = initCat?.name || 'Animals';
+    return {
+      id: 'b-init',
+      text: `Find ${targetCount} words related to "${catName}"!`,
+      icon: initCat?.icon || '🎯',
+      type: 'category',
+      subtext: 'GOAL',
+    };
   });
   const bannerTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -615,17 +620,19 @@ export default function App() {
         const initSeconds = targetCat.timerSeconds || 120;
         setTimerSecondsRemaining(initSeconds);
         triggerBanner(
-          `Round Start: ${Math.round(initSeconds / 60)}m Timer Rush for "${targetCat.name}" (Find as many words as you can!)`,
+          `Find as many words related to "${targetCat.name}" as you can!`,
           'category',
           targetCat.icon || '⏱',
-          'TIMER RUSH'
+          'TIMER RUSH',
+          4000
         );
       } else {
         triggerBanner(
-          `Round Start: Target ${targetCat.targetCount} words for "${targetCat.name}" (7 Moves, +5 per Word, Max 7)`,
+          `Find ${targetCat.targetCount} words related to "${targetCat.name}"!`,
           'category',
           targetCat.icon || '🎯',
-          targetCat.isCustom ? 'COMMUNITY' : 'START'
+          targetCat.isCustom ? 'COMMUNITY' : 'GOAL',
+          4000
         );
       }
     },
@@ -2338,6 +2345,7 @@ export default function App() {
                     selectedTileForSwap={selectedTile}
                     banner={boardBanner}
                     tutorialTip={currentTutorialTip}
+                    category={currentCategory}
                     onDismissTutorialTip={handleDismissTutorialTip}
                     onDismissBanner={() => setBoardBanner(null)}
                   />
