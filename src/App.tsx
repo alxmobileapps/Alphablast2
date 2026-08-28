@@ -2312,10 +2312,16 @@ export default function App() {
               onOpenShop={() => setIsShopOpen(true)}
             />
 
-            {/* Main Gameplay Container: Vertically balanced to fill screen and eliminate empty space */}
-            <main className="flex-1 min-h-0 w-full max-w-4xl mx-auto px-2 sm:px-4 py-1.5 sm:py-2 flex flex-col justify-evenly items-center overflow-hidden">
-              {/* Main Center Area: Formed Words Bar + Maximized 8x8 Board + Power-Up Bar (Cohesive unit) */}
-              <div className="flex flex-col items-center justify-center gap-1 sm:gap-2 my-auto w-full max-w-[min(96vw,calc(100dvh-185px),540px)] mx-auto">
+            {/* Main Gameplay Container: Vertically balanced to fit all screen ratios & iPad without overlapping banner ads */}
+            <main className="flex-1 min-h-0 w-full max-w-4xl mx-auto px-2 sm:px-4 py-1 sm:py-1.5 flex flex-col justify-between sm:justify-evenly items-center overflow-y-auto sm:overflow-hidden">
+              {/* Main Center Area: Formed Words Bar + Maximized 8x8 Board + Power-Up Bar (Cohesive unit scaled to available height) */}
+              <div
+                className={`flex flex-col items-center justify-center gap-1 sm:gap-1.5 my-auto w-full mx-auto shrink-0 ${
+                  gameProgress.hasRemovedAds
+                    ? 'max-w-[min(96vw,calc(100dvh-250px),530px)]'
+                    : 'max-w-[min(96vw,calc(100dvh-320px),510px)]'
+                }`}
+              >
                 {/* Top Informational Popups Bar (Special tile explanations, active power-up instructions, action banners, tutorial tips) */}
                 <div className="w-full flex justify-center shrink-0">
                   <TopInfoBar
@@ -2367,7 +2373,7 @@ export default function App() {
                 </div>
 
                 {/* Dedicated Space between Board and Power-ups with Clue Display */}
-                <div className="w-full min-h-[34px] sm:min-h-[38px] flex items-center justify-center shrink-0 px-2">
+                <div className="w-full min-h-[24px] sm:min-h-[30px] flex items-center justify-center shrink-0 px-2">
                   {/* Inactivity Word Suggestion Clue Toast (shown here between board and power-ups) */}
                   {robotWords && robotWords.length > 0 && (
                     <div className="animate-scale-in">

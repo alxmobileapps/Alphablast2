@@ -110,7 +110,7 @@ export const BottomBannerAd: React.FC<BottomBannerAdProps> = ({
   return (
     <div
       id="bottom-banner-ad-container"
-      className="w-full bg-slate-900 border-t border-slate-700/80 shadow-lg py-1.5 px-2.5 sm:px-4 z-40 select-none transition-all duration-300"
+      className="w-full bg-slate-900 border-t border-slate-700/80 shadow-lg py-1.5 px-2.5 sm:px-4 pb-[max(0.375rem,env(safe-area-inset-bottom))] z-30 select-none shrink-0 transition-all duration-300"
     >
       <div className="max-w-5xl mx-auto flex items-center justify-between gap-2 sm:gap-4">
         {/* Left Side: AD badge & App Icon + Details */}

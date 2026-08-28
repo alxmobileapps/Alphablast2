@@ -58,7 +58,7 @@ export const HomeMenu: React.FC<HomeMenuProps> = ({
   return (
     <div
       id="game-home-menu"
-      className="h-full flex-1 w-full bg-[#050D24] text-white flex flex-col items-center justify-between p-2.5 sm:p-4 select-none overflow-y-auto sm:overflow-hidden relative max-w-lg mx-auto"
+      className="h-full flex-1 w-full bg-[#050D24] text-white flex flex-col items-center justify-between p-2.5 sm:p-4 pb-3 sm:pb-4 select-none overflow-y-auto relative max-w-lg mx-auto"
     >
       {/* Background Ambient Lighting */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-2xl h-80 bg-gradient-to-b from-[#0EA5E9]/25 via-[#1E3A8A]/15 to-transparent pointer-events-none blur-3xl" />
