@@ -732,8 +732,8 @@ export default function App() {
         return;
       }
 
-      // Check if player has completed 2 categories (before opening the 3rd, 5th, etc.)
-      if (completedCategoriesCountRef.current > 0 && completedCategoriesCountRef.current % 2 === 0) {
+      // Interstitial ads every round (after at least 1 completed round)
+      if (completedCategoriesCountRef.current > 0) {
         setPendingTargetCategory(targetCat);
         setIsInterstitialOpen(true);
         return;
@@ -746,7 +746,7 @@ export default function App() {
 
   const handleInterstitialAdCompleted = useCallback(() => {
     setIsInterstitialOpen(false);
-    completedCategoriesCountRef.current = 0; // Reset counter for next 2 categories
+    completedCategoriesCountRef.current = 0; // Reset counter for next round
     if (pendingTargetCategory) {
       playCategoryRound(pendingTargetCategory);
       setPendingTargetCategory(null);
@@ -2412,9 +2412,19 @@ export default function App() {
               gameProgress={gameProgress}
               score={roundScore}
               onPlayGame={() => {
-                // If round has not been started yet or was paused before GO!, show the ReadyPrompt with GO! button
-                setIsReadyPromptOpen(true);
-                setCurrentScreen('game');
+                // When player opens the game board, ensure it starts on the highest unlocked round
+                const latestProgress = loadGameProgress();
+                const highestUnlockedId = getHighestUnlockedCategoryId(latestProgress);
+                const foundIdx = INITIAL_CATEGORIES.findIndex((c) => c.id === highestUnlockedId);
+                const targetIdx = foundIdx >= 0 ? foundIdx : categoryIndex;
+                const targetCat = INITIAL_CATEGORIES[targetIdx] || currentCategory;
+
+                if (currentCategory.id !== targetCat.id || categoryProgress === 0) {
+                  playCategoryRound(targetCat);
+                } else {
+                  setIsReadyPromptOpen(true);
+                  setCurrentScreen('game');
+                }
               }}
               onOpenCategories={() => setIsCategoryModalOpen(true)}
               onOpenProfile={() => setIsProfileOpen(true)}
@@ -2577,7 +2587,24 @@ export default function App() {
             setCategoryIndex(foundIdx);
             setSelectedCustomCategory(null);
             const targetCat = INITIAL_CATEGORIES[foundIdx];
-            playCategoryRound(targetCat);
+            // Prepare board and category state for highest round without forcibly jumping screen
+            setCategoryProgress(0);
+            categoryProgressRef.current = 0;
+            setRoundScore(0);
+            roundScoreRef.current = 0;
+            setNewlyUnlockedCategory(null);
+            setDiamondMilestoneAwarded(null);
+            setMovesRemaining(INITIAL_MOVES);
+            movesRemainingRef.current = INITIAL_MOVES;
+            setAdRefillsUsed(0);
+            setWordHistory([]);
+            setFormedWords(new Set());
+            formedWordsRef.current = new Set();
+            alertedDuplicateSetsRef.current.clear();
+            const freshBoard = generateInitialBoard(targetCat.id);
+            setBoard(freshBoard);
+            roundStartTimeRef.current = Date.now();
+            setRoundTimeConsumed(0);
           }
 
           if (updated.hasRemovedAds) {
