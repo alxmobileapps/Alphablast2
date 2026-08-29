@@ -36,6 +36,7 @@ import {
 import {
   GameProgress,
   loadGameProgress,
+  saveGameProgress,
   completeCategory,
   setLastPlayedCategory,
   isCategoryUnlocked,
@@ -2538,6 +2539,19 @@ export default function App() {
         isOpen={isProfileOpen}
         gameProgress={gameProgress}
         onClose={() => setIsProfileOpen(false)}
+        onUpdateGameProgress={(updated) => {
+          setGameProgress(updated);
+          saveGameProgress(updated);
+          if (updated.hasRemovedAds) {
+            setPowerUps((prev) => ({
+              hammer: Math.max(prev.hammer, 2),
+              swap: Math.max(prev.swap, 2),
+              rearrange: Math.max(prev.rearrange, 2),
+              clue: Math.max(prev.clue, 2),
+              replace: Math.max(prev.replace, 2),
+            }));
+          }
+        }}
         onSelectCategory={(catId) => {
           const found = INITIAL_CATEGORIES.find((c) => c.id === catId);
           if (found) {

@@ -34,5 +34,10 @@ service cloud.firestore {
       allow read: if true;
       allow write: if true;
     }
+
+    // User Cloud Saves, Progress & IAP Purchases
+    match /users/{userId} {
+      allow read, write: if true;
+    }
   }
 }

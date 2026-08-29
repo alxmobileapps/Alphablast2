@@ -1,16 +1,38 @@
-import React, { useState } from 'react';
-import { X, Check, Edit2, Trophy, Star, Lock, CheckCircle2, Award } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import {
+  X,
+  Check,
+  Edit2,
+  Lock,
+  CheckCircle2,
+  Cloud,
+  CloudUpload,
+  CloudDownload,
+  LogOut,
+  Sparkles,
+  Loader2,
+  ShieldCheck,
+} from 'lucide-react';
 import { INITIAL_CATEGORIES } from '../data/categories';
-import { GameProgress, isCategoryUnlocked, isCategoryCompleted } from '../utils/gameProgress';
+import { GameProgress, isCategoryUnlocked, isCategoryCompleted, saveGameProgress } from '../utils/gameProgress';
 import { getUserProfile, saveUserProfile, DEFAULT_AVATARS, UserProfile } from '../utils/leaderboard';
 import { formatPoints } from '../utils/scoring';
 import { haptics } from '../utils/haptics';
+import {
+  signInWithGoogleAccount,
+  syncProgressToCloud,
+  restoreCloudProgress,
+  signOutGoogleAccount,
+  subscribeToAuth,
+} from '../utils/authService';
+import { User } from 'firebase/auth';
 
 interface ProfileModalProps {
   isOpen: boolean;
   gameProgress: GameProgress;
   onClose: () => void;
   onSelectCategory?: (categoryId: number) => void;
+  onUpdateGameProgress?: (updated: GameProgress) => void;
 }
 
 export const ProfileModal: React.FC<ProfileModalProps> = ({
@@ -18,13 +40,34 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
   gameProgress,
   onClose,
   onSelectCategory,
+  onUpdateGameProgress,
 }) => {
   const [profile, setProfile] = useState<UserProfile>(() => getUserProfile());
   const [isEditingName, setIsEditingName] = useState<boolean>(false);
   const [nameInput, setNameInput] = useState<string>(profile.name || 'Player 1');
   const [showAvatarPicker, setShowAvatarPicker] = useState<boolean>(false);
 
+  // Google Auth & Cloud Save state
+  const [authUser, setAuthUser] = useState<User | null>(null);
+  const [isAuthLoading, setIsAuthLoading] = useState<boolean>(false);
+  const [authStatusMessage, setAuthStatusMessage] = useState<{ text: string; type: 'success' | 'error' | 'info' } | null>(null);
+  const [lastSyncTimestamp, setLastSyncTimestamp] = useState<number | null>(null);
+
+  useEffect(() => {
+    const unsubscribe = subscribeToAuth((user) => {
+      setAuthUser(user);
+    });
+    return () => unsubscribe();
+  }, []);
+
   if (!isOpen) return null;
+
+  const showStatus = (text: string, type: 'success' | 'error' | 'info' = 'success') => {
+    setAuthStatusMessage({ text, type });
+    setTimeout(() => {
+      setAuthStatusMessage(null);
+    }, 4000);
+  };
 
   const completedCount = gameProgress.completedCategoryIds.length;
   const totalStars = Object.values(gameProgress.categoryStars || {}).reduce<number>(
@@ -51,6 +94,90 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
     setProfile(updated);
     setShowAvatarPicker(false);
     haptics.tap();
+  };
+
+  // Google Login & Account Linking handler
+  const handleLinkGoogle = async () => {
+    haptics.tap();
+    setIsAuthLoading(true);
+    try {
+      const res = await signInWithGoogleAccount(gameProgress);
+      setAuthUser(res.user);
+      setLastSyncTimestamp(Date.now());
+      if (onUpdateGameProgress) {
+        onUpdateGameProgress(res.progress);
+      }
+      // Refresh local profile display
+      setProfile(getUserProfile());
+      haptics.specialCreated();
+      showStatus(res.message, 'success');
+    } catch (err: any) {
+      console.error(err);
+      haptics.invalid();
+      showStatus(err?.message || 'Google Sign-in failed. Please try again.', 'error');
+    } finally {
+      setIsAuthLoading(false);
+    }
+  };
+
+  // Manual Backup to Cloud
+  const handleManualSync = async () => {
+    haptics.tap();
+    setIsAuthLoading(true);
+    try {
+      const timestamp = await syncProgressToCloud(gameProgress);
+      setLastSyncTimestamp(timestamp);
+      haptics.specialCreated();
+      showStatus('Game progress successfully backed up to cloud!', 'success');
+    } catch (err: any) {
+      console.error(err);
+      haptics.invalid();
+      showStatus(err?.message || 'Failed to backup to cloud.', 'error');
+    } finally {
+      setIsAuthLoading(false);
+    }
+  };
+
+  // Restore Cloud Progress & IAPs
+  const handleRestoreCloud = async () => {
+    haptics.tap();
+    setIsAuthLoading(true);
+    try {
+      const res = await restoreCloudProgress(gameProgress);
+      setLastSyncTimestamp(res.lastSyncedAt);
+      if (onUpdateGameProgress) {
+        onUpdateGameProgress(res.progress);
+      }
+      haptics.specialCreated();
+      showStatus(
+        res.restoredIAP
+          ? 'Cloud progress & In-App Purchases restored!'
+          : 'Cloud save data restored successfully!',
+        'success'
+      );
+    } catch (err: any) {
+      console.error(err);
+      haptics.invalid();
+      showStatus(err?.message || 'Failed to restore cloud save.', 'error');
+    } finally {
+      setIsAuthLoading(false);
+    }
+  };
+
+  // Disconnect / Sign Out Google
+  const handleSignOutGoogle = async () => {
+    haptics.tap();
+    setIsAuthLoading(true);
+    try {
+      await signOutGoogleAccount();
+      setAuthUser(null);
+      showStatus('Signed out from Google Account.', 'info');
+    } catch (err: any) {
+      console.error(err);
+      showStatus('Failed to sign out.', 'error');
+    } finally {
+      setIsAuthLoading(false);
+    }
   };
 
   return (
@@ -85,7 +212,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                   Player Profile
                 </h2>
                 <p className="text-xs font-semibold text-cyan-200/70">
-                  Username & Category Statistics
+                  Username, Cloud Account & Statistics
                 </p>
               </div>
             </div>
@@ -100,6 +227,24 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
           </div>
 
           <div className="overflow-y-auto custom-scrollbar flex-1 pr-1 space-y-4">
+            {/* Notification / Toast Banner inside Modal */}
+            {authStatusMessage && (
+              <div
+                className={`p-2.5 rounded-xl border text-xs font-bold flex items-center gap-2 animate-in fade-in duration-200 ${
+                  authStatusMessage.type === 'success'
+                    ? 'bg-emerald-950/80 border-emerald-500/60 text-emerald-200'
+                    : authStatusMessage.type === 'error'
+                    ? 'bg-rose-950/80 border-rose-500/60 text-rose-200'
+                    : 'bg-blue-950/80 border-blue-500/60 text-blue-200'
+                }`}
+              >
+                {authStatusMessage.type === 'success' && <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />}
+                {authStatusMessage.type === 'error' && <X className="w-4 h-4 text-rose-400 shrink-0" />}
+                {authStatusMessage.type === 'info' && <Cloud className="w-4 h-4 text-cyan-400 shrink-0" />}
+                <span className="flex-1">{authStatusMessage.text}</span>
+              </div>
+            )}
+
             {/* 1. USERNAME & AVATAR SECTION */}
             <div className="bg-[#0C2158] border border-[#1E3A8A] rounded-2xl p-3.5 sm:p-4 shadow-inner relative overflow-hidden">
               <div className="flex items-center gap-3 sm:gap-4">
@@ -187,7 +332,156 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
               )}
             </div>
 
-            {/* 2. HIGH-LEVEL CATEGORY STATS BANNER */}
+            {/* 2. OPTIONAL GOOGLE ACCOUNT & CLOUD SAVE SECTION */}
+            <div className="bg-[#0C2158] border border-[#1E3A8A] rounded-2xl p-3.5 sm:p-4 shadow-inner relative overflow-hidden">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 rounded-lg bg-gradient-to-b from-sky-400 to-blue-600 flex items-center justify-center text-xs shadow-sm">
+                    <Cloud className="w-3.5 h-3.5 text-white" />
+                  </div>
+                  <div>
+                    <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-wider text-cyan-200 block leading-none">
+                      Google Account & Cloud Save
+                    </span>
+                    <span className="text-[9px] text-cyan-200/60 font-semibold">
+                      Backup progress & restore in-app purchases
+                    </span>
+                  </div>
+                </div>
+
+                {authUser ? (
+                  <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[9px] font-extrabold border border-emerald-500/40 flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3" /> LINKED
+                  </span>
+                ) : (
+                  <span className="px-2 py-0.5 rounded-full bg-gray-500/20 text-gray-300 text-[9px] font-extrabold border border-gray-500/30">
+                    OPTIONAL
+                  </span>
+                )}
+              </div>
+
+              {/* Account details or Link button */}
+              {authUser ? (
+                <div className="space-y-3 mt-3 pt-2.5 border-t border-[#1E3A8A]">
+                  {/* Account Badge */}
+                  <div className="flex items-center justify-between gap-3 bg-[#071330] p-2.5 rounded-xl border border-[#1E3A8A]">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      {authUser.photoURL ? (
+                        <img
+                          src={authUser.photoURL}
+                          alt="Avatar"
+                          referrerPolicy="no-referrer"
+                          className="w-8 h-8 rounded-full border border-sky-400"
+                        />
+                      ) : (
+                        <div className="w-8 h-8 rounded-full bg-sky-600 text-white font-black text-xs flex items-center justify-center">
+                          {authUser.email ? authUser.email[0].toUpperCase() : 'G'}
+                        </div>
+                      )}
+                      <div className="min-w-0">
+                        <div className="font-black text-xs text-white truncate">
+                          {authUser.displayName || 'Google Player'}
+                        </div>
+                        <div className="text-[10px] text-cyan-300/70 truncate font-mono">
+                          {authUser.email}
+                        </div>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={handleSignOutGoogle}
+                      disabled={isAuthLoading}
+                      className="px-2 py-1 rounded-lg bg-[#0F2864] hover:bg-rose-950/60 border border-[#1E3A8A] hover:border-rose-500/60 text-cyan-200 hover:text-rose-200 text-[10px] font-black transition-colors flex items-center gap-1 cursor-pointer shrink-0"
+                      title="Disconnect account"
+                    >
+                      <LogOut className="w-3 h-3" />
+                      Sign Out
+                    </button>
+                  </div>
+
+                  {/* Sync & Restore Actions */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      onClick={handleManualSync}
+                      disabled={isAuthLoading}
+                      className="p-2.5 rounded-xl bg-gradient-to-b from-[#0284C7] to-[#0369A1] hover:from-[#0EA5E9] hover:to-[#0284C7] border border-[#38BDF8]/40 text-white font-black text-[11px] shadow-sm flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
+                    >
+                      {isAuthLoading ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <CloudUpload className="w-3.5 h-3.5 text-cyan-200" />
+                      )}
+                      <span>Backup to Cloud</span>
+                    </button>
+
+                    <button
+                      onClick={handleRestoreCloud}
+                      disabled={isAuthLoading}
+                      className="p-2.5 rounded-xl bg-gradient-to-b from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 border border-emerald-400/40 text-white font-black text-[11px] shadow-sm flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
+                    >
+                      {isAuthLoading ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <CloudDownload className="w-3.5 h-3.5 text-emerald-200" />
+                      )}
+                      <span>Restore Save & IAP</span>
+                    </button>
+                  </div>
+
+                  {/* IAP Restore Badge */}
+                  {gameProgress.hasRemovedAds && (
+                    <div className="flex items-center gap-1.5 text-[10px] text-emerald-300 font-bold bg-emerald-950/40 px-2.5 py-1 rounded-lg border border-emerald-500/30">
+                      <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                      <span>In-App Purchase Active: All Ads Removed (Synced)</span>
+                    </div>
+                  )}
+
+                  {lastSyncTimestamp && (
+                    <div className="text-right text-[9px] text-cyan-300/50 font-mono">
+                      Last Synced: {new Date(lastSyncTimestamp).toLocaleTimeString()}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="mt-2.5 pt-2.5 border-t border-[#1E3A8A]">
+                  <p className="text-[11px] text-cyan-200/80 leading-relaxed mb-3">
+                    Link your Google account to automatically preserve your unlocked categories, high scores, coins, diamonds, and restored purchases across devices or when reinstalling.
+                  </p>
+
+                  <button
+                    onClick={handleLinkGoogle}
+                    disabled={isAuthLoading}
+                    className="w-full py-2.5 px-3 rounded-xl bg-white hover:bg-gray-100 text-gray-900 font-black text-xs sm:text-sm shadow-md flex items-center justify-center gap-2.5 transition-all cursor-pointer disabled:opacity-50"
+                  >
+                    {isAuthLoading ? (
+                      <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
+                    ) : (
+                      <svg className="w-4 h-4" viewBox="0 0 24 24">
+                        <path
+                          fill="#4285F4"
+                          d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                        />
+                        <path
+                          fill="#34A853"
+                          d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                        />
+                        <path
+                          fill="#FBBC05"
+                          d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
+                        />
+                        <path
+                          fill="#EA4335"
+                          d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
+                        />
+                      </svg>
+                    )}
+                    <span>{isAuthLoading ? 'Connecting to Google...' : 'Sign in with Google (Link Account)'}</span>
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* 3. HIGH-LEVEL CATEGORY STATS BANNER */}
             <div className="grid grid-cols-3 gap-2">
               {/* Stat 1: Categories Cleared */}
               <div className="bg-[#0C2158] border border-[#1E3A8A] rounded-2xl p-2.5 text-center flex flex-col items-center justify-center shadow-inner">
@@ -220,7 +514,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
               </div>
             </div>
 
-            {/* 3. CATEGORY STATS DETAILED BREAKDOWN LIST */}
+            {/* 4. CATEGORY STATS DETAILED BREAKDOWN LIST */}
             <div className="space-y-2">
               <div className="flex items-center justify-between px-1">
                 <h3 className="text-xs sm:text-sm font-black uppercase tracking-wider text-cyan-200">

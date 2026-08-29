@@ -36,6 +36,21 @@
         "admobIosRewardedId": { "type": "string", "description": "AdMob iOS Rewarded ID" },
         "updatedAt": { "type": "number", "description": "Last update timestamp" }
       }
+    },
+    "users": {
+      "title": "UserProfileSave",
+      "description": "User cloud progress, account link, stars, high scores, coins, diamonds, and IAP purchase receipts",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Firebase Auth UID" },
+        "email": { "type": "string", "description": "Google user email address" },
+        "displayName": { "type": "string", "description": "Google user display name" },
+        "photoURL": { "type": "string", "description": "Profile picture URL" },
+        "gameProgress": { "type": "object", "description": "GameProgress save object (coins, diamonds, completed rounds, high scores, stars, hasRemovedAds)" },
+        "iapReceipts": { "type": "array", "items": { "type": "string" }, "description": "List of active IAP product IDs and purchase logs" },
+        "lastSyncedAt": { "type": "number", "description": "Timestamp of last cloud sync" }
+      },
+      "required": ["uid", "gameProgress", "lastSyncedAt"]
     }
   },
   "firestore": {
@@ -46,6 +61,10 @@
     "app_config": {
       "entity": "app_config",
       "description": "Collection containing remote app settings such as ads"
+    },
+    "users": {
+      "entity": "users",
+      "description": "Collection containing user saves, account link metadata, and IAP records"
     }
   }
 }

@@ -1,5 +1,6 @@
 import { initializeApp, getApps } from 'firebase/app';
 import { initializeFirestore } from 'firebase/firestore';
+import { getAuth } from 'firebase/auth';
 import firebaseConfig from '../firebase-applet-config.json';
 
 // Initialize Firebase App singleton
@@ -12,3 +13,6 @@ export const db = initializeFirestore(
   {},
   firebaseConfig.firestoreDatabaseId || '(default)'
 );
+
+// Initialize Firebase Auth
+export const auth = getAuth(firebaseApp);
