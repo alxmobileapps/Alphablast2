@@ -28,7 +28,8 @@ import { initUniversalAds } from './utils/universalAds';
 import { initRemoteAdsListener } from './utils/remoteAdsService';
 import { INITIAL_CATEGORIES } from './data/categories';
 import { calculateWordPoints, calculateSpecialReactionPoints, formatPoints } from './utils/scoring';
-import { recordScore } from './utils/leaderboard';
+import { recordScore, getUserProfile } from './utils/leaderboard';
+import { syncProgressToCloud } from './utils/authService';
 import {
   subscribeToActiveCustomCategories,
   recordCategoryPlay,
@@ -988,6 +989,11 @@ export default function App() {
               if (completionResult.newlyUnlockedCategory) {
                 setNewlyUnlockedCategory(completionResult.newlyUnlockedCategory);
               }
+
+              // Auto backup progress to cloud every round completion
+              syncProgressToCloud(latestProgress).catch((err) => {
+                console.warn('Auto cloud backup error:', err);
+              });
 
               setTimeout(() => setIsRoundCompleteOpen(true), 700);
             }
@@ -2333,6 +2339,11 @@ export default function App() {
         highestWordPoints: bestWordPts,
         isRoundComplete: true,
         timeConsumedSeconds: elapsedSeconds,
+      });
+
+      // Auto backup progress to cloud every round completion
+      syncProgressToCloud(gameProgress).catch((err) => {
+        console.warn('Auto cloud backup error in timer mode:', err);
       });
 
       setIsRoundCompleteOpen(true);

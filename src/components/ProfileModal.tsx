@@ -1,14 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   X,
   Check,
   Edit2,
   Lock,
   CheckCircle2,
-  Cloud,
   CloudUpload,
   CloudDownload,
-  LogOut,
   Loader2,
   ShieldCheck,
   KeyRound,
@@ -20,16 +18,10 @@ import { getUserProfile, saveUserProfile, DEFAULT_AVATARS, UserProfile } from '.
 import { formatPoints } from '../utils/scoring';
 import { haptics } from '../utils/haptics';
 import {
-  signInWithGoogleAccount,
-  syncProgressToCloud,
-  restoreCloudProgress,
-  signOutGoogleAccount,
-  subscribeToAuth,
   getOrCreateLocalSyncKey,
   syncProgressWithCloudKey,
   restoreWithCloudKey,
 } from '../utils/authService';
-import { User } from 'firebase/auth';
 
 interface ProfileModalProps {
   isOpen: boolean;
@@ -51,26 +43,17 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
   const [nameInput, setNameInput] = useState<string>(profile.name || 'Player 1');
   const [showAvatarPicker, setShowAvatarPicker] = useState<boolean>(false);
 
-  // Google Auth & Cloud Save state
-  const [authUser, setAuthUser] = useState<User | null>(null);
+  // Cloud Save state
   const [isAuthLoading, setIsAuthLoading] = useState<boolean>(false);
   const [authStatusMessage, setAuthStatusMessage] = useState<{
     text: string;
     type: 'success' | 'error' | 'info';
   } | null>(null);
-  const [lastSyncTimestamp, setLastSyncTimestamp] = useState<number | null>(null);
 
   // Cloud Sync Key / PIN state
   const [syncKey, setSyncKey] = useState<string>(() => getOrCreateLocalSyncKey());
   const [inputSyncKey, setInputSyncKey] = useState<string>('');
   const [isRestoreOpen, setIsRestoreOpen] = useState<boolean>(false);
-
-  useEffect(() => {
-    const unsubscribe = subscribeToAuth((user) => {
-      setAuthUser(user);
-    });
-    return () => unsubscribe();
-  }, []);
 
   if (!isOpen) return null;
 
@@ -107,40 +90,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
     haptics.tap();
   };
 
-  // Google Login & Account Linking handler
-  const handleLinkGoogle = async () => {
-    haptics.tap();
-    setIsAuthLoading(true);
-    try {
-      const res = await signInWithGoogleAccount(gameProgress);
-      setAuthUser(res.user);
-      setLastSyncTimestamp(Date.now());
-      if (onUpdateGameProgress) {
-        onUpdateGameProgress(res.progress);
-      }
-      if (res.userProfile) {
-        setProfile(res.userProfile);
-        setNameInput(res.userProfile.name);
-      } else {
-        const prof = getUserProfile();
-        setProfile(prof);
-        setNameInput(prof.name);
-      }
-      haptics.specialCreated();
-      showStatus(res.message, 'success');
-    } catch (err: any) {
-      console.error(err);
-      haptics.invalid();
-      showStatus(
-        err?.message || 'Google Sign-in failed. You can use the Cloud Sync Code below to backup instantly!',
-        'error'
-      );
-    } finally {
-      setIsAuthLoading(false);
-    }
-  };
-
-  // 1-Tap Instant Backup with Cloud Sync Code
+  // Sync / Backup with Cloud Key
   const handleSyncWithCode = async () => {
     haptics.tap();
     setIsAuthLoading(true);
@@ -156,7 +106,6 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
       setIsEditingName(false);
 
       const res = await syncProgressWithCloudKey(syncKey, gameProgress, updatedProfile);
-      setLastSyncTimestamp(res.syncedAt);
       if (onUpdateGameProgress) {
         onUpdateGameProgress(res.progress);
       }
@@ -187,7 +136,6 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
     try {
       const res = await restoreWithCloudKey(targetCode, gameProgress);
       setSyncKey(targetCode);
-      setLastSyncTimestamp(res.lastSyncedAt);
       if (onUpdateGameProgress) {
         onUpdateGameProgress(res.progress);
       }
@@ -207,22 +155,6 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
       console.error(err);
       haptics.invalid();
       showStatus(err?.message || 'Code not found or invalid.', 'error');
-    } finally {
-      setIsAuthLoading(false);
-    }
-  };
-
-  // Disconnect / Sign Out Google
-  const handleSignOutGoogle = async () => {
-    haptics.tap();
-    setIsAuthLoading(true);
-    try {
-      await signOutGoogleAccount();
-      setAuthUser(null);
-      showStatus('Signed out from Google Account.', 'info');
-    } catch (err: any) {
-      console.error(err);
-      showStatus('Failed to sign out.', 'error');
     } finally {
       setIsAuthLoading(false);
     }
@@ -270,7 +202,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                   Player Profile
                 </h2>
                 <p className="text-xs font-semibold text-cyan-200/70">
-                  Username, Cloud Account & Statistics
+                  Username, Cloud Backup & Statistics
                 </p>
               </div>
             </div>
@@ -299,69 +231,73 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                 {authStatusMessage.type === 'success' && (
                   <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
                 )}
-                {authStatusMessage.type === 'error' && (
-                  <X className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
-                )}
-                {authStatusMessage.type === 'info' && (
-                  <Cloud className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" />
-                )}
-                <span className="flex-1 leading-snug">{authStatusMessage.text}</span>
+                <div className="flex-1">{authStatusMessage.text}</div>
               </div>
             )}
 
-            {/* 1. USERNAME & AVATAR SECTION */}
-            <div className="bg-[#0C2158] border border-[#1E3A8A] rounded-2xl p-3.5 sm:p-4 shadow-inner relative overflow-hidden">
-              <div className="flex items-center gap-3 sm:gap-4">
-                {/* Avatar Badge with Click to Change */}
-                <button
-                  type="button"
-                  onClick={() => setShowAvatarPicker(!showAvatarPicker)}
-                  className="relative group cursor-pointer"
-                  title="Click to change avatar"
-                >
-                  <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-b from-[#1E3A8A] to-[#0A1A44] border-2 border-[#38BDF8] flex items-center justify-center text-3xl sm:text-4xl shadow-lg group-hover:scale-105 transition-transform">
+            {/* 1. PLAYER USERNAME & AVATAR CARD */}
+            <div className="bg-[#0C2158] border border-[#1E3A8A] rounded-2xl p-4 shadow-inner relative">
+              <div className="flex items-center gap-3.5">
+                {/* Avatar Icon / Picker Trigger */}
+                <div className="relative group shrink-0">
+                  <button
+                    onClick={() => setShowAvatarPicker(!showAvatarPicker)}
+                    className="w-14 h-14 rounded-2xl bg-gradient-to-b from-[#0284C7] to-[#0369A1] border-2 border-[#38BDF8] flex items-center justify-center text-3xl shadow-lg hover:scale-105 transition-transform cursor-pointer"
+                    title="Change Avatar"
+                  >
                     {profile.avatar || '👑'}
+                  </button>
+                  <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-[#071330] rounded-full border border-sky-400 flex items-center justify-center text-[10px] text-sky-300 pointer-events-none">
+                    ✏️
                   </div>
-                  <span className="absolute -bottom-1 -right-1 bg-[#0284C7] text-white text-[9px] font-black px-1 rounded-md border border-white">
-                    EDIT
-                  </span>
-                </button>
+                </div>
 
-                {/* Username with Inline Editing */}
+                {/* Name Display or Edit Form */}
                 <div className="flex-1 min-w-0">
-                  <span className="text-[9px] sm:text-[10px] font-extrabold uppercase tracking-widest text-cyan-300/80 block">
-                    PLAYER USERNAME
+                  <span className="text-[10px] font-black uppercase tracking-wider text-cyan-300/70 block mb-0.5">
+                    Player Name
                   </span>
 
                   {isEditingName ? (
-                    <div className="flex items-center gap-2 mt-1">
+                    <div className="flex items-center gap-1.5">
                       <input
                         type="text"
+                        maxLength={16}
                         value={nameInput}
                         onChange={(e) => setNameInput(e.target.value)}
-                        maxLength={16}
+                        onKeyDown={(e) => e.key === 'Enter' && handleSaveName()}
                         autoFocus
-                        className="bg-[#071330] border-2 border-[#38BDF8] rounded-xl px-3 py-1.5 text-sm sm:text-base font-black text-white focus:outline-none w-full shadow-inner"
+                        className="bg-[#071330] border border-[#38BDF8] rounded-xl px-2.5 py-1 text-sm font-black text-white focus:outline-none w-full"
                       />
                       <button
                         onClick={handleSaveName}
-                        className="p-2 rounded-xl bg-gradient-to-b from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white font-black shadow-md shrink-0 cursor-pointer"
-                        title="Save username"
+                        className="p-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-white cursor-pointer shrink-0"
+                        title="Save name"
                       >
                         <Check className="w-4 h-4" />
                       </button>
+                      <button
+                        onClick={() => {
+                          setNameInput(profile.name);
+                          setIsEditingName(false);
+                        }}
+                        className="p-1.5 rounded-xl bg-gray-700 hover:bg-gray-600 text-white cursor-pointer shrink-0"
+                        title="Cancel"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
                     </div>
                   ) : (
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <span className="text-lg sm:text-2xl font-black text-white truncate drop-shadow">
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-lg sm:text-xl font-black text-white truncate">
                         {profile.name || 'Player 1'}
-                      </span>
+                      </h3>
                       <button
                         onClick={() => {
                           setNameInput(profile.name || 'Player 1');
                           setIsEditingName(true);
                         }}
-                        className="p-1.5 rounded-lg bg-[#071330] hover:bg-[#102A6B] border border-[#1E3A8A] text-cyan-300 hover:text-white transition-colors cursor-pointer"
+                        className="p-1 text-cyan-300/70 hover:text-cyan-200 hover:bg-[#071330] rounded-lg transition-colors cursor-pointer"
                         title="Edit name"
                       >
                         <Edit2 className="w-3.5 h-3.5" />
@@ -396,7 +332,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
               )}
             </div>
 
-            {/* 2. INSTANT CLOUD SAVE & SYNC CODE (Always Works 100%) */}
+            {/* 2. CLOUD BACKUP & RESTORE */}
             <div className="bg-[#0C2158] border border-[#1E3A8A] rounded-2xl p-3.5 sm:p-4 shadow-inner relative overflow-hidden">
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
@@ -405,16 +341,13 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                   </div>
                   <div>
                     <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-wider text-cyan-200 block leading-none">
-                      Instant Cloud Sync Key
-                    </span>
-                    <span className="text-[9px] text-cyan-200/60 font-semibold">
-                      100% Reliable Cloud Backup & Restore Code
+                      Cloud Backup and Restore
                     </span>
                   </div>
                 </div>
 
                 <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[9px] font-extrabold border border-emerald-500/40">
-                  LIVE CLOUD
+                  CLOUD READY
                 </span>
               </div>
 
@@ -438,7 +371,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                 </div>
               </div>
 
-              {/* Action Buttons for Code Sync */}
+              {/* Action Buttons */}
               <div className="grid grid-cols-2 gap-2 mt-2.5">
                 <button
                   onClick={handleSyncWithCode}
@@ -450,7 +383,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                   ) : (
                     <CloudUpload className="w-3.5 h-3.5 text-cyan-200" />
                   )}
-                  <span>Backup to Cloud</span>
+                  <span>Backup</span>
                 </button>
 
                 <button
@@ -458,7 +391,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                   className="p-2.5 rounded-xl bg-gradient-to-b from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 border border-emerald-400/40 text-white font-black text-[11px] shadow-sm flex items-center justify-center gap-1.5 transition-all cursor-pointer"
                 >
                   <CloudDownload className="w-3.5 h-3.5 text-emerald-200" />
-                  <span>Restore with Code</span>
+                  <span>Restore</span>
                 </button>
               </div>
 
@@ -486,116 +419,17 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                   </div>
                 </div>
               )}
-            </div>
-
-            {/* 3. OPTIONAL GOOGLE ACCOUNT LINK */}
-            <div className="bg-[#0C2158] border border-[#1E3A8A] rounded-2xl p-3.5 sm:p-4 shadow-inner relative overflow-hidden">
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded-lg bg-gradient-to-b from-sky-400 to-blue-600 flex items-center justify-center text-xs shadow-sm">
-                    <Cloud className="w-3.5 h-3.5 text-white" />
-                  </div>
-                  <div>
-                    <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-wider text-cyan-200 block leading-none">
-                      Google Account Link
-                    </span>
-                    <span className="text-[9px] text-cyan-200/60 font-semibold">
-                      One-tap Google login
-                    </span>
-                  </div>
-                </div>
-
-                {authUser ? (
-                  <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[9px] font-extrabold border border-emerald-500/40 flex items-center gap-1">
-                    <CheckCircle2 className="w-3 h-3" /> LINKED
-                  </span>
-                ) : (
-                  <span className="px-2 py-0.5 rounded-full bg-gray-500/20 text-gray-300 text-[9px] font-extrabold border border-gray-500/30">
-                    OPTIONAL
-                  </span>
-                )}
-              </div>
-
-              {authUser ? (
-                <div className="space-y-2 mt-2 pt-2 border-t border-[#1E3A8A]">
-                  <div className="flex items-center justify-between gap-3 bg-[#071330] p-2.5 rounded-xl border border-[#1E3A8A]">
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      {authUser.photoURL ? (
-                        <img
-                          src={authUser.photoURL}
-                          alt="Avatar"
-                          referrerPolicy="no-referrer"
-                          className="w-8 h-8 rounded-full border border-sky-400"
-                        />
-                      ) : (
-                        <div className="w-8 h-8 rounded-full bg-sky-600 text-white font-black text-xs flex items-center justify-center">
-                          {authUser.email ? authUser.email[0].toUpperCase() : 'G'}
-                        </div>
-                      )}
-                      <div className="min-w-0">
-                        <div className="font-black text-xs text-white truncate">
-                          {authUser.displayName || 'Google Player'}
-                        </div>
-                        <div className="text-[10px] text-cyan-300/70 truncate font-mono">
-                          {authUser.email}
-                        </div>
-                      </div>
-                    </div>
-
-                    <button
-                      onClick={handleSignOutGoogle}
-                      disabled={isAuthLoading}
-                      className="px-2 py-1 rounded-lg bg-[#0F2864] hover:bg-rose-950/60 border border-[#1E3A8A] text-cyan-200 hover:text-rose-200 text-[10px] font-black transition-colors flex items-center gap-1 cursor-pointer shrink-0"
-                    >
-                      <LogOut className="w-3 h-3" />
-                      Sign Out
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div className="mt-2 pt-2 border-t border-[#1E3A8A]">
-                  <button
-                    onClick={handleLinkGoogle}
-                    disabled={isAuthLoading}
-                    className="w-full py-2 px-3 rounded-xl bg-white hover:bg-gray-100 text-gray-900 font-black text-xs shadow-md flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-50"
-                  >
-                    {isAuthLoading ? (
-                      <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
-                    ) : (
-                      <svg className="w-4 h-4" viewBox="0 0 24 24">
-                        <path
-                          fill="#4285F4"
-                          d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                        />
-                        <path
-                          fill="#34A853"
-                          d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                        />
-                        <path
-                          fill="#FBBC05"
-                          d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
-                        />
-                        <path
-                          fill="#EA4335"
-                          d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
-                        />
-                      </svg>
-                    )}
-                    <span>{isAuthLoading ? 'Connecting...' : 'Sign in with Google (Link)'}</span>
-                  </button>
-                </div>
-              )}
 
               {/* IAP Restore Badge */}
               {gameProgress.hasRemovedAds && (
-                <div className="mt-2 flex items-center gap-1.5 text-[10px] text-emerald-300 font-bold bg-emerald-950/40 px-2.5 py-1 rounded-lg border border-emerald-500/30">
+                <div className="mt-2.5 flex items-center gap-1.5 text-[10px] text-emerald-300 font-bold bg-emerald-950/50 px-2.5 py-1.5 rounded-lg border border-emerald-500/40">
                   <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                  <span>In-App Purchase Active: All Ads Removed</span>
+                  <span>In-App Purchase Active: All Ads Removed Permanently</span>
                 </div>
               )}
             </div>
 
-            {/* 4. HIGH-LEVEL CATEGORY STATS BANNER */}
+            {/* 3. HIGH-LEVEL CATEGORY STATS BANNER */}
             <div className="grid grid-cols-3 gap-2">
               <div className="bg-[#0C2158] border border-[#1E3A8A] rounded-2xl p-2.5 text-center flex flex-col items-center justify-center shadow-inner">
                 <span className="text-[9px] font-extrabold uppercase tracking-wider text-cyan-300/80">
@@ -619,31 +453,67 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                 <span className="text-[9px] font-extrabold uppercase tracking-wider text-cyan-300/80">
                   TOTAL POINTS
                 </span>
-                <span className="text-sm sm:text-base font-black text-emerald-300 font-mono mt-0.5 truncate max-w-full">
+                <span className="text-lg sm:text-xl font-black text-cyan-300 mt-0.5">
                   {formatPoints(totalScoreAcrossCategories)}
                 </span>
               </div>
             </div>
 
-            {/* 5. CATEGORY STATS DETAILED BREAKDOWN LIST */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between px-1">
-                <h3 className="text-xs sm:text-sm font-black uppercase tracking-wider text-cyan-200">
-                  Category Progress & High Scores
-                </h3>
-                {completedCount > 0 && (
-                  <span className="text-[10px] font-bold text-emerald-400">
-                    {completedCount} Cleared
+            {/* 4. OVERALL STATS & RECORD STATS */}
+            <div className="bg-[#0C2158] border border-[#1E3A8A] rounded-2xl p-3.5 sm:p-4 shadow-inner space-y-2.5">
+              <span className="text-xs font-black text-cyan-300 uppercase tracking-wider block">
+                Player Lifetime Records
+              </span>
+
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div className="bg-[#071330] p-2.5 rounded-xl border border-[#1E3A8A]">
+                  <span className="text-[10px] text-cyan-200/70 block">Total Words Formed</span>
+                  <span className="font-black text-white text-base">
+                    {profile.totalWordsFormed || 0}
                   </span>
-                )}
+                </div>
+                <div className="bg-[#071330] p-2.5 rounded-xl border border-[#1E3A8A]">
+                  <span className="text-[10px] text-cyan-200/70 block">Highest Word Score</span>
+                  <span className="font-black text-amber-300 text-base">
+                    {profile.highestWordPoints ? `${profile.highestWordPoints} pts` : '—'}
+                  </span>
+                  {profile.highestWord && (
+                    <span className="text-[10px] font-mono text-cyan-300 block truncate">
+                      "{profile.highestWord}"
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* 5. ALL 60 CATEGORIES PROGRESS LIST */}
+            <div className="bg-[#0C2158] border border-[#1E3A8A] rounded-2xl p-3.5 sm:p-4 shadow-inner space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-black text-cyan-300 uppercase tracking-wider">
+                  Category Progress ({completedCount} / {INITIAL_CATEGORIES.length})
+                </span>
+                <span className="text-[11px] font-bold text-amber-300">
+                  {Math.round((completedCount / INITIAL_CATEGORIES.length) * 100)}% Complete
+                </span>
               </div>
 
-              <div className="space-y-1.5">
+              {/* Progress Bar */}
+              <div className="w-full h-2.5 bg-[#071330] rounded-full overflow-hidden border border-[#1E3A8A] p-0.5">
+                <div
+                  className="h-full bg-gradient-to-r from-amber-400 via-yellow-400 to-emerald-400 rounded-full transition-all duration-500"
+                  style={{
+                    width: `${Math.max(5, (completedCount / INITIAL_CATEGORIES.length) * 100)}%`,
+                  }}
+                />
+              </div>
+
+              {/* List of Categories */}
+              <div className="space-y-1.5 max-h-48 sm:max-h-56 overflow-y-auto custom-scrollbar pr-1">
                 {INITIAL_CATEGORIES.map((cat) => {
                   const unlocked = isCategoryUnlocked(cat.id, gameProgress);
                   const completed = isCategoryCompleted(cat.id, gameProgress);
-                  const highScore = gameProgress.categoryHighScores[cat.id] || 0;
-                  const stars = gameProgress.categoryStars[cat.id] || (completed ? 1 : 0);
+                  const bestScore = gameProgress.categoryHighScores?.[cat.id] || 0;
+                  const stars = gameProgress.categoryStars?.[cat.id] || 0;
 
                   return (
                     <div
@@ -654,73 +524,48 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                           onClose();
                         }
                       }}
-                      className={`rounded-2xl p-2.5 sm:p-3 border transition-all flex items-center justify-between gap-2.5 ${
+                      className={`p-2 rounded-xl flex items-center justify-between border transition-all ${
                         completed
-                          ? 'bg-[#0A2054] border-emerald-500/40 hover:border-emerald-400'
+                          ? 'bg-[#071330] border-emerald-500/40 text-white'
                           : unlocked
-                          ? 'bg-[#0C2158] border-[#1E3A8A] hover:border-cyan-400 cursor-pointer'
-                          : 'bg-[#050D24]/80 border-[#0F1E4A] opacity-60'
+                          ? 'bg-[#071330] border-[#1E3A8A] hover:border-sky-400 text-cyan-100 cursor-pointer'
+                          : 'bg-[#050D20] border-[#0F1E4A]/50 text-gray-400 opacity-60'
                       }`}
                     >
-                      {/* Left: Category Icon & Title */}
-                      <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                        <div
-                          className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center text-lg sm:text-xl shrink-0 border ${
-                            completed
-                              ? 'bg-emerald-900/40 border-emerald-500/60'
-                              : unlocked
-                              ? 'bg-[#071330] border-[#38BDF8]/40'
-                              : 'bg-gray-900/60 border-gray-700'
-                          }`}
-                        >
-                          {cat.icon || '🎯'}
-                        </div>
-
-                        <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="text-base">{cat.icon}</span>
+                        <div className="min-w-0">
                           <div className="flex items-center gap-1.5">
-                            <span className="text-[10px] font-extrabold text-cyan-300/80">
-                              Round #{cat.id}
+                            <span className="text-xs font-bold truncate">{cat.name}</span>
+                            <span className="text-[10px] text-cyan-300/60 font-mono">
+                              #{cat.id}
                             </span>
-                            {completed && (
-                              <span className="px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-300 text-[9px] font-black border border-emerald-500/30 flex items-center gap-0.5">
-                                <CheckCircle2 className="w-2.5 h-2.5" /> CLEARED
-                              </span>
-                            )}
                           </div>
-                          <div className="font-black text-white text-xs sm:text-sm truncate">
-                            {cat.name}
-                          </div>
-                          <div className="text-[10px] text-cyan-200/60 font-medium">
-                            Target: {cat.targetCount} words
-                          </div>
+                          {bestScore > 0 && (
+                            <span className="text-[10px] text-amber-300 font-bold block">
+                              Best: {formatPoints(bestScore)}
+                            </span>
+                          )}
                         </div>
                       </div>
 
-                      {/* Right: Stars & High Score */}
-                      <div className="flex flex-col items-end shrink-0">
-                        {unlocked ? (
-                          <>
-                            <div className="flex items-center gap-0.5 text-xs text-yellow-300 font-bold mb-0.5">
-                              {[1, 2, 3].map((starIdx) => (
-                                <span
-                                  key={starIdx}
-                                  className={
-                                    starIdx <= stars
-                                      ? 'text-yellow-300 drop-shadow'
-                                      : 'text-gray-600'
-                                  }
-                                >
-                                  ★
-                                </span>
-                              ))}
-                            </div>
-                            <span className="font-mono text-xs font-bold text-cyan-200">
-                              {highScore > 0 ? `${formatPoints(highScore)} pts` : 'No score yet'}
+                      <div className="flex items-center gap-2 shrink-0">
+                        {completed ? (
+                          <div className="flex items-center gap-1">
+                            <span className="text-yellow-300 text-xs font-bold">
+                              {'★'.repeat(stars)}
                             </span>
-                          </>
+                            <span className="px-1.5 py-0.5 rounded-md bg-emerald-950/80 text-emerald-300 border border-emerald-500/40 text-[9px] font-black">
+                              CLEARED
+                            </span>
+                          </div>
+                        ) : unlocked ? (
+                          <span className="px-2 py-0.5 rounded-md bg-sky-950/80 text-sky-300 border border-sky-500/40 text-[9px] font-black">
+                            UNLOCKED
+                          </span>
                         ) : (
-                          <div className="flex items-center gap-1 text-[11px] font-bold text-gray-400 bg-gray-900/60 px-2 py-1 rounded-lg border border-gray-700">
-                            <Lock className="w-3 h-3 text-gray-500" />
+                          <div className="flex items-center gap-1 text-[10px] text-gray-300 font-bold">
+                            <Lock className="w-3 h-3 text-gray-300" />
                             <span>Locked</span>
                           </div>
                         )}
@@ -730,16 +575,6 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                 })}
               </div>
             </div>
-          </div>
-
-          {/* Footer Close Button */}
-          <div className="pt-3 mt-2 border-t border-[#1E3A8A] shrink-0">
-            <button
-              onClick={onClose}
-              className="w-full py-3 px-4 rounded-xl bg-gradient-to-b from-[#38BDF8] via-[#0EA5E9] to-[#0284C7] hover:from-[#7DD3FC] hover:to-[#0EA5E9] border-t border-white/80 border-b-4 border-b-[#034C70] active:border-b active:translate-y-[3px] text-white font-black text-sm tracking-wider shadow-md transition-all cursor-pointer"
-            >
-              CLOSE
-            </button>
           </div>
         </div>
       </div>
