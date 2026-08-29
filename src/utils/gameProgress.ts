@@ -35,6 +35,23 @@ const DEFAULT_PROGRESS: GameProgress = {
   hasRemovedAds: false,
 };
 
+export function getHighestUnlockedCategoryId(progress?: GameProgress): number {
+  const prog = progress || loadGameProgress();
+  const unlockedSet = new Set<number>([1, ...(prog.unlockedCategoryIds || [])]);
+  (prog.completedCategoryIds || []).forEach((cId) => {
+    unlockedSet.add(cId);
+    unlockedSet.add(cId + 1);
+  });
+
+  // Filter only existing campaign categories in INITIAL_CATEGORIES
+  const validUnlocked = INITIAL_CATEGORIES
+    .map((c) => c.id)
+    .filter((id) => unlockedSet.has(id));
+
+  if (validUnlocked.length === 0) return 1;
+  return Math.max(...validUnlocked);
+}
+
 /**
  * Loads game progress from localStorage on the device
  */
@@ -56,10 +73,10 @@ export function loadGameProgress(): GameProgress {
         }
       });
 
-      return {
+      const progForCalc: GameProgress = {
         unlockedCategoryIds: Array.from(unlocked),
         completedCategoryIds: Array.from(completed),
-        lastPlayedCategoryId: parsed.lastPlayedCategoryId || 1,
+        lastPlayedCategoryId: 1,
         categoryHighScores: parsed.categoryHighScores || {},
         categoryStars: parsed.categoryStars || {},
         totalRoundsCleared: parsed.totalRoundsCleared || completed.size,
@@ -70,6 +87,21 @@ export function loadGameProgress(): GameProgress {
         awarded15kMilestones: Array.isArray(parsed.awarded15kMilestones) ? parsed.awarded15kMilestones : [],
         awarded20kMilestones: Array.isArray(parsed.awarded20kMilestones) ? parsed.awarded20kMilestones : [],
         hasRemovedAds: Boolean(parsed.hasRemovedAds),
+      };
+
+      const highestUnlocked = getHighestUnlockedCategoryId(progForCalc);
+      const lastPlayed = typeof parsed.lastPlayedCategoryId === 'number' && parsed.lastPlayedCategoryId > 0
+        ? parsed.lastPlayedCategoryId
+        : highestUnlocked;
+
+      // Always default to highest unlocked round if lastPlayed is 1 while higher rounds are unlocked or if lastPlayed is invalid
+      const finalLastPlayed = isCategoryUnlocked(lastPlayed, progForCalc)
+        ? (lastPlayed === 1 && highestUnlocked > 1 ? highestUnlocked : lastPlayed)
+        : highestUnlocked;
+
+      return {
+        ...progForCalc,
+        lastPlayedCategoryId: finalLastPlayed,
       };
     }
   } catch (err) {
@@ -158,7 +190,7 @@ export function completeCategory(
     unlockedCategoryIds: Array.from(unlockedSet),
     categoryHighScores: highScores,
     totalRoundsCleared: completedSet.size,
-    lastPlayedCategoryId: categoryId,
+    lastPlayedCategoryId: newlyUnlockedCategory ? newlyUnlockedCategory.id : categoryId,
   };
 
   saveGameProgress(updatedProgress);

@@ -43,6 +43,7 @@ import {
   completeCategory,
   setLastPlayedCategory,
   isCategoryUnlocked,
+  getHighestUnlockedCategoryId,
   addCoins,
   deductCoins,
   addDiamonds,
@@ -111,11 +112,11 @@ export default function App() {
   const [gameProgress, setGameProgress] = useState<GameProgress>(() => loadGameProgress());
   const [newlyUnlockedCategory, setNewlyUnlockedCategory] = useState<Category | null>(null);
 
-  // Game state
+  // Game state - Default to latest/highest unlocked round
   const [categoryIndex, setCategoryIndex] = useState<number>(() => {
     const saved = loadGameProgress();
-    const targetId = saved.lastPlayedCategoryId || 1;
-    const foundIdx = INITIAL_CATEGORIES.findIndex((c) => c.id === targetId);
+    const highestUnlocked = getHighestUnlockedCategoryId(saved);
+    const foundIdx = INITIAL_CATEGORIES.findIndex((c) => c.id === highestUnlocked);
     return foundIdx >= 0 ? foundIdx : 0;
   });
   const [customCategories, setCustomCategories] = useState<Category[]>([]);
@@ -150,7 +151,11 @@ export default function App() {
   const roundScoreRef = useRef<number>(0);
   const [totalScore, setTotalScore] = useState<number>(0);
   const [adRefillsUsed, setAdRefillsUsed] = useState<number>(0);
-  const [board, setBoard] = useState<Tile[][]>(() => generateInitialBoard(INITIAL_CATEGORIES[0]?.id || 1));
+  const [board, setBoard] = useState<Tile[][]>(() => {
+    const saved = loadGameProgress();
+    const highestUnlocked = getHighestUnlockedCategoryId(saved);
+    return generateInitialBoard(highestUnlocked);
+  });
   const [wordHistory, setWordHistory] = useState<WordHistoryItem[]>([]);
   const [powerUps, setPowerUps] = useState<PowerUpInventory>(() => {
     const saved = loadGameProgress();
@@ -185,12 +190,17 @@ export default function App() {
   const lastTutorialActivityRef = useRef<number>(Date.now());
 
   // Real-time Statement Banner State
-  const [boardBanner, setBoardBanner] = useState<BoardBanner | null>({
-    id: 'b-init',
-    text: `Category Goal: Find ${INITIAL_CATEGORIES[0]?.targetCount || 5} "${INITIAL_CATEGORIES[0]?.name || 'Animals'}" words!`,
-    icon: '🎯',
-    type: 'category',
-    subtext: 'GOAL',
+  const [boardBanner, setBoardBanner] = useState<BoardBanner | null>(() => {
+    const saved = loadGameProgress();
+    const highestUnlocked = getHighestUnlockedCategoryId(saved);
+    const cat = INITIAL_CATEGORIES.find((c) => c.id === highestUnlocked) || INITIAL_CATEGORIES[0];
+    return {
+      id: 'b-init',
+      text: `Category Goal: Find ${cat?.targetCount || 5} "${cat?.name || 'Animals'}" words!`,
+      icon: '🎯',
+      type: 'category',
+      subtext: 'GOAL',
+    };
   });
   const bannerTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -2554,8 +2564,22 @@ export default function App() {
         gameProgress={gameProgress}
         onClose={() => setIsProfileOpen(false)}
         onUpdateGameProgress={(updated) => {
-          setGameProgress(updated);
-          saveGameProgress(updated);
+          const highestUnlockedId = getHighestUnlockedCategoryId(updated);
+          const updatedWithHighest = {
+            ...updated,
+            lastPlayedCategoryId: highestUnlockedId,
+          };
+          setGameProgress(updatedWithHighest);
+          saveGameProgress(updatedWithHighest);
+
+          const foundIdx = INITIAL_CATEGORIES.findIndex((c) => c.id === highestUnlockedId);
+          if (foundIdx >= 0) {
+            setCategoryIndex(foundIdx);
+            setSelectedCustomCategory(null);
+            const targetCat = INITIAL_CATEGORIES[foundIdx];
+            playCategoryRound(targetCat);
+          }
+
           if (updated.hasRemovedAds) {
             setPowerUps((prev) => ({
               hammer: Math.max(prev.hammer, 2),

@@ -8,7 +8,7 @@ import {
 } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase';
-import { GameProgress, saveGameProgress } from './gameProgress';
+import { GameProgress, saveGameProgress, getHighestUnlockedCategoryId } from './gameProgress';
 import { getUserProfile, saveUserProfile, UserProfile } from './leaderboard';
 
 export interface CloudUserData {
@@ -110,10 +110,28 @@ export function mergeGameProgress(local: GameProgress, cloud: GameProgress): Gam
     ...(cloud.awarded20kMilestones || []),
   ]);
 
+  const highestUnlocked = getHighestUnlockedCategoryId({
+    unlockedCategoryIds: Array.from(unlockedSet),
+    completedCategoryIds: Array.from(completedSet),
+    lastPlayedCategoryId: 1,
+    categoryHighScores: mergedScores,
+    categoryStars: mergedStars,
+    totalRoundsCleared: Math.max(
+      local.totalRoundsCleared || completedSet.size,
+      cloud.totalRoundsCleared || completedSet.size,
+      completedSet.size
+    ),
+    lastUpdated: Date.now(),
+    coins: 0,
+    diamonds: 0,
+    awarded15kMilestones: [],
+    awarded20kMilestones: [],
+  });
+
   return {
     unlockedCategoryIds: Array.from(unlockedSet),
     completedCategoryIds: Array.from(completedSet),
-    lastPlayedCategoryId: local.lastPlayedCategoryId || cloud.lastPlayedCategoryId || 1,
+    lastPlayedCategoryId: highestUnlocked,
     categoryHighScores: mergedScores,
     categoryStars: mergedStars,
     totalRoundsCleared: Math.max(
