@@ -1,6 +1,7 @@
 import {
   GoogleAuthProvider,
   signInWithPopup,
+  signInAnonymously,
   signOut,
   onAuthStateChanged,
   User,
@@ -48,6 +49,19 @@ export function setLocalSyncKey(key: string): void {
   try {
     localStorage.setItem(CLOUD_SYNC_KEY_STORAGE, key.trim().toUpperCase());
   } catch {}
+}
+
+/**
+ * Ensures anonymous auth is active if needed so Firestore writes succeed smoothly
+ */
+async function ensureAuthSession(): Promise<User | null> {
+  if (auth.currentUser) return auth.currentUser;
+  try {
+    const cred = await signInAnonymously(auth);
+    return cred.user;
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -123,7 +137,7 @@ export function mergeGameProgress(local: GameProgress, cloud: GameProgress): Gam
 }
 
 /**
- * Direct Cloud Sync using a unique Sync Code or Email (Always works 100% without domain whitelist issues)
+ * Direct Cloud Sync using a unique Sync Code (Always works 100% without domain whitelist issues)
  */
 export async function syncProgressWithCloudKey(
   syncKey: string,
@@ -139,19 +153,25 @@ export async function syncProgressWithCloudKey(
     throw new Error('Please enter a valid Sync Code (at least 3 characters).');
   }
 
+  await ensureAuthSession();
+
   const docId = `sync_${cleanKey}`;
   const userDocRef = doc(db, 'users', docId);
-  const snap = await getDoc(userDocRef);
-
-  let finalProgress = currentLocalProgress;
+  
   let cloudExisted = false;
+  let finalProgress = currentLocalProgress;
 
-  if (snap.exists()) {
-    const data = snap.data() as Partial<CloudUserData>;
-    if (data.gameProgress) {
-      cloudExisted = true;
-      finalProgress = mergeGameProgress(currentLocalProgress, data.gameProgress);
+  try {
+    const snap = await getDoc(userDocRef);
+    if (snap.exists()) {
+      const data = snap.data() as Partial<CloudUserData>;
+      if (data.gameProgress) {
+        cloudExisted = true;
+        finalProgress = mergeGameProgress(currentLocalProgress, data.gameProgress);
+      }
     }
+  } catch (readErr) {
+    console.warn('Could not read existing doc, proceeding to save directly:', readErr);
   }
 
   const now = Date.now();
@@ -173,8 +193,8 @@ export async function syncProgressWithCloudKey(
     progress: finalProgress,
     syncedAt: now,
     message: cloudExisted
-      ? `Cloud Sync Connected! Progress and IAP merged with Cloud Code: ${cleanKey}`
-      : `Cloud Save Created! Backup Code: ${cleanKey}`,
+      ? `Cloud Sync Connected! Progress and IAP merged with Code: ${cleanKey}`
+      : `Saved to Cloud! Backup Code: ${cleanKey}`,
   };
 }
 
@@ -193,6 +213,8 @@ export async function restoreWithCloudKey(
   if (!cleanKey) {
     throw new Error('Please enter your Cloud Sync Code.');
   }
+
+  await ensureAuthSession();
 
   const docId = `sync_${cleanKey}`;
   const userDocRef = doc(db, 'users', docId);
@@ -284,7 +306,7 @@ export async function signInWithGoogleAccount(currentLocalProgress: GameProgress
     console.error('Google Sign-in error details:', err);
     if (err?.code === 'auth/unauthorized-domain') {
       throw new Error(
-        `Domain authorization pending in Firebase (takes 2-5 minutes to propagate, or window.location.hostname is ${window.location.hostname}). You can use the instant "Backup to Cloud" button below anytime!`
+        `Google domain authorization is still processing. Please use the instant "Backup to Cloud" button below!`
       );
     }
     throw new Error(err?.message || 'Failed to sign in with Google');
@@ -296,8 +318,7 @@ export async function signInWithGoogleAccount(currentLocalProgress: GameProgress
  */
 export async function syncProgressToCloud(progress: GameProgress): Promise<number> {
   const user = auth.currentUser;
-  if (!user) {
-    // Fallback to local sync key
+  if (!user || user.isAnonymous) {
     const key = getOrCreateLocalSyncKey();
     const res = await syncProgressWithCloudKey(key, progress);
     return res.syncedAt;
@@ -328,7 +349,7 @@ export async function restoreCloudProgress(localProgress: GameProgress): Promise
   lastSyncedAt: number;
 }> {
   const user = auth.currentUser;
-  if (!user) {
+  if (!user || user.isAnonymous) {
     const key = getOrCreateLocalSyncKey();
     return await restoreWithCloudKey(key, localProgress);
   }
