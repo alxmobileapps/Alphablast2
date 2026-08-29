@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Volume2, VolumeX, Music, Smartphone, RotateCcw, ShieldAlert, ArrowLeftRight, Lightbulb } from 'lucide-react';
-import { isSoundEnabled, toggleSound, stopBackgroundMusic, startBackgroundMusic } from '../utils/audio';
+import { isSoundEnabled, toggleSound, isMusicEnabled, toggleMusic } from '../utils/audio';
 import { isSwipeControlsEnabled, setSwipeControlsEnabled, isCluesEnabled as isCluesEnabledUtil, setCluesEnabled as setCluesEnabledUtil } from '../utils/settings';
 import { haptics } from '../utils/haptics';
 
@@ -24,7 +24,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onToggleClues,
 }) => {
   const [sound, setSound] = useState<boolean>(() => isSoundEnabled());
-  const [music, setMusic] = useState<boolean>(true);
+  const [music, setMusic] = useState<boolean>(() => isMusicEnabled());
   const [vibration, setVibration] = useState<boolean>(true);
   const [swipe, setSwipe] = useState<boolean>(() =>
     isSwipeEnabled !== undefined ? isSwipeEnabled : isSwipeControlsEnabled()
@@ -33,6 +33,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     isCluesEnabled !== undefined ? isCluesEnabled : isCluesEnabledUtil()
   );
   const [confirmReset, setConfirmReset] = useState<boolean>(false);
+
+  // Sync state whenever modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setSound(isSoundEnabled());
+      setMusic(isMusicEnabled());
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -43,13 +51,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   };
 
   const handleToggleMusic = () => {
-    if (music) {
-      stopBackgroundMusic();
-      setMusic(false);
-    } else {
-      startBackgroundMusic();
-      setMusic(true);
-    }
+    const next = toggleMusic();
+    setMusic(next);
     haptics.tap();
   };
 

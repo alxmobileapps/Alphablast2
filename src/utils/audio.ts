@@ -1,16 +1,24 @@
-// Web Audio API Sound Synthesizer & Relaxing Ambient Background for AlphaBlast
+// Web Audio API Sound Synthesizer & Cheerful Relaxing Ambient Background for AlphaBlast
+import {
+  isMusicSettingEnabled,
+  setMusicSettingEnabled,
+  isSoundSettingEnabled,
+  setSoundSettingEnabled,
+} from './settings';
 
 let audioCtx: AudioContext | null = null;
-let soundEnabled = true;
+let soundEnabled = isSoundSettingEnabled();
+let musicEnabled = isMusicSettingEnabled();
 let bgMusicRunning = false;
 let bgMusicMasterGain: GainNode | null = null;
 let bgMusicInterval: ReturnType<typeof setInterval> | null = null;
-let bgChimeInterval: ReturnType<typeof setInterval> | null = null;
 
-function getAudioContext(): AudioContext | null {
+export function getAudioContext(): AudioContext | null {
   if (typeof window === 'undefined') return null;
   if (!audioCtx) {
-    const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    const AudioContextClass =
+      window.AudioContext ||
+      (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
     if (AudioContextClass) {
       audioCtx = new AudioContextClass();
     }
@@ -22,59 +30,78 @@ function getAudioContext(): AudioContext | null {
 }
 
 // ----------------------------------------------------
-// LIVELY & RELAXING BACKGROUND MUSIC SYNTHESIZER
-// Upbeat, warm Neo-Soul / Island Kalimba groove with gentle rhythm
+// CHEERFUL, MASIGLA & RELAXING BGM SYNTHESIZER
+// Warm Neo-Soul / Island Kalimba & Rhodes Acoustic Groove
 // ----------------------------------------------------
 
-// Upbeat & relaxing chord progressions (Rhodes & warm acoustic harmonies)
 const PROGRESSION = [
+  // 1. Cmaj9 (Bright, Sunny, Welcoming)
   {
     name: 'Cmaj9',
     bass: 65.41, // C2
-    chord: [130.81, 196.00, 246.94, 329.63, 392.00], // C3, G3, B3, E4, G4
+    chord: [130.81, 196.0, 246.94, 329.63, 392.0], // C3, G3, B3, E4, G4
     melody: [523.25, 659.25, 587.33, 783.99], // C5, E5, D5, G5
   },
+  // 2. Am9 (Soothing, Rich)
   {
     name: 'Am9',
-    bass: 55.00, // A1
-    chord: [110.00, 164.81, 196.00, 261.63, 329.63], // A2, E3, G3, C4, E4
-    melody: [659.25, 587.33, 523.25, 440.00], // E5, D5, C5, A4
+    bass: 55.0, // A1
+    chord: [110.0, 164.81, 196.0, 261.63, 329.63], // A2, E3, G3, C4, E4
+    melody: [659.25, 587.33, 523.25, 440.0], // E5, D5, C5, A4
   },
-  {
-    name: 'Dm9',
-    bass: 73.42, // D2
-    chord: [146.83, 220.00, 261.63, 329.63, 349.23], // D3, A3, C4, E4, F4
-    melody: [587.33, 698.46, 659.25, 523.25], // D5, F5, E5, C5
-  },
-  {
-    name: 'G13sus',
-    bass: 49.00, // G1
-    chord: [98.00, 146.83, 220.00, 261.63, 329.63], // G2, D3, A3, C4, E4
-    melody: [783.99, 659.25, 587.33, 493.88], // G5, E5, D5, B4
-  },
+  // 3. Fmaj9 (Lively, Uplifting)
   {
     name: 'Fmaj9',
     bass: 43.65, // F1
-    chord: [174.61, 220.00, 261.63, 329.63, 392.00], // F3, A3, C4, E4, G4
+    chord: [174.61, 220.0, 261.63, 329.63, 392.0], // F3, A3, C4, E4, G4
     melody: [698.46, 783.99, 659.25, 523.25], // F5, G5, E5, C5
   },
+  // 4. G13sus / G7 (Bouncy, Joyful Turnaround)
+  {
+    name: 'G13sus',
+    bass: 49.0, // G1
+    chord: [98.0, 146.83, 220.0, 261.63, 329.63], // G2, D3, A3, C4, E4
+    melody: [783.99, 880.0, 659.25, 587.33], // G5, A5, E5, D5
+  },
+  // 5. Em7 (Peaceful Breeze)
   {
     name: 'Em7',
-    bass: 41.20, // E1
-    chord: [164.81, 246.94, 293.66, 329.63, 392.00], // E3, B3, D4, E4, G4
-    melody: [659.25, 783.99, 880.00, 659.25], // E5, G5, A5, E5
+    bass: 41.2, // E1
+    chord: [164.81, 246.94, 293.66, 329.63, 392.0], // E3, B3, D4, E4, G4
+    melody: [659.25, 783.99, 880.0, 987.77], // E5, G5, A5, B5
+  },
+  // 6. A7sus (Warm Transition)
+  {
+    name: 'A7sus',
+    bass: 55.0, // A1
+    chord: [110.0, 164.81, 220.0, 293.66, 329.63], // A2, E3, A3, D4, E4
+    melody: [880.0, 783.99, 659.25, 587.33], // A5, G5, E5, D5
+  },
+  // 7. Dm9 (Smooth, Flowing)
+  {
+    name: 'Dm9',
+    bass: 73.42, // D2
+    chord: [146.83, 220.0, 261.63, 329.63, 349.23], // D3, A3, C4, E4, F4
+    melody: [587.33, 698.46, 659.25, 523.25], // D5, F5, E5, C5
+  },
+  // 8. G7sus4 -> G (Sparkling Resolution)
+  {
+    name: 'G7sus',
+    bass: 49.0, // G1
+    chord: [98.0, 146.83, 196.0, 261.63, 392.0], // G2, D3, G3, C4, G4
+    melody: [783.99, 987.77, 1046.5, 783.99], // G5, B5, C6, G5
   },
 ];
 
-// Master background ambient volume level (clearly audible, lively, bright and relaxing)
-const BG_VOLUME = 0.22;
+// Target BGM Volume level (Comfortable, cheerful & relaxing)
+const BG_VOLUME = 0.24;
 
 let currentChordStep = 0;
 let barBeat = 0;
 
-// Play a warm, bouncy electric piano / Rhodes chord stab
+// Play a warm, sweet Rhodes electric piano chord
 function playRhodesStab(freqs: number[], duration = 1.6, intensity = 1.0): void {
-  if (!soundEnabled || !bgMusicRunning) return;
+  if (!musicEnabled || !bgMusicRunning) return;
   const ctx = getAudioContext();
   if (!ctx || !bgMusicMasterGain) return;
 
@@ -89,17 +116,16 @@ function playRhodesStab(freqs: number[], duration = 1.6, intensity = 1.0): void 
       // Blend sine and triangle for warm electric piano tone
       osc.type = idx % 2 === 0 ? 'sine' : 'triangle';
       osc.frequency.setValueAtTime(freq, now);
-      osc.detune.setValueAtTime((Math.random() - 0.5) * 6, now);
+      osc.detune.setValueAtTime((Math.random() - 0.5) * 5, now);
 
-      // Warm lowpass filter with subtle envelope decay
       filter.type = 'lowpass';
-      filter.frequency.setValueAtTime(1400, now);
-      filter.frequency.exponentialRampToValueAtTime(700, now + duration);
+      filter.frequency.setValueAtTime(1600, now);
+      filter.frequency.exponentialRampToValueAtTime(750, now + duration);
 
-      const baseVol = (idx === 0 ? 0.05 : 0.038) * intensity;
+      const baseVol = (idx === 0 ? 0.055 : 0.04) * intensity;
       gain.gain.setValueAtTime(0.0001, now);
-      gain.gain.linearRampToValueAtTime(baseVol, now + 0.03);
-      gain.gain.exponentialRampToValueAtTime(baseVol * 0.4, now + 0.4);
+      gain.gain.linearRampToValueAtTime(baseVol, now + 0.035);
+      gain.gain.exponentialRampToValueAtTime(baseVol * 0.45, now + 0.4);
       gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
 
       osc.connect(filter);
@@ -114,9 +140,9 @@ function playRhodesStab(freqs: number[], duration = 1.6, intensity = 1.0): void 
   });
 }
 
-// Play a bouncy, lively marimba / kalimba note
-function playMarimbaPluck(freq: number, velocity = 0.06): void {
-  if (!soundEnabled || !bgMusicRunning) return;
+// Play a joyful, lively kalimba / marimba note
+function playMarimbaPluck(freq: number, velocity = 0.065): void {
+  if (!musicEnabled || !bgMusicRunning) return;
   const ctx = getAudioContext();
   if (!ctx || !bgMusicMasterGain) return;
 
@@ -129,14 +155,13 @@ function playMarimbaPluck(freq: number, velocity = 0.06): void {
     osc.type = 'sine';
     osc.frequency.setValueAtTime(freq, now);
 
-    // Fast decay woodblock / marimba envelope
     filter.type = 'bandpass';
-    filter.frequency.setValueAtTime(freq * 1.5, now);
-    filter.Q.setValueAtTime(3.0, now);
+    filter.frequency.setValueAtTime(freq * 1.4, now);
+    filter.Q.setValueAtTime(3.2, now);
 
     gain.gain.setValueAtTime(0.0001, now);
     gain.gain.linearRampToValueAtTime(velocity, now + 0.008);
-    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.45);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.48);
 
     osc.connect(filter);
     filter.connect(gain);
@@ -149,9 +174,9 @@ function playMarimbaPluck(freq: number, velocity = 0.06): void {
   }
 }
 
-// Play a gentle rounded acoustic bass pluck
-function playBassNote(freq: number, duration = 0.8): void {
-  if (!soundEnabled || !bgMusicRunning) return;
+// Play a smooth rounded acoustic bass note
+function playBassNote(freq: number, duration = 0.85): void {
+  if (!musicEnabled || !bgMusicRunning) return;
   const ctx = getAudioContext();
   if (!ctx || !bgMusicMasterGain) return;
 
@@ -165,11 +190,11 @@ function playBassNote(freq: number, duration = 0.8): void {
     osc.frequency.setValueAtTime(freq, now);
 
     filter.type = 'lowpass';
-    filter.frequency.setValueAtTime(240, now);
+    filter.frequency.setValueAtTime(260, now);
 
     gain.gain.setValueAtTime(0.0001, now);
-    gain.gain.linearRampToValueAtTime(0.09, now + 0.02);
-    gain.gain.exponentialRampToValueAtTime(0.03, now + 0.3);
+    gain.gain.linearRampToValueAtTime(0.095, now + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.035, now + 0.3);
     gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
 
     osc.connect(filter);
@@ -183,16 +208,15 @@ function playBassNote(freq: number, duration = 0.8): void {
   }
 }
 
-// Play subtle lively rhythmic brush / shaker tap
+// Play subtle lively rhythmic brush / shaker
 function playGentleShaker(accent = false): void {
-  if (!soundEnabled || !bgMusicRunning) return;
+  if (!musicEnabled || !bgMusicRunning) return;
   const ctx = getAudioContext();
   if (!ctx || !bgMusicMasterGain) return;
 
   try {
     const now = ctx.currentTime;
-    // Fast noise burst for shaker texture
-    const bufferSize = ctx.sampleRate * 0.05;
+    const bufferSize = ctx.sampleRate * 0.045;
     const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
     const data = buffer.getChannelData(0);
     for (let i = 0; i < bufferSize; i++) {
@@ -204,7 +228,7 @@ function playGentleShaker(accent = false): void {
 
     const filter = ctx.createBiquadFilter();
     filter.type = 'highpass';
-    filter.frequency.setValueAtTime(7000, now);
+    filter.frequency.setValueAtTime(7500, now);
 
     const gain = ctx.createGain();
     const vol = accent ? 0.018 : 0.009;
@@ -224,48 +248,48 @@ function playGentleShaker(accent = false): void {
 
 // Main rhythmic tick function (runs on 8th notes at ~104 BPM, interval 288ms)
 function advanceMusicTick(): void {
-  if (!soundEnabled || !bgMusicRunning) return;
+  if (!musicEnabled || !bgMusicRunning) return;
 
   const currentPattern = PROGRESSION[currentChordStep % PROGRESSION.length];
 
-  // Beat 0: Downbeat (Bass + Warm Rhodes Chord + Shaker)
+  // Beat 0: Downbeat (Bass + Warm Rhodes Chord + Shaker + Melody 1)
   if (barBeat === 0) {
     playBassNote(currentPattern.bass, 1.2);
     playRhodesStab(currentPattern.chord, 1.8, 1.0);
     playGentleShaker(true);
-    playMarimbaPluck(currentPattern.melody[0], 0.06);
+    playMarimbaPluck(currentPattern.melody[0], 0.065);
   }
   // Beat 1: Light off-beat shaker
   else if (barBeat === 1) {
     playGentleShaker(false);
   }
-  // Beat 2: Syncopated Rhodes stab + melody note
+  // Beat 2: Syncopated Rhodes stab + melody 2
   else if (barBeat === 2) {
     playGentleShaker(true);
-    playMarimbaPluck(currentPattern.melody[1], 0.05);
+    playMarimbaPluck(currentPattern.melody[1], 0.055);
   }
   // Beat 3: Syncopated chord pulse
   else if (barBeat === 3) {
     playRhodesStab(currentPattern.chord, 1.0, 0.7);
     playGentleShaker(false);
   }
-  // Beat 4: Bass walk / second melody note
+  // Beat 4: Bass walk / melody 3
   else if (barBeat === 4) {
-    playBassNote(currentPattern.bass * 1.5, 0.6);
-    playMarimbaPluck(currentPattern.melody[2], 0.055);
+    playBassNote(currentPattern.bass * 1.5, 0.65);
+    playMarimbaPluck(currentPattern.melody[2], 0.06);
     playGentleShaker(true);
   }
   // Beat 5: Light shaker
   else if (barBeat === 5) {
     playGentleShaker(false);
   }
-  // Beat 6: Playful marimba melodic turnaround
+  // Beat 6: Playful melodic turnaround
   else if (barBeat === 6) {
     playRhodesStab(currentPattern.chord, 0.9, 0.65);
-    playMarimbaPluck(currentPattern.melody[3], 0.06);
+    playMarimbaPluck(currentPattern.melody[3], 0.065);
     playGentleShaker(true);
   }
-  // Beat 7: Pickup to next chord
+  // Beat 7: Pickup
   else if (barBeat === 7) {
     playGentleShaker(false);
   }
@@ -277,6 +301,7 @@ function advanceMusicTick(): void {
 }
 
 export function startBackgroundMusic(): void {
+  if (!musicEnabled) return;
   if (bgMusicRunning) return;
   const ctx = getAudioContext();
   if (!ctx) return;
@@ -285,13 +310,13 @@ export function startBackgroundMusic(): void {
     ctx.resume().catch(() => {});
   }
 
-  // Create master background gain node set to clearly audible pleasant volume
+  // Create master background gain node
   if (!bgMusicMasterGain) {
     bgMusicMasterGain = ctx.createGain();
-    bgMusicMasterGain.gain.setValueAtTime(soundEnabled ? BG_VOLUME : 0.0001, ctx.currentTime);
+    bgMusicMasterGain.gain.setValueAtTime(BG_VOLUME, ctx.currentTime);
     bgMusicMasterGain.connect(ctx.destination);
   } else {
-    bgMusicMasterGain.gain.setValueAtTime(soundEnabled ? BG_VOLUME : 0.0001, ctx.currentTime);
+    bgMusicMasterGain.gain.setValueAtTime(BG_VOLUME, ctx.currentTime);
   }
 
   bgMusicRunning = true;
@@ -313,28 +338,66 @@ export function stopBackgroundMusic(): void {
     clearInterval(bgMusicInterval);
     bgMusicInterval = null;
   }
-  if (bgChimeInterval) {
-    clearInterval(bgChimeInterval);
-    bgChimeInterval = null;
-  }
   if (bgMusicMasterGain && audioCtx) {
     bgMusicMasterGain.gain.setValueAtTime(0.0001, audioCtx.currentTime);
   }
 }
 
-// Auto-start listener on first user interaction for browser autoplay policy compliance
+export function isMusicEnabled(): boolean {
+  return musicEnabled;
+}
+
+export function setMusicEnabled(enabled: boolean): void {
+  musicEnabled = enabled;
+  setMusicSettingEnabled(enabled);
+  if (enabled) {
+    if (!bgMusicRunning) {
+      startBackgroundMusic();
+    } else if (bgMusicMasterGain && audioCtx) {
+      bgMusicMasterGain.gain.setValueAtTime(BG_VOLUME, audioCtx.currentTime);
+    }
+  } else {
+    stopBackgroundMusic();
+  }
+}
+
+export function toggleMusic(): boolean {
+  const next = !musicEnabled;
+  setMusicEnabled(next);
+  return next;
+}
+
+export function isSoundEnabled(): boolean {
+  return soundEnabled;
+}
+
+export function setSoundEnabled(enabled: boolean): void {
+  soundEnabled = enabled;
+  setSoundSettingEnabled(enabled);
+}
+
+export function toggleSound(): boolean {
+  const next = !soundEnabled;
+  setSoundEnabled(next);
+  return next;
+}
+
+// Auto-start listener on any user interaction (click, touch, key, pointer)
 if (typeof window !== 'undefined') {
-  const handleFirstInteraction = () => {
-    if (soundEnabled) {
+  const handleInteraction = () => {
+    const ctx = getAudioContext();
+    if (ctx && ctx.state === 'suspended') {
+      ctx.resume().catch(() => {});
+    }
+    if (musicEnabled && !bgMusicRunning) {
       startBackgroundMusic();
     }
-    window.removeEventListener('click', handleFirstInteraction);
-    window.removeEventListener('keydown', handleFirstInteraction);
-    window.removeEventListener('touchstart', handleFirstInteraction);
   };
-  window.addEventListener('click', handleFirstInteraction, { passive: true });
-  window.addEventListener('keydown', handleFirstInteraction, { passive: true });
-  window.addEventListener('touchstart', handleFirstInteraction, { passive: true });
+
+  window.addEventListener('click', handleInteraction, { passive: true });
+  window.addEventListener('keydown', handleInteraction, { passive: true });
+  window.addEventListener('touchstart', handleInteraction, { passive: true });
+  window.addEventListener('pointerdown', handleInteraction, { passive: true });
 
   // Handle page visibility
   document.addEventListener('visibilitychange', () => {
@@ -343,31 +406,13 @@ if (typeof window !== 'undefined') {
         bgMusicMasterGain.gain.setValueAtTime(0.0001, audioCtx.currentTime);
       }
     } else {
-      if (soundEnabled && bgMusicMasterGain && audioCtx) {
+      if (musicEnabled && bgMusicMasterGain && audioCtx) {
         bgMusicMasterGain.gain.setValueAtTime(BG_VOLUME, audioCtx.currentTime);
       }
     }
   });
 }
 
-export function toggleSound(): boolean {
-  soundEnabled = !soundEnabled;
-  if (bgMusicMasterGain && audioCtx) {
-    bgMusicMasterGain.gain.setValueAtTime(soundEnabled ? BG_VOLUME : 0.0001, audioCtx.currentTime);
-  }
-  if (soundEnabled) {
-    if (!bgMusicRunning) {
-      startBackgroundMusic();
-    }
-  } else {
-    // Muted
-  }
-  return soundEnabled;
-}
-
-export function isSoundEnabled(): boolean {
-  return soundEnabled;
-}
 
 export function playTileSelect(): void {
   if (!soundEnabled) return;
