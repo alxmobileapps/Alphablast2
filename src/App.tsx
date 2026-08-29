@@ -23,9 +23,11 @@ import { ProfileModal } from './components/ProfileModal';
 import { SettingsModal } from './components/SettingsModal';
 import { BottomBannerAd } from './components/BottomBannerAd';
 import { InterstitialAdModal } from './components/InterstitialAdModal';
+import { PortraitLockOverlay } from './components/PortraitLockOverlay';
 import { isSwipeControlsEnabled, isCluesEnabled as isCluesEnabledUtil } from './utils/settings';
 import { initUniversalAds } from './utils/universalAds';
 import { initRemoteAdsListener } from './utils/remoteAdsService';
+import { initOrientationLock } from './utils/orientation';
 import { INITIAL_CATEGORIES } from './data/categories';
 import { calculateWordPoints, calculateSpecialReactionPoints, formatPoints } from './utils/scoring';
 import { recordScore, getUserProfile } from './utils/leaderboard';
@@ -595,8 +597,9 @@ export default function App() {
     }, 250);
   }, []);
 
-  // Start relaxing background sound and initialize universal ads + Firestore remote config sync on mount
+  // Start relaxing background sound, enforce portrait lock, and initialize universal ads + Firestore remote config sync on mount
   useEffect(() => {
+    initOrientationLock();
     startBackgroundMusic();
     initUniversalAds();
     const unsubscribeAds = initRemoteAdsListener();
@@ -2745,6 +2748,9 @@ export default function App() {
           }}
         />
       )}
+
+      {/* Strict Portrait Orientation Lock Overlay */}
+      <PortraitLockOverlay />
     </div>
   );
 }

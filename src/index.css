@@ -889,6 +889,14 @@ body {
   text-shadow: 0 0 8px rgba(168, 85, 247, 0.85), 0 0 18px rgba(126, 34, 206, 0.6);
 }
 
+/* Portrait Lock Utilities */
+@media screen and (orientation: landscape) and (max-height: 640px) and (hover: none) {
+  html, body {
+    overflow: hidden !important;
+  }
+}
+
+
 
 
 
