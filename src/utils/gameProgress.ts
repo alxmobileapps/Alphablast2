@@ -257,9 +257,9 @@ export function exchangeDiamondsForCoins(diamonds: number, coins: number): { suc
 }
 
 /**
- * Checks and awards diamonds when score in a category reaches:
+ * Checks and awards diamonds when score in a category reaches score milestones:
+ * - 20,000 PTS: +2 Diamonds (💎)
  * - 15,000 PTS: +1 Diamond (💎)
- * - 20,000 PTS: +2 Diamonds (💎) total (not on top of +1 from 15k, so +1 more if 15k was already claimed, or +2 total if skipping to 20k)
  */
 export function checkAndAwardDiamondMilestones(
   categoryId: number,
@@ -270,24 +270,20 @@ export function checkAndAwardDiamondMilestones(
   const milestones20k = new Set<number>(current.awarded20kMilestones || []);
 
   let diamondsToAdd = 0;
-  const reachedLabels: string[] = [];
 
-  // Check 20,000 threshold (Total 2 diamonds per category)
+  // Check 20,000 threshold (+2 Diamonds reward)
   if (score >= 20000 && !milestones20k.has(categoryId)) {
     milestones20k.add(categoryId);
-    milestones15k.add(categoryId); // 20k supersedes 15k
+    milestones15k.add(categoryId);
 
-    // If they already got +1 diamond from 15k previously, they get +1 more now for reaching 20k (Total = 2).
-    // If they hadn't claimed 15k yet, they get +2 diamonds now.
     const alreadyGot15k = (current.awarded15kMilestones || []).includes(categoryId);
+    // If they already got +1 from 15k earlier in a previous attempt, add remaining 1 diamond. Otherwise grant full 2 diamonds.
     const amount = alreadyGot15k ? 1 : 2;
     diamondsToAdd += amount;
-    reachedLabels.push(alreadyGot15k ? '20,000 PTS (+1 💎, 2 💎 Total)' : '20,000 PTS (+2 💎 Total)');
   } else if (score >= 15000 && !milestones15k.has(categoryId)) {
-    // Check 15,000 threshold (+1 diamond)
+    // Check 15,000 threshold (+1 Diamond reward)
     milestones15k.add(categoryId);
     diamondsToAdd += 1;
-    reachedLabels.push('15,000 PTS (+1 💎)');
   }
 
   if (diamondsToAdd > 0) {
@@ -301,7 +297,7 @@ export function checkAndAwardDiamondMilestones(
     return {
       awarded: true,
       diamondsAwarded: diamondsToAdd,
-      milestoneName: reachedLabels.join(' & '),
+      milestoneName: 'ROUND REWARD',
       progress: updated,
     };
   }

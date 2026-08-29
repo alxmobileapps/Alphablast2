@@ -383,11 +383,11 @@ export default function App() {
           });
         } catch {}
         triggerBanner(
-          `💎 Score Milestone: +${diamondCheck.diamondsAwarded} Diamond${diamondCheck.diamondsAwarded > 1 ? 's' : ''} (${diamondCheck.milestoneName})!`,
+          `💎 Round Reward: +${diamondCheck.diamondsAwarded} Diamond${diamondCheck.diamondsAwarded > 1 ? 's' : ''}!`,
           'special',
           '💎',
           `+${diamondCheck.diamondsAwarded} 💎`,
-          4000
+          3500
         );
       }
     },

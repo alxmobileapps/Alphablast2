@@ -158,7 +158,7 @@ export const RoundCompleteModal: React.FC<RoundCompleteModalProps> = ({
                 </div>
                 <div>
                   <span className="text-[9px] font-extrabold uppercase tracking-wider text-cyan-700 block leading-none mb-0.5">
-                    {diamondMilestoneAwarded?.milestoneName || 'SCORE MILESTONE!'}
+                    ROUND REWARD
                   </span>
                   <span className="font-black text-xs text-cyan-950 block leading-tight">
                     +{diamondMilestoneAwarded ? diamondMilestoneAwarded.count : 1} {diamondMilestoneAwarded && diamondMilestoneAwarded.count > 1 ? 'Diamonds' : 'Diamond'} Awarded!
