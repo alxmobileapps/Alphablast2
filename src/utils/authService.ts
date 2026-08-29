@@ -16,6 +16,8 @@ export interface CloudUserData {
   email: string | null;
   displayName: string | null;
   photoURL: string | null;
+  avatar?: string | null;
+  userProfile?: UserProfile;
   gameProgress: GameProgress;
   iapReceipts?: string[];
   lastSyncedAt: number;
@@ -142,9 +144,10 @@ export function mergeGameProgress(local: GameProgress, cloud: GameProgress): Gam
 export async function syncProgressWithCloudKey(
   syncKey: string,
   currentLocalProgress: GameProgress,
-  playerName?: string
+  playerProfile?: UserProfile
 ): Promise<{
   progress: GameProgress;
+  userProfile: UserProfile;
   syncedAt: number;
   message: string;
 }> {
@@ -155,11 +158,13 @@ export async function syncProgressWithCloudKey(
 
   await ensureAuthSession();
 
+  const currentProf: UserProfile = playerProfile || getUserProfile();
   const docId = `sync_${cleanKey}`;
   const userDocRef = doc(db, 'users', docId);
   
   let cloudExisted = false;
   let finalProgress = currentLocalProgress;
+  let mergedProfile: UserProfile = { ...currentProf };
 
   try {
     const snap = await getDoc(userDocRef);
@@ -169,17 +174,38 @@ export async function syncProgressWithCloudKey(
         cloudExisted = true;
         finalProgress = mergeGameProgress(currentLocalProgress, data.gameProgress);
       }
+      if (data.userProfile) {
+        // If current local name is placeholder and cloud had a custom name, use cloud name
+        if (
+          (!currentProf.name || currentProf.name === 'Player 1' || currentProf.name.startsWith('Guest')) &&
+          data.userProfile.name
+        ) {
+          mergedProfile.name = data.userProfile.name;
+        }
+        if (data.userProfile.avatar) {
+          mergedProfile.avatar = data.userProfile.avatar;
+        }
+      } else if (data.displayName) {
+        if (!currentProf.name || currentProf.name === 'Player 1' || currentProf.name.startsWith('Guest')) {
+          mergedProfile.name = data.displayName;
+        }
+      }
     }
   } catch (readErr) {
     console.warn('Could not read existing doc, proceeding to save directly:', readErr);
   }
 
+  // Ensure current local user profile is stored
+  saveUserProfile(mergedProfile);
+
   const now = Date.now();
   const cloudPayload: CloudUserData = {
     uid: docId,
     email: null,
-    displayName: playerName || getUserProfile().name || 'Alpha Player',
+    displayName: mergedProfile.name || 'Alpha Player',
     photoURL: null,
+    avatar: mergedProfile.avatar || '👑',
+    userProfile: mergedProfile,
     gameProgress: finalProgress,
     iapReceipts: finalProgress.hasRemovedAds ? ['com.wordblast.removeads'] : [],
     lastSyncedAt: now,
@@ -191,21 +217,23 @@ export async function syncProgressWithCloudKey(
 
   return {
     progress: finalProgress,
+    userProfile: mergedProfile,
     syncedAt: now,
     message: cloudExisted
-      ? `Cloud Sync Connected! Progress and IAP merged with Code: ${cleanKey}`
+      ? `Cloud Sync Connected! Username & Progress saved with Code: ${cleanKey}`
       : `Saved to Cloud! Backup Code: ${cleanKey}`,
   };
 }
 
 /**
- * Restores save and IAP using a Cloud Sync Key
+ * Restores save, username, and IAP using a Cloud Sync Key
  */
 export async function restoreWithCloudKey(
   syncKey: string,
   currentLocalProgress: GameProgress
 ): Promise<{
   progress: GameProgress;
+  userProfile: UserProfile;
   restoredIAP: boolean;
   lastSyncedAt: number;
 }> {
@@ -235,8 +263,26 @@ export async function restoreWithCloudKey(
   saveGameProgress(merged);
   setLocalSyncKey(cleanKey);
 
+  // Restore player username and avatar
+  const currentProf = getUserProfile();
+  const restoredName = data.userProfile?.name || data.displayName || currentProf.name;
+  const restoredAvatar = data.userProfile?.avatar || data.avatar || currentProf.avatar;
+
+  const restoredProfile: UserProfile = {
+    ...currentProf,
+    name: restoredName,
+    avatar: restoredAvatar,
+    totalPoints: Math.max(currentProf.totalPoints, data.userProfile?.totalPoints || 0),
+    totalWordsFormed: Math.max(currentProf.totalWordsFormed, data.userProfile?.totalWordsFormed || 0),
+    categoriesCompleted: Math.max(currentProf.categoriesCompleted, data.userProfile?.categoriesCompleted || 0),
+    highestWord: data.userProfile?.highestWord || currentProf.highestWord,
+    highestWordPoints: Math.max(currentProf.highestWordPoints, data.userProfile?.highestWordPoints || 0),
+  };
+  saveUserProfile(restoredProfile);
+
   return {
     progress: merged,
+    userProfile: restoredProfile,
     restoredIAP: Boolean(merged.hasRemovedAds),
     lastSyncedAt: data.lastSyncedAt || Date.now(),
   };
@@ -248,6 +294,7 @@ export async function restoreWithCloudKey(
 export async function signInWithGoogleAccount(currentLocalProgress: GameProgress): Promise<{
   user: User;
   progress: GameProgress;
+  userProfile: UserProfile;
   cloudExisted: boolean;
   message: string;
 }> {
@@ -261,19 +308,42 @@ export async function signInWithGoogleAccount(currentLocalProgress: GameProgress
     let finalProgress = currentLocalProgress;
     let cloudExisted = false;
 
+    const currentProf: UserProfile = getUserProfile();
+    let mergedProfile: UserProfile = { ...currentProf };
+
     if (snap.exists()) {
       const data = snap.data() as Partial<CloudUserData>;
       if (data.gameProgress) {
         cloudExisted = true;
         finalProgress = mergeGameProgress(currentLocalProgress, data.gameProgress);
       }
+      if (data.userProfile) {
+        mergedProfile = {
+          ...currentProf,
+          name: data.userProfile.name || currentProf.name,
+          avatar: data.userProfile.avatar || currentProf.avatar,
+        };
+      } else if (data.displayName) {
+        mergedProfile.name = data.displayName;
+      }
+    } else {
+      if (
+        user.displayName &&
+        (!currentProf.name || currentProf.name === 'Player 1' || currentProf.name.startsWith('Guest'))
+      ) {
+        mergedProfile.name = user.displayName.slice(0, 16);
+      }
     }
+
+    saveUserProfile(mergedProfile);
 
     const cloudPayload: CloudUserData = {
       uid: user.uid,
       email: user.email,
-      displayName: user.displayName,
+      displayName: mergedProfile.name,
       photoURL: user.photoURL,
+      avatar: mergedProfile.avatar,
+      userProfile: mergedProfile,
       gameProgress: finalProgress,
       iapReceipts: finalProgress.hasRemovedAds ? ['com.wordblast.removeads'] : [],
       lastSyncedAt: Date.now(),
@@ -282,24 +352,13 @@ export async function signInWithGoogleAccount(currentLocalProgress: GameProgress
     await setDoc(userDocRef, cloudPayload, { merge: true });
     saveGameProgress(finalProgress);
 
-    const currentProf: UserProfile = getUserProfile();
-    if (
-      user.displayName &&
-      (!currentProf.name || currentProf.name === 'Player 1' || currentProf.name.startsWith('Guest'))
-    ) {
-      const updatedProf: UserProfile = {
-        ...currentProf,
-        name: user.displayName.slice(0, 16),
-      };
-      saveUserProfile(updatedProf);
-    }
-
     return {
       user,
       progress: finalProgress,
+      userProfile: mergedProfile,
       cloudExisted,
       message: cloudExisted
-        ? 'Account linked! Progress & IAP restored from cloud.'
+        ? 'Account linked! Username, progress & IAP restored from cloud.'
         : 'Account linked! Local progress backed up to cloud.',
     };
   } catch (err: any) {
@@ -314,13 +373,15 @@ export async function signInWithGoogleAccount(currentLocalProgress: GameProgress
 }
 
 /**
- * Syncs the current local game progress to the cloud
+ * Syncs the current local game progress and profile to the cloud
  */
 export async function syncProgressToCloud(progress: GameProgress): Promise<number> {
   const user = auth.currentUser;
+  const currentProf = getUserProfile();
+
   if (!user || user.isAnonymous) {
     const key = getOrCreateLocalSyncKey();
-    const res = await syncProgressWithCloudKey(key, progress);
+    const res = await syncProgressWithCloudKey(key, progress, currentProf);
     return res.syncedAt;
   }
 
@@ -329,8 +390,10 @@ export async function syncProgressToCloud(progress: GameProgress): Promise<numbe
   const cloudPayload: CloudUserData = {
     uid: user.uid,
     email: user.email,
-    displayName: user.displayName,
+    displayName: currentProf.name || user.displayName,
     photoURL: user.photoURL,
+    avatar: currentProf.avatar,
+    userProfile: currentProf,
     gameProgress: progress,
     iapReceipts: progress.hasRemovedAds ? ['com.wordblast.removeads'] : [],
     lastSyncedAt: now,
@@ -341,10 +404,11 @@ export async function syncProgressToCloud(progress: GameProgress): Promise<numbe
 }
 
 /**
- * Downloads and restores cloud progress and IAP for the signed-in user
+ * Downloads and restores cloud progress, profile, and IAP for the signed-in user
  */
 export async function restoreCloudProgress(localProgress: GameProgress): Promise<{
   progress: GameProgress;
+  userProfile: UserProfile;
   restoredIAP: boolean;
   lastSyncedAt: number;
 }> {
@@ -360,8 +424,10 @@ export async function restoreCloudProgress(localProgress: GameProgress): Promise
   if (!snap.exists()) {
     const now = Date.now();
     await syncProgressToCloud(localProgress);
+    const prof = getUserProfile();
     return {
       progress: localProgress,
+      userProfile: prof,
       restoredIAP: Boolean(localProgress.hasRemovedAds),
       lastSyncedAt: now,
     };
@@ -376,8 +442,23 @@ export async function restoreCloudProgress(localProgress: GameProgress): Promise
   }
 
   saveGameProgress(merged);
+
+  const currentProf = getUserProfile();
+  const restoredProfile: UserProfile = {
+    ...currentProf,
+    name: data.userProfile?.name || data.displayName || currentProf.name,
+    avatar: data.userProfile?.avatar || data.avatar || currentProf.avatar,
+    totalPoints: Math.max(currentProf.totalPoints, data.userProfile?.totalPoints || 0),
+    totalWordsFormed: Math.max(currentProf.totalWordsFormed, data.userProfile?.totalWordsFormed || 0),
+    categoriesCompleted: Math.max(currentProf.categoriesCompleted, data.userProfile?.categoriesCompleted || 0),
+    highestWord: data.userProfile?.highestWord || currentProf.highestWord,
+    highestWordPoints: Math.max(currentProf.highestWordPoints, data.userProfile?.highestWordPoints || 0),
+  };
+  saveUserProfile(restoredProfile);
+
   return {
     progress: merged,
+    userProfile: restoredProfile,
     restoredIAP: Boolean(merged.hasRemovedAds),
     lastSyncedAt: data.lastSyncedAt || Date.now(),
   };

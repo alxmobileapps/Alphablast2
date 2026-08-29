@@ -118,7 +118,14 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
       if (onUpdateGameProgress) {
         onUpdateGameProgress(res.progress);
       }
-      setProfile(getUserProfile());
+      if (res.userProfile) {
+        setProfile(res.userProfile);
+        setNameInput(res.userProfile.name);
+      } else {
+        const prof = getUserProfile();
+        setProfile(prof);
+        setNameInput(prof.name);
+      }
       haptics.specialCreated();
       showStatus(res.message, 'success');
     } catch (err: any) {
@@ -138,13 +145,27 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
     haptics.tap();
     setIsAuthLoading(true);
     try {
-      const res = await syncProgressWithCloudKey(syncKey, gameProgress, profile.name);
+      // Auto-commit any unsaved text in nameInput if user edited it
+      const currentName = nameInput.trim() || profile.name || 'Player 1';
+      const updatedProfile: UserProfile = {
+        ...profile,
+        name: currentName,
+      };
+      saveUserProfile(updatedProfile);
+      setProfile(updatedProfile);
+      setIsEditingName(false);
+
+      const res = await syncProgressWithCloudKey(syncKey, gameProgress, updatedProfile);
       setLastSyncTimestamp(res.syncedAt);
       if (onUpdateGameProgress) {
         onUpdateGameProgress(res.progress);
       }
+      if (res.userProfile) {
+        setProfile(res.userProfile);
+        setNameInput(res.userProfile.name);
+      }
       haptics.specialCreated();
-      showStatus(`Saved to Cloud! Your Backup Code is: ${syncKey}`, 'success');
+      showStatus(`Saved to Cloud! Username "${updatedProfile.name}" & progress backed up with Code: ${syncKey}`, 'success');
     } catch (err: any) {
       console.error(err);
       haptics.invalid();
@@ -170,12 +191,16 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
       if (onUpdateGameProgress) {
         onUpdateGameProgress(res.progress);
       }
+      if (res.userProfile) {
+        setProfile(res.userProfile);
+        setNameInput(res.userProfile.name);
+      }
       setIsRestoreOpen(false);
       haptics.specialCreated();
       showStatus(
         res.restoredIAP
-          ? `Progress & In-App Purchases restored with Code ${targetCode}!`
-          : `Progress restored successfully with Code ${targetCode}!`,
+          ? `Welcome back ${res.userProfile.name}! Progress & In-App Purchases restored with Code ${targetCode}!`
+          : `Welcome back ${res.userProfile.name}! Progress restored successfully with Code ${targetCode}!`,
         'success'
       );
     } catch (err: any) {
