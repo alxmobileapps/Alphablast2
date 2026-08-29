@@ -281,10 +281,10 @@ export async function signInWithGoogleAccount(currentLocalProgress: GameProgress
         : 'Account linked! Local progress backed up to cloud.',
     };
   } catch (err: any) {
-    console.error('Google Sign-in failed:', err);
+    console.error('Google Sign-in error details:', err);
     if (err?.code === 'auth/unauthorized-domain') {
       throw new Error(
-        'Domain authorization notice: This preview domain is not listed in Firebase Auth yet. Use the Cloud Sync Code below to backup and sync your progress instantly!'
+        `Domain authorization pending in Firebase (takes 2-5 minutes to propagate, or window.location.hostname is ${window.location.hostname}). You can use the instant "Backup to Cloud" button below anytime!`
       );
     }
     throw new Error(err?.message || 'Failed to sign in with Google');
