@@ -124,8 +124,8 @@ export function mergeGameProgress(local: GameProgress, cloud: GameProgress): Gam
     lastUpdated: Date.now(),
     // Currency: use highest value between local and cloud
     coins: Math.max(
-      typeof local.coins === 'number' ? local.coins : 50,
-      typeof cloud.coins === 'number' ? cloud.coins : 50
+      typeof local.coins === 'number' ? local.coins : 10,
+      typeof cloud.coins === 'number' ? cloud.coins : 10
     ),
     diamonds: Math.max(
       typeof local.diamonds === 'number' ? local.diamonds : 2,
