@@ -4,6 +4,7 @@ import { Header } from './components/Header';
 import { WordHistory } from './components/WordHistory';
 import { GameBoard } from './components/GameBoard';
 import { ThinkingRobot } from './components/ThinkingRobot';
+import { LifelinePromptToast } from './components/LifelinePromptToast';
 import { TopInfoBar, SpecialTileInfo } from './components/TopInfoBar';
 import { PowerUpBar } from './components/PowerUpBar';
 import { AdModal } from './components/AdModal';
@@ -145,11 +146,7 @@ export default function App() {
   const roundScoreRef = useRef<number>(0);
   const [totalScore, setTotalScore] = useState<number>(0);
   const [adRefillsUsed, setAdRefillsUsed] = useState<number>(0);
-  const [board, setBoard] = useState<Tile[][]>(() => {
-    const saved = loadGameProgress();
-    const targetId = saved.lastPlayedCategoryId || 1;
-    return generateInitialBoard(targetId);
-  });
+  const [board, setBoard] = useState<Tile[][]>(() => generateInitialBoard(INITIAL_CATEGORIES[0]?.id || 1));
   const [wordHistory, setWordHistory] = useState<WordHistoryItem[]>([]);
   const [powerUps, setPowerUps] = useState<PowerUpInventory>(() => {
     const saved = loadGameProgress();
@@ -184,21 +181,12 @@ export default function App() {
   const lastTutorialActivityRef = useRef<number>(Date.now());
 
   // Real-time Statement Banner State
-  const [boardBanner, setBoardBanner] = useState<BoardBanner | null>(() => {
-    const saved = loadGameProgress();
-    const targetId = saved.lastPlayedCategoryId || 1;
-    const initCat = INITIAL_CATEGORIES.find((c) => c.id === targetId) || INITIAL_CATEGORIES[0];
-    const targetCount = initCat?.targetCount || 5;
-    const catName = initCat?.name || 'Animals';
-    return {
-      id: 'b-init',
-      text: initCat?.gameMode === 'timer'
-        ? `Find as many words related to "${catName}" as you can!`
-        : `Find ${targetCount} words related to "${catName}"!`,
-      icon: initCat?.icon || '🎯',
-      type: 'category',
-      subtext: 'GOAL',
-    };
+  const [boardBanner, setBoardBanner] = useState<BoardBanner | null>({
+    id: 'b-init',
+    text: `Category Goal: Find ${INITIAL_CATEGORIES[0]?.targetCount || 5} "${INITIAL_CATEGORIES[0]?.name || 'Animals'}" words!`,
+    icon: '🎯',
+    type: 'category',
+    subtext: 'GOAL',
   });
   const bannerTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -325,10 +313,27 @@ export default function App() {
   const [pendingTargetCategory, setPendingTargetCategory] = useState<Category | null>(null);
   const completedCategoriesCountRef = useRef<number>(0);
 
+  // Lifeline Inactivity Prompt & Shine Animation State
+  const [isLifelinePromptActive, setIsLifelinePromptActive] = useState<boolean>(false);
+  const [isLifelineShining, setIsLifelineShining] = useState<boolean>(false);
+  const isLifelinePromptActiveRef = useRef<boolean>(false);
+  isLifelinePromptActiveRef.current = isLifelinePromptActive;
+
+  // Inactivity Loop Step Tracker: 'waiting_clue' | 'clue_active' | 'waiting_lifeline' | 'lifeline_active'
+  const idleCycleStepRef = useRef<'waiting_clue' | 'clue_active' | 'waiting_lifeline' | 'lifeline_active'>('waiting_clue');
+  const lastClueDismissedTimeRef = useRef<number>(0);
+  const lastLifelineFinishedTimeRef = useRef<number>(0);
+  const lifelineTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
   // Starts the round timer and clears the Ready prompt, triggering 3D tile roll
   const handleStartGameRound = useCallback(() => {
     roundStartTimeRef.current = Date.now();
     lastActivityTimeRef.current = Date.now();
+    lastClueDismissedTimeRef.current = 0;
+    lastLifelineFinishedTimeRef.current = 0;
+    idleCycleStepRef.current = 'waiting_clue';
+    setIsLifelinePromptActive(false);
+    setIsLifelineShining(false);
     isClueDismissedRef.current = false;
     clueDismissedUntilRef.current = 0;
     setIsReadyPromptOpen(false);
@@ -389,14 +394,23 @@ export default function App() {
     [triggerBanner]
   );
 
-  // Reset inactivity timer whenever the player interacts
+  // Reset inactivity timer and loop whenever the player interacts
   const registerPlayerActivity = useCallback(() => {
     lastActivityTimeRef.current = Date.now();
     lastTutorialActivityRef.current = Date.now();
+    lastClueDismissedTimeRef.current = 0;
+    lastLifelineFinishedTimeRef.current = 0;
+    idleCycleStepRef.current = 'waiting_clue';
     isClueDismissedRef.current = false;
     hasComputedRobotWordsRef.current = false;
     clueDismissedUntilRef.current = 0;
     setRobotWords(null);
+    setIsLifelinePromptActive(false);
+    setIsLifelineShining(false);
+    if (lifelineTimeoutRef.current) {
+      clearTimeout(lifelineTimeoutRef.current);
+      lifelineTimeoutRef.current = null;
+    }
   }, []);
 
   // Check if player is on their first category ever (Category 1, not completed yet)
@@ -422,18 +436,31 @@ export default function App() {
     lastTutorialActivityRef.current = Date.now();
   }, []);
 
-  // Handler for when the player manually closes the clue
+  // Handler for when the clue disappears or is closed
   const handleDismissClue = useCallback(() => {
     setRobotWords(null);
     setClue(null);
-    isClueDismissedRef.current = true;
-    hasComputedRobotWordsRef.current = false;
-    // When the player closes the clue, succeeding open should only be after 12 seconds of inactivity
-    clueDismissedUntilRef.current = Date.now() + 12000;
+    lastClueDismissedTimeRef.current = Date.now();
+    idleCycleStepRef.current = 'waiting_lifeline';
   }, []);
 
-  // Inactivity monitor: Trigger Clue after 5s of inactivity initially, or 12s after being dismissed
-  // Also redisplays beginner tutorial tip after 5s of inactivity
+  // Handler for when the lifeline prompt is dismissed manually
+  const handleDismissLifelinePrompt = useCallback(() => {
+    setIsLifelinePromptActive(false);
+    setIsLifelineShining(false);
+    if (lifelineTimeoutRef.current) {
+      clearTimeout(lifelineTimeoutRef.current);
+      lifelineTimeoutRef.current = null;
+    }
+    lastLifelineFinishedTimeRef.current = Date.now();
+    idleCycleStepRef.current = 'waiting_clue';
+  }, []);
+
+  // Inactivity monitor: Alternating Clue and Lifelines Shine/Zoom loop
+  // - 5s idle -> Show Clue
+  // - After clue disappears: 5s idle -> Show "You can use your lifelines!" + Shine/Zoom PowerUpBar for 3s
+  // - 5s after lifeline effect finishes: if no move -> Show Clue again
+  // - Loop continues until player interacts!
   useEffect(() => {
     const timer = setInterval(() => {
       const now = Date.now();
@@ -446,11 +473,18 @@ export default function App() {
         isGameOverOpen ||
         isAdModalOpen ||
         isPowerUpAdOpen ||
-        isShopOpen
+        isShopOpen ||
+        isCategoryModalOpen ||
+        isLeaderboardOpen ||
+        isProfileOpen ||
+        isSettingsOpen ||
+        isHelpOpen ||
+        isLetterPickerOpen ||
+        activePowerUp !== null
       ) {
         lastActivityTimeRef.current = Date.now();
         lastTutorialActivityRef.current = Date.now();
-        hasComputedRobotWordsRef.current = false;
+        idleCycleStepRef.current = 'waiting_clue';
         return;
       }
 
@@ -460,30 +494,52 @@ export default function App() {
         setIsTutorialTipDismissed(false);
       }
 
-      const idleDuration = now - lastActivityTimeRef.current;
       const currentBoard = boardRef.current;
       const currentCat = currentCategoryRef.current;
 
-      // Threshold: 5 seconds initially, 12 seconds if previously dismissed by player
-      const requiredIdleMs = isClueDismissedRef.current ? 12000 : 5000;
+      // STEP 1: Waiting for Clue (either after game start/move, or 5s after lifeline effect finished)
+      if (idleCycleStepRef.current === 'waiting_clue') {
+        const timeSinceEvent = lastLifelineFinishedTimeRef.current > 0
+          ? now - lastLifelineFinishedTimeRef.current
+          : now - lastActivityTimeRef.current;
 
-      if (
-        isCluesEnabled &&
-        idleDuration >= requiredIdleMs &&
-        !robotWordsRef.current &&
-        !hasComputedRobotWordsRef.current &&
-        now >= clueDismissedUntilRef.current
-      ) {
-        hasComputedRobotWordsRef.current = true;
-        const answers = findThreePossibleAnswers(currentBoard, currentCat.id, formedWordsRef.current);
-        if (answers.length > 0) {
-          setRobotWords(answers);
+        if (isCluesEnabled && timeSinceEvent >= 5000 && !robotWordsRef.current && !isLifelinePromptActiveRef.current) {
+          const answers = findThreePossibleAnswers(currentBoard, currentCat.id, formedWordsRef.current);
+          if (answers.length > 0) {
+            idleCycleStepRef.current = 'clue_active';
+            setRobotWords(answers);
+          }
         }
       }
-    }, 1000);
+      // STEP 2: Waiting for Lifeline (5s after clue disappeared)
+      else if (idleCycleStepRef.current === 'waiting_lifeline') {
+        const timeSinceClue = now - lastClueDismissedTimeRef.current;
+        if (timeSinceClue >= 5000 && !isLifelinePromptActiveRef.current && !robotWordsRef.current) {
+          idleCycleStepRef.current = 'lifeline_active';
+          setIsLifelinePromptActive(true);
+          setIsLifelineShining(true);
+          try {
+            playPowerUp();
+          } catch {}
+
+          if (lifelineTimeoutRef.current) {
+            clearTimeout(lifelineTimeoutRef.current);
+          }
+          lifelineTimeoutRef.current = setTimeout(() => {
+            setIsLifelinePromptActive(false);
+            setIsLifelineShining(false);
+            lastLifelineFinishedTimeRef.current = Date.now();
+            idleCycleStepRef.current = 'waiting_clue';
+          }, 3000);
+        }
+      }
+    }, 500);
 
     return () => {
       clearInterval(timer);
+      if (lifelineTimeoutRef.current) {
+        clearTimeout(lifelineTimeoutRef.current);
+      }
     };
   }, [
     isCluesEnabled,
@@ -494,6 +550,13 @@ export default function App() {
     isAdModalOpen,
     isPowerUpAdOpen,
     isShopOpen,
+    isCategoryModalOpen,
+    isLeaderboardOpen,
+    isProfileOpen,
+    isSettingsOpen,
+    isHelpOpen,
+    isLetterPickerOpen,
+    activePowerUp,
   ]);
 
   // REQUIREMENT: Highlight for 0.25 seconds the one-move new word when letters are replaced (color tiles in very soft, non-vibrant pastel light yellow)
@@ -628,19 +691,17 @@ export default function App() {
         const initSeconds = targetCat.timerSeconds || 120;
         setTimerSecondsRemaining(initSeconds);
         triggerBanner(
-          `Find as many words related to "${targetCat.name}" as you can!`,
+          `Round Start: ${Math.round(initSeconds / 60)}m Timer Rush for "${targetCat.name}" (Find as many words as you can!)`,
           'category',
           targetCat.icon || '⏱',
-          'TIMER RUSH',
-          4000
+          'TIMER RUSH'
         );
       } else {
         triggerBanner(
-          `Find ${targetCat.targetCount} words related to "${targetCat.name}"!`,
+          `Round Start: Target ${targetCat.targetCount} words for "${targetCat.name}" (7 Moves, +5 per Word, Max 7)`,
           'category',
           targetCat.icon || '🎯',
-          targetCat.isCustom ? 'COMMUNITY' : 'GOAL',
-          4000
+          targetCat.isCustom ? 'COMMUNITY' : 'START'
         );
       }
     },
@@ -1914,6 +1975,7 @@ export default function App() {
 
     if (target) {
       const { row: r, col: c } = target;
+      const upperLetter = (newLetter || 'A').trim().toUpperCase();
       setReplaceTargetTile(null);
       setIsLetterPickerOpen(false);
       setPendingReplaceLetter(null);
@@ -1923,39 +1985,59 @@ export default function App() {
       if (powerUps.replace <= 0) return;
       setPowerUps((prev) => ({ ...prev, replace: Math.max(0, prev.replace - 1) }));
 
+      isResolvingRef.current = true;
+      setIsAnimating(true);
+
       playPowerUp();
       haptics.tap();
       triggerBanner(
-        `Replaced Tile (${r + 1}, ${c + 1}) with Letter "${newLetter.toUpperCase()}"!`,
+        `Replaced Tile (${r + 1}, ${c + 1}) with Letter "${upperLetter}"!`,
         'special',
         '✏️',
         'REPLACE'
       );
 
-      let nextBoard = cloneBoard(board);
-      nextBoard[r][c] = {
-        ...nextBoard[r][c],
-        letter: newLetter.toUpperCase(),
+      // Create new clean board with replaced letter and reset all animation/match/special flags so letter is crystal clear and visible!
+      let currentBoardCopy = cloneBoard(boardRef.current);
+      currentBoardCopy[r][c] = {
+        ...currentBoardCopy[r][c],
+        letter: upperLetter,
+        special: 'none',
+        isMatched: false,
+        isClearing: false,
+        isWordHighlighted: false,
+        isElectrified: false,
+        isKnockedOff: false,
+        isVaporizing: false,
+        isBurning: false,
+        isBreakingBlock: false,
+        isFalling: false,
+        isMerged: false,
         isPopping: true,
       };
-      setBoard(nextBoard);
+      setBoard(currentBoardCopy);
 
       setTimeout(async () => {
-        setBoard((prev) =>
-          prev.map((rowArr) =>
-            rowArr.map((t) => (t.isPopping ? { ...t, isPopping: false } : t))
-          )
+        const unpoppedBoard = cloneBoard(currentBoardCopy).map((rowArr) =>
+          rowArr.map((t) => (t.isPopping ? { ...t, isPopping: false } : t))
         );
-        await resolveBoard(nextBoard, currentCategory.id);
+        setBoard(unpoppedBoard);
+        const resolved = await resolveBoard(unpoppedBoard, currentCategory.id);
+        if (resolved) {
+          setBoard(resolved);
+        }
+        setIsAnimating(false);
+        isResolvingRef.current = false;
       }, 250);
     } else {
       // Pre-select letter to transform any tile on board
-      setPendingReplaceLetter(newLetter.toUpperCase());
+      const upperLetter = (newLetter || 'A').trim().toUpperCase();
+      setPendingReplaceLetter(upperLetter);
       setIsLetterPickerOpen(false);
       setActivePowerUp('replace');
       registerPlayerActivity();
       triggerBanner(
-        `Letter "${newLetter.toUpperCase()}" chosen! Tap any tile on the board to transform it.`,
+        `Letter "${upperLetter}" chosen! Tap any tile on the board to transform it.`,
         'special',
         '✏️',
         'REPLACE',
@@ -2353,7 +2435,6 @@ export default function App() {
                     selectedTileForSwap={selectedTile}
                     banner={boardBanner}
                     tutorialTip={currentTutorialTip}
-                    category={currentCategory}
                     onDismissTutorialTip={handleDismissTutorialTip}
                     onDismissBanner={() => setBoardBanner(null)}
                   />
@@ -2395,7 +2476,7 @@ export default function App() {
                   />
                 </div>
 
-                {/* Elevated Power-Up Bar with Floating Yellow Inactivity Clue */}
+                {/* Elevated Power-Up Bar with Floating Yellow Inactivity Clue & Lifeline Prompt */}
                 <div className="w-full flex justify-center shrink-0 relative mt-0.5 sm:mt-1">
                   {/* Floating Clue Toast overlapping into powerup buttons area (Yellow 10% opacity, no 1/3) */}
                   {robotWords && robotWords.length > 0 && isCluesEnabled && (
@@ -2407,8 +2488,15 @@ export default function App() {
                     </div>
                   )}
 
+                  {/* Floating Lifeline Inactivity Prompt: "You can use your lifelines!" */}
+                  {isLifelinePromptActive && !robotWords && (
+                    <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 z-20 pointer-events-auto">
+                      <LifelinePromptToast onDismiss={handleDismissLifelinePrompt} />
+                    </div>
+                  )}
+
                   {/* Active Power-up Clue message bar */}
-                  {clue && !robotWords && (
+                  {clue && !robotWords && !isLifelinePromptActive && (
                     <div className="absolute -top-6 left-1/2 -translate-x-1/2 w-full max-w-[min(96vw,500px)] z-20 pointer-events-auto">
                       <div className="bg-yellow-400/15 backdrop-blur-md border border-yellow-400/40 text-yellow-200 rounded-full px-3 py-0.5 flex items-center justify-between text-[11px] sm:text-xs font-black shadow-lg animate-bounce">
                         <span className="flex items-center gap-1.5 truncate">
@@ -2432,6 +2520,7 @@ export default function App() {
                     movesGainedBonus={movesGainedBonus}
                     isTimerMode={currentCategory.gameMode === 'timer'}
                     timerSecondsRemaining={timerSecondsRemaining}
+                    isLifelineShining={isLifelineShining}
                     onSelectPowerUp={handleSelectPowerUp}
                     onCancelPowerUp={handleCancelPowerUp}
                     onOpenPowerUpAd={handleOpenPowerUpAd}

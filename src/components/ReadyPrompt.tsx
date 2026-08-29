@@ -93,10 +93,8 @@ export const ReadyPrompt: React.FC<ReadyPromptProps> = ({
           <h2 className="text-4xl sm:text-5xl font-black text-white drop-shadow-[0_2px_12px_rgba(56,189,248,0.7)] tracking-tight mb-2 flex items-center justify-center gap-2">
             <span>Ready?</span>
           </h2>
-          <p className="text-xs sm:text-sm font-medium text-cyan-200/90 mb-6 max-w-[260px] mx-auto leading-relaxed">
-            {category.gameMode === 'timer'
-              ? `Find as many words related to "${category.name}" as you can!`
-              : `Find ${category.targetCount} words related to "${category.name}"! Form words in any of 8 directions.`}
+          <p className="text-xs sm:text-sm font-medium text-cyan-200/80 mb-6 max-w-[240px] mx-auto leading-relaxed">
+            Form words in any of 8 directions. The timer starts when you press GO!
           </p>
 
           {/* Action Row: Small Home Button + "GO!" Button with 3D tactile finish */}

@@ -58,14 +58,14 @@ export const HomeMenu: React.FC<HomeMenuProps> = ({
   return (
     <div
       id="game-home-menu"
-      className="font-game-display h-full flex-1 w-full bg-[#050D24] text-white flex flex-col items-center justify-between p-2.5 sm:p-4 pb-3 sm:pb-4 select-none overflow-y-auto relative max-w-lg mx-auto"
+      className="h-full flex-1 w-full bg-[#050D24] text-white flex flex-col items-center justify-between p-2.5 sm:p-4 pb-3 sm:pb-4 select-none overflow-y-auto relative max-w-lg mx-auto"
     >
       {/* Background Ambient Lighting */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-2xl h-80 bg-gradient-to-b from-[#0EA5E9]/25 via-[#1E3A8A]/15 to-transparent pointer-events-none blur-3xl" />
       <div className="absolute bottom-10 left-1/4 w-72 h-72 bg-purple-900/20 pointer-events-none blur-3xl" />
 
       {/* Top Profile & Currency Bar */}
-      <div className="w-full max-w-md flex items-center justify-between gap-2 z-10 pt-1 sm:pt-2 shrink-0 font-game-display">
+      <div className="w-full max-w-md flex items-center justify-between gap-2 z-10 pt-1 sm:pt-2 shrink-0">
         {/* Profile Pill */}
         <button
           onClick={() => handleAction(onOpenProfile)}
@@ -76,11 +76,11 @@ export const HomeMenu: React.FC<HomeMenuProps> = ({
             {profile.avatar || '👑'}
           </div>
           <div className="flex flex-col text-left min-w-0">
-            <span className="text-[8px] sm:text-[9px] font-black uppercase tracking-wider text-cyan-300/90 leading-none">
+            <span className="font-futuristic text-[8px] sm:text-[9px] font-black uppercase tracking-[0.2em] text-cyan-300 text-glow-cyan leading-none">
               PLAYER
             </span>
-            <span className="text-xs sm:text-sm font-bold text-white truncate max-w-[100px] sm:max-w-[130px] leading-tight mt-0.5 drop-shadow">
-              {profile.name || 'Player 1'}
+            <span className="font-futuristic text-xs sm:text-sm font-black text-white truncate max-w-[100px] sm:max-w-[130px] leading-tight mt-0.5 tracking-wider drop-shadow">
+              {profile.name || 'PLAYER 1'}
             </span>
           </div>
         </button>
@@ -91,12 +91,12 @@ export const HomeMenu: React.FC<HomeMenuProps> = ({
           className="flex items-center gap-1.5 sm:gap-2.5 bg-gradient-to-r from-[#0C2158]/95 to-[#162E6C]/95 hover:from-[#132E75] hover:to-[#1E3A8A] border-2 border-amber-400/70 hover:border-amber-400 rounded-2xl px-2.5 py-1.5 sm:px-3.5 sm:py-2 shadow-[0_4px_16px_rgba(245,158,11,0.25)] backdrop-blur-md transition-all active:scale-95 cursor-pointer group"
           title="Shop & Bank: Add Coins & Diamonds"
         >
-          <div className="flex items-center gap-1 font-black text-xs sm:text-sm text-amber-300 drop-shadow">
+          <div className="flex items-center gap-1 font-futuristic text-xs sm:text-sm font-black text-amber-300 text-glow-amber tracking-wider">
             <span className="text-sm sm:text-base group-hover:scale-110 transition-transform">🪙</span>
             <span>{gameProgress.coins || 0}</span>
           </div>
           <div className="h-4 sm:h-5 w-[1.5px] bg-blue-400/40 rounded-full" />
-          <div className="flex items-center gap-1 font-black text-xs sm:text-sm text-cyan-300 drop-shadow">
+          <div className="flex items-center gap-1 font-futuristic text-xs sm:text-sm font-black text-cyan-300 text-glow-cyan tracking-wider">
             <span className="text-sm sm:text-base group-hover:scale-110 transition-transform">💎</span>
             <span>{gameProgress.diamonds || 0}</span>
           </div>
@@ -108,10 +108,10 @@ export const HomeMenu: React.FC<HomeMenuProps> = ({
       </div>
 
       {/* Center Container: Official AlphaBlast Logo & Main Game Menu Card */}
-      <div className="w-full max-w-md my-auto flex flex-col items-center z-10 py-1 sm:py-2 font-game-display">
+      <div className="w-full max-w-md my-auto flex flex-col items-center z-10 py-1 sm:py-2">
         {/* AlphaBlast Logo - Full Width Matching Board */}
         <div className="flex flex-col items-center mb-1.5 sm:mb-2 relative w-full px-0 sm:px-1">
-          <div className="relative group w-full flex justify-center">
+          <div className="relative group w-full flex flex-col items-center justify-center">
             <div className="absolute -inset-1 bg-gradient-to-r from-cyan-500/30 via-amber-400/30 to-sky-500/30 rounded-2xl blur-md opacity-40 group-hover:opacity-70 transition duration-300" />
             <img
               src={alphablastLogoImage}
@@ -125,6 +125,14 @@ export const HomeMenu: React.FC<HomeMenuProps> = ({
               referrerPolicy="no-referrer"
               className="relative w-full max-h-[80px] sm:max-h-[105px] h-auto object-contain drop-shadow-[0_8px_24px_rgba(14,165,233,0.6)] transform transition duration-300 hover:scale-[1.01]"
             />
+            {/* Starforge-style Futuristic Subtitle with Accent Lines */}
+            <div className="mt-1 flex items-center justify-center gap-2 w-full px-4">
+              <div className="h-[1.5px] flex-1 bg-gradient-to-r from-transparent via-cyan-400/60 to-cyan-400" />
+              <span className="font-futuristic text-[9px] sm:text-[10px] font-black uppercase tracking-[0.25em] text-cyan-300 text-glow-cyan whitespace-nowrap">
+                A WORD PUZZLE ADVENTURE
+              </span>
+              <div className="h-[1.5px] flex-1 bg-gradient-to-l from-transparent via-cyan-400/60 to-cyan-400" />
+            </div>
           </div>
         </div>
 
@@ -155,15 +163,21 @@ export const HomeMenu: React.FC<HomeMenuProps> = ({
 
               <div className="flex items-center gap-2.5 relative z-10 min-w-0">
                 <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white/20 border border-white/40 flex items-center justify-center text-xl shadow-inner group-hover:scale-110 transition-transform shrink-0">
-                  <Play className="w-5 h-5 text-white fill-white ml-0.5" />
+                  <Play className="w-4.5 h-4.5 text-white fill-white ml-0.5" />
                 </div>
-                <div className="font-game-heading text-lg sm:text-xl font-bold tracking-wide text-white leading-tight truncate drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]">
-                  Game Board
+                <div
+                  className="font-futuristic text-base sm:text-lg font-black text-white leading-tight truncate tracking-[0.08em] uppercase"
+                  style={{
+                    textShadow:
+                      '0 1px 0 #0284C7, 0 2px 0 #0369A1, 0 3px 0 #075985, 0 4px 1px #0C4A6E, 0 5px 8px rgba(0, 0, 0, 0.8), 0 0 12px rgba(255, 255, 255, 0.6)'
+                  }}
+                >
+                  GAME BOARD
                 </div>
               </div>
 
               <div className="w-7 h-7 rounded-full bg-white/20 border border-white/40 flex items-center justify-center text-white shrink-0 group-hover:translate-x-1 transition-transform">
-                <ChevronRight className="w-4 h-4" />
+                <ChevronRight className="w-3.5 h-3.5" />
               </div>
             </button>
 
@@ -177,8 +191,8 @@ export const HomeMenu: React.FC<HomeMenuProps> = ({
                 <div className="w-8 h-8 rounded-xl bg-[#071330] border border-[#38BDF8]/40 flex items-center justify-center text-base shrink-0 group-hover:scale-105 transition-transform">
                   <Layers className="w-4 h-4 text-cyan-300" />
                 </div>
-                <div className="text-sm sm:text-base font-bold text-white leading-tight tracking-wide">
-                  Categories
+                <div className="font-futuristic text-xs sm:text-sm font-black text-white leading-tight tracking-wider uppercase group-hover:text-cyan-300 transition-colors">
+                  CATEGORIES
                 </div>
               </div>
               <ChevronRight className="w-4 h-4 text-cyan-400/60 group-hover:text-cyan-300 group-hover:translate-x-0.5 transition-all shrink-0" />
@@ -195,13 +209,15 @@ export const HomeMenu: React.FC<HomeMenuProps> = ({
                   <ShoppingBag className="w-4 h-4 text-amber-300" />
                 </div>
                 <div className="min-w-0">
-                  <div className="text-sm sm:text-base font-bold text-white leading-tight flex items-center gap-1.5 tracking-wide">
-                    <span>Store & Bank</span>
-                    <span className="text-[9px] font-black uppercase bg-gradient-to-r from-amber-400 to-yellow-400 text-amber-950 px-1.5 py-0.5 rounded-md shadow-xs">
+                  <div className="text-xs sm:text-sm font-black text-white leading-tight flex items-center gap-1.5">
+                    <span className="font-futuristic tracking-wider uppercase group-hover:text-amber-300 transition-colors">
+                      STORE & BANK
+                    </span>
+                    <span className="font-futuristic text-[8px] sm:text-[9px] font-black uppercase bg-gradient-to-r from-amber-400 to-yellow-400 text-amber-950 px-1.5 py-0.2 rounded-md shadow-xs tracking-wider">
                       STORE
                     </span>
                   </div>
-                  <div className="text-[11px] sm:text-xs text-amber-200/80 font-medium truncate">
+                  <div className="font-tech text-[10px] sm:text-[11px] text-amber-200/70 font-semibold truncate tracking-wide">
                     Power-ups, coins, diamonds & packs
                   </div>
                 </div>
@@ -220,11 +236,11 @@ export const HomeMenu: React.FC<HomeMenuProps> = ({
                   <User className="w-4 h-4 text-cyan-300" />
                 </div>
                 <div className="min-w-0">
-                  <div className="text-sm sm:text-base font-bold text-white leading-tight tracking-wide">
-                    Profile & Stats
+                  <div className="font-futuristic text-xs sm:text-sm font-black text-white leading-tight tracking-wider uppercase group-hover:text-cyan-300 transition-colors">
+                    PROFILE & STATS
                   </div>
-                  <div className="text-[11px] sm:text-xs text-cyan-200/80 font-medium truncate">
-                    {profile.name || 'Player 1'} • ★ {totalStars} Total Stars
+                  <div className="font-tech text-[10px] sm:text-[11px] text-cyan-200/70 font-semibold truncate tracking-wide">
+                    {profile.name || 'PLAYER 1'} • ★ {totalStars} TOTAL STARS
                   </div>
                 </div>
               </div>
@@ -242,10 +258,10 @@ export const HomeMenu: React.FC<HomeMenuProps> = ({
                   <Trophy className="w-4 h-4 text-amber-300" />
                 </div>
                 <div className="min-w-0">
-                  <div className="text-sm sm:text-base font-bold text-white leading-tight tracking-wide">
-                    Leaderboard
+                  <div className="font-futuristic text-xs sm:text-sm font-black text-white leading-tight tracking-wider uppercase group-hover:text-amber-300 transition-colors">
+                    LEADERBOARD
                   </div>
-                  <div className="text-[11px] sm:text-xs text-amber-200/80 font-medium truncate">
+                  <div className="font-tech text-[10px] sm:text-[11px] text-amber-200/70 font-semibold truncate tracking-wide">
                     Global rankings & high scores
                   </div>
                 </div>
@@ -264,10 +280,10 @@ export const HomeMenu: React.FC<HomeMenuProps> = ({
                   <HelpCircle className="w-4 h-4 text-emerald-300" />
                 </div>
                 <div className="min-w-0">
-                  <div className="text-sm sm:text-base font-bold text-white leading-tight tracking-wide">
-                    How To Play
+                  <div className="font-futuristic text-xs sm:text-sm font-black text-white leading-tight tracking-wider uppercase group-hover:text-emerald-300 transition-colors">
+                    HOW TO PLAY
                   </div>
-                  <div className="text-[11px] sm:text-xs text-emerald-200/80 font-medium truncate">
+                  <div className="font-tech text-[10px] sm:text-[11px] text-emerald-200/70 font-semibold truncate tracking-wide">
                     Rules, swaps, bombs & specials
                   </div>
                 </div>
@@ -286,10 +302,10 @@ export const HomeMenu: React.FC<HomeMenuProps> = ({
                   <Settings className="w-4 h-4 text-indigo-300" />
                 </div>
                 <div className="min-w-0">
-                  <div className="text-sm sm:text-base font-bold text-white leading-tight tracking-wide">
-                    Settings
+                  <div className="font-futuristic text-xs sm:text-sm font-black text-white leading-tight tracking-wider uppercase group-hover:text-indigo-300 transition-colors">
+                    SETTINGS
                   </div>
-                  <div className="text-[11px] sm:text-xs text-indigo-200/80 font-medium truncate">
+                  <div className="font-tech text-[10px] sm:text-[11px] text-indigo-200/70 font-semibold truncate tracking-wide">
                     Audio FX, music, haptics & data
                   </div>
                 </div>
@@ -300,9 +316,11 @@ export const HomeMenu: React.FC<HomeMenuProps> = ({
         </div>
       </div>
 
-      {/* Footer text */}
-      <div className="font-game-display text-center text-[10px] sm:text-[11px] text-cyan-300/60 font-semibold z-10 pb-0.5 shrink-0 tracking-wide">
-        AlphaBlast • Matching & Word Play
+      {/* Footer text with sci-fi accent lines */}
+      <div className="flex items-center justify-center gap-2 text-center text-[9px] sm:text-[10px] text-cyan-300/60 font-futuristic uppercase tracking-[0.2em] z-10 pb-0.5 shrink-0">
+        <div className="h-[1px] w-6 bg-gradient-to-r from-transparent to-cyan-400/40" />
+        <span>ALPHABLAST • MATCHING & WORD PLAY</span>
+        <div className="h-[1px] w-6 bg-gradient-to-l from-transparent to-cyan-400/40" />
       </div>
     </div>
   );

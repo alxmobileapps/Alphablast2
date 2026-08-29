@@ -11,6 +11,7 @@ interface PowerUpBarProps {
   movesGainedBonus?: number | null;
   isTimerMode?: boolean;
   timerSecondsRemaining?: number;
+  isLifelineShining?: boolean;
   onSelectPowerUp: (type: PowerUpType) => void;
   onCancelPowerUp: () => void;
   onOpenPowerUpAd?: (type?: PowerUpType) => void;
@@ -24,6 +25,7 @@ export const PowerUpBar: React.FC<PowerUpBarProps> = ({
   movesGainedBonus,
   isTimerMode = false,
   timerSecondsRemaining,
+  isLifelineShining = false,
   onSelectPowerUp,
   onCancelPowerUp,
   onOpenPowerUpAd,
@@ -55,7 +57,21 @@ export const PowerUpBar: React.FC<PowerUpBarProps> = ({
   };
 
   return (
-    <div className="w-full max-w-2xl mx-auto bg-[#0B1E52]/95 backdrop-blur-md border-2 border-[#193B8A] rounded-2xl sm:rounded-3xl p-1.5 sm:p-2 shadow-[0_12px_32px_rgba(0,0,0,0.6)] flex items-center justify-between gap-1.5 sm:gap-2.5 relative select-none box-border">
+    <div
+      id="power-up-bar-container"
+      className={`w-full max-w-2xl mx-auto bg-[#0B1E52]/95 backdrop-blur-md rounded-2xl sm:rounded-3xl p-1.5 sm:p-2 flex items-center justify-between gap-1.5 sm:gap-2.5 relative select-none box-border transition-all duration-300 ${
+        isLifelineShining
+          ? 'animate-lifeline-zoom-shine border-2 border-yellow-300 ring-4 ring-yellow-400/90 shadow-[0_0_35px_rgba(250,204,21,0.95)]'
+          : 'border-2 border-[#193B8A] shadow-[0_12px_32px_rgba(0,0,0,0.6)]'
+      }`}
+    >
+      {/* Light Beam Sweep Over the Lifelines Bar */}
+      {isLifelineShining && (
+        <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-2xl sm:rounded-3xl z-30">
+          <div className="w-1/2 h-full bg-gradient-to-r from-transparent via-white/50 to-transparent skew-x-[-25deg] animate-light-beam-sweep" />
+        </div>
+      )}
+
       {/* Active Powerup Cancel Banner */}
       {activePowerUp && (
         <button
@@ -126,6 +142,8 @@ export const PowerUpBar: React.FC<PowerUpBarProps> = ({
             className={`relative w-7.5 h-7.5 xs:w-8.5 xs:h-8.5 sm:w-9.5 sm:h-9.5 md:w-10 md:h-10 rounded-full flex items-center justify-center text-white border-1.5 transition-all shadow-md ${
               activePowerUp === 'hammer'
                 ? 'bg-gradient-to-b from-[#38BDF8] to-[#0284C7] border-white ring-2 ring-cyan-300 scale-105'
+                : isLifelineShining
+                ? 'bg-gradient-to-b from-[#38BDF8] to-[#0284C7] border-yellow-200 ring-2 ring-yellow-300 shadow-[0_0_12px_rgba(250,204,21,0.8)] animate-bounce cursor-pointer'
                 : inventory.hammer > 0
                 ? 'bg-gradient-to-b from-[#38BDF8] to-[#0284C7] border-[#BAE6FD] hover:scale-105 active:scale-95 cursor-pointer'
                 : 'bg-slate-700/80 text-slate-400 border-slate-600 hover:scale-105 active:scale-95 cursor-pointer'
@@ -157,6 +175,8 @@ export const PowerUpBar: React.FC<PowerUpBarProps> = ({
             className={`relative w-7.5 h-7.5 xs:w-8.5 xs:h-8.5 sm:w-9.5 sm:h-9.5 md:w-10 md:h-10 rounded-full flex items-center justify-center text-white border-1.5 transition-all shadow-md ${
               activePowerUp === 'swap'
                 ? 'bg-gradient-to-b from-[#34D399] to-[#059669] border-white ring-2 ring-emerald-300 scale-105'
+                : isLifelineShining
+                ? 'bg-gradient-to-b from-[#34D399] to-[#059669] border-yellow-200 ring-2 ring-yellow-300 shadow-[0_0_12px_rgba(250,204,21,0.8)] animate-bounce cursor-pointer'
                 : inventory.swap > 0
                 ? 'bg-gradient-to-b from-[#34D399] to-[#059669] border-[#A7F3D0] hover:scale-105 active:scale-95 cursor-pointer'
                 : 'bg-slate-700/80 text-slate-400 border-slate-600 hover:scale-105 active:scale-95 cursor-pointer'
@@ -188,6 +208,8 @@ export const PowerUpBar: React.FC<PowerUpBarProps> = ({
             className={`relative w-7.5 h-7.5 xs:w-8.5 xs:h-8.5 sm:w-9.5 sm:h-9.5 md:w-10 md:h-10 rounded-full flex items-center justify-center text-white border-1.5 transition-all shadow-md ${
               activePowerUp === 'replace'
                 ? 'bg-gradient-to-b from-[#A78BFA] to-[#7C3AED] border-white ring-2 ring-purple-300 scale-105'
+                : isLifelineShining
+                ? 'bg-gradient-to-b from-[#A78BFA] to-[#7C3AED] border-yellow-200 ring-2 ring-yellow-300 shadow-[0_0_12px_rgba(250,204,21,0.8)] animate-bounce cursor-pointer'
                 : inventory.replace > 0
                 ? 'bg-gradient-to-b from-[#A78BFA] to-[#7C3AED] border-[#DDD6FE] hover:scale-105 active:scale-95 cursor-pointer'
                 : 'bg-slate-700/80 text-slate-400 border-slate-600 hover:scale-105 active:scale-95 cursor-pointer'
@@ -217,7 +239,9 @@ export const PowerUpBar: React.FC<PowerUpBarProps> = ({
             onClick={() => handleClick('rearrange')}
             disabled={disabled}
             className={`relative w-7.5 h-7.5 xs:w-8.5 xs:h-8.5 sm:w-9.5 sm:h-9.5 md:w-10 md:h-10 rounded-full flex items-center justify-center text-white border-1.5 transition-all shadow-md ${
-              inventory.rearrange > 0
+              isLifelineShining
+                ? 'bg-gradient-to-b from-[#2DD4BF] to-[#0D9488] border-yellow-200 ring-2 ring-yellow-300 shadow-[0_0_12px_rgba(250,204,21,0.8)] animate-bounce cursor-pointer'
+                : inventory.rearrange > 0
                 ? 'bg-gradient-to-b from-[#2DD4BF] to-[#0D9488] border-[#99F6E4] hover:scale-105 active:scale-95 cursor-pointer'
                 : 'bg-slate-700/80 text-slate-400 border-slate-600 hover:scale-105 active:scale-95 cursor-pointer'
             }`}
@@ -248,6 +272,8 @@ export const PowerUpBar: React.FC<PowerUpBarProps> = ({
             className={`relative w-7.5 h-7.5 xs:w-8.5 xs:h-8.5 sm:w-9.5 sm:h-9.5 md:w-10 md:h-10 rounded-full flex items-center justify-center text-white border-1.5 transition-all shadow-md ${
               activePowerUp === 'clue'
                 ? 'bg-gradient-to-b from-[#F472B6] to-[#DB2777] border-white ring-2 ring-pink-300 scale-105'
+                : isLifelineShining
+                ? 'bg-gradient-to-b from-[#F472B6] to-[#DB2777] border-yellow-200 ring-2 ring-yellow-300 shadow-[0_0_12px_rgba(250,204,21,0.8)] animate-bounce cursor-pointer'
                 : inventory.clue > 0
                 ? 'bg-gradient-to-b from-[#F472B6] to-[#DB2777] border-[#FBCFE8] hover:scale-105 active:scale-95 cursor-pointer'
                 : 'bg-slate-700/80 text-slate-400 border-slate-600 hover:scale-105 active:scale-95 cursor-pointer'
