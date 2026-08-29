@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { Play, Home } from 'lucide-react';
+import { Play, Home, Sparkles } from 'lucide-react';
 import { Category } from '../types';
 import { playPowerUp, playTileSelect } from '../utils/audio';
 
@@ -78,15 +78,21 @@ export const ReadyPrompt: React.FC<ReadyPromptProps> = ({
           <div className="absolute -top-12 -right-12 w-32 h-32 bg-cyan-400/15 rounded-full blur-2xl pointer-events-none" />
           <div className="absolute -bottom-12 -left-12 w-32 h-32 bg-blue-600/20 rounded-full blur-2xl pointer-events-none" />
 
-          {/* Category Preview Pill matching header category bar */}
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#0C2158] border border-[#1E3A8A] mb-4 shadow-inner">
-            <span className="text-xl leading-none drop-shadow">{category.icon || '🎯'}</span>
-            <span className="text-xs font-black text-white tracking-wide truncate max-w-[140px]">
+          {/* Category Preview Pill with 2-second Zoom In + Shining Emphasis */}
+          <div className="relative inline-flex items-center justify-center gap-2.5 px-4 sm:px-5 py-2 sm:py-2.5 rounded-full bg-[#0C2158] border-2 border-sky-400/80 mb-4 shadow-inner overflow-hidden animate-category-zoom-shine select-none max-w-full">
+            {/* Shining light beam traversing across */}
+            <div className="absolute inset-0 w-1/2 h-full bg-gradient-to-r from-transparent via-white/80 to-transparent pointer-events-none animate-shine-beam" />
+
+            {/* Sparkle Gleam Icon Left */}
+            <Sparkles className="w-4 h-4 text-amber-300 animate-sparkle-gleam pointer-events-none shrink-0" />
+
+            <span className="text-xl sm:text-2xl leading-none drop-shadow relative z-10">{category.icon || '🎯'}</span>
+            <span className="text-sm sm:text-base font-black text-white tracking-wide text-center relative z-10 drop-shadow-[0_1px_4px_rgba(0,0,0,0.9)] uppercase">
               {category.name}
             </span>
-            <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-gradient-to-r from-amber-400 to-yellow-300 text-[#2C1810] shadow-xs shrink-0">
-              Goal: {category.targetCount}
-            </span>
+
+            {/* Sparkle Gleam Icon Right */}
+            <Sparkles className="w-4 h-4 text-sky-300 animate-sparkle-gleam pointer-events-none shrink-0" style={{ animationDelay: '0.2s' }} />
           </div>
 
           {/* Display Text: "Ready?" matching board tile letter styling */}
