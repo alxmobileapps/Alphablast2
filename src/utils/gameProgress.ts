@@ -27,7 +27,7 @@ const DEFAULT_PROGRESS: GameProgress = {
   categoryStars: {},
   totalRoundsCleared: 0,
   lastUpdated: Date.now(),
-  coins: 10, // 10 free coins for new users
+  coins: 50, // 50 free coins for new users
   diamonds: 2, // 2 free diamonds for new users
   awarded10kMilestones: [],
   awarded15kMilestones: [],
@@ -64,7 +64,7 @@ export function loadGameProgress(): GameProgress {
         categoryStars: parsed.categoryStars || {},
         totalRoundsCleared: parsed.totalRoundsCleared || completed.size,
         lastUpdated: parsed.lastUpdated || Date.now(),
-        coins: typeof parsed.coins === 'number' ? parsed.coins : 10,
+        coins: typeof parsed.coins === 'number' ? parsed.coins : 50,
         diamonds: typeof parsed.diamonds === 'number' ? parsed.diamonds : 2,
         awarded10kMilestones: Array.isArray(parsed.awarded10kMilestones) ? parsed.awarded10kMilestones : [],
         awarded15kMilestones: Array.isArray(parsed.awarded15kMilestones) ? parsed.awarded15kMilestones : [],
