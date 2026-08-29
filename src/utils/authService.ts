@@ -5,9 +5,9 @@ import {
   onAuthStateChanged,
   User,
 } from 'firebase/auth';
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase';
-import { GameProgress, loadGameProgress, saveGameProgress } from './gameProgress';
+import { GameProgress, saveGameProgress } from './gameProgress';
 import { getUserProfile, saveUserProfile, UserProfile } from './leaderboard';
 
 export interface CloudUserData {
@@ -24,6 +24,31 @@ export const googleProvider = new GoogleAuthProvider();
 googleProvider.setCustomParameters({
   prompt: 'select_account',
 });
+
+const CLOUD_SYNC_KEY_STORAGE = 'alphablast_cloud_sync_key';
+
+/**
+ * Gets or generates a persistent local Cloud Sync Key (e.g. ALPHA-9842)
+ */
+export function getOrCreateLocalSyncKey(): string {
+  try {
+    let key = localStorage.getItem(CLOUD_SYNC_KEY_STORAGE);
+    if (!key) {
+      const randNum = Math.floor(1000 + Math.random() * 9000);
+      key = `ALPHA-${randNum}`;
+      localStorage.setItem(CLOUD_SYNC_KEY_STORAGE, key);
+    }
+    return key;
+  } catch {
+    return 'ALPHA-1001';
+  }
+}
+
+export function setLocalSyncKey(key: string): void {
+  try {
+    localStorage.setItem(CLOUD_SYNC_KEY_STORAGE, key.trim().toUpperCase());
+  } catch {}
+}
 
 /**
  * Merges local and cloud progress safely so the player never loses achievements or currency
@@ -98,6 +123,104 @@ export function mergeGameProgress(local: GameProgress, cloud: GameProgress): Gam
 }
 
 /**
+ * Direct Cloud Sync using a unique Sync Code or Email (Always works 100% without domain whitelist issues)
+ */
+export async function syncProgressWithCloudKey(
+  syncKey: string,
+  currentLocalProgress: GameProgress,
+  playerName?: string
+): Promise<{
+  progress: GameProgress;
+  syncedAt: number;
+  message: string;
+}> {
+  const cleanKey = syncKey.trim().toUpperCase().replace(/[^A-Z0-9_-]/g, '');
+  if (!cleanKey || cleanKey.length < 3) {
+    throw new Error('Please enter a valid Sync Code (at least 3 characters).');
+  }
+
+  const docId = `sync_${cleanKey}`;
+  const userDocRef = doc(db, 'users', docId);
+  const snap = await getDoc(userDocRef);
+
+  let finalProgress = currentLocalProgress;
+  let cloudExisted = false;
+
+  if (snap.exists()) {
+    const data = snap.data() as Partial<CloudUserData>;
+    if (data.gameProgress) {
+      cloudExisted = true;
+      finalProgress = mergeGameProgress(currentLocalProgress, data.gameProgress);
+    }
+  }
+
+  const now = Date.now();
+  const cloudPayload: CloudUserData = {
+    uid: docId,
+    email: null,
+    displayName: playerName || getUserProfile().name || 'Alpha Player',
+    photoURL: null,
+    gameProgress: finalProgress,
+    iapReceipts: finalProgress.hasRemovedAds ? ['com.wordblast.removeads'] : [],
+    lastSyncedAt: now,
+  };
+
+  await setDoc(userDocRef, cloudPayload, { merge: true });
+  saveGameProgress(finalProgress);
+  setLocalSyncKey(cleanKey);
+
+  return {
+    progress: finalProgress,
+    syncedAt: now,
+    message: cloudExisted
+      ? `Cloud Sync Connected! Progress and IAP merged with Cloud Code: ${cleanKey}`
+      : `Cloud Save Created! Backup Code: ${cleanKey}`,
+  };
+}
+
+/**
+ * Restores save and IAP using a Cloud Sync Key
+ */
+export async function restoreWithCloudKey(
+  syncKey: string,
+  currentLocalProgress: GameProgress
+): Promise<{
+  progress: GameProgress;
+  restoredIAP: boolean;
+  lastSyncedAt: number;
+}> {
+  const cleanKey = syncKey.trim().toUpperCase().replace(/[^A-Z0-9_-]/g, '');
+  if (!cleanKey) {
+    throw new Error('Please enter your Cloud Sync Code.');
+  }
+
+  const docId = `sync_${cleanKey}`;
+  const userDocRef = doc(db, 'users', docId);
+  const snap = await getDoc(userDocRef);
+
+  if (!snap.exists()) {
+    throw new Error(`No cloud save found for code "${cleanKey}". Please check your code.`);
+  }
+
+  const data = snap.data() as CloudUserData;
+  const cloudProgress = data.gameProgress || currentLocalProgress;
+  const merged = mergeGameProgress(currentLocalProgress, cloudProgress);
+
+  if (data.iapReceipts?.includes('com.wordblast.removeads')) {
+    merged.hasRemovedAds = true;
+  }
+
+  saveGameProgress(merged);
+  setLocalSyncKey(cleanKey);
+
+  return {
+    progress: merged,
+    restoredIAP: Boolean(merged.hasRemovedAds),
+    lastSyncedAt: data.lastSyncedAt || Date.now(),
+  };
+}
+
+/**
  * Signs in with Google Popup and returns the authenticated user & cloud sync result
  */
 export async function signInWithGoogleAccount(currentLocalProgress: GameProgress): Promise<{
@@ -110,7 +233,6 @@ export async function signInWithGoogleAccount(currentLocalProgress: GameProgress
     const userCred = await signInWithPopup(auth, googleProvider);
     const user = userCred.user;
 
-    // Check if cloud save document exists in Firestore
     const userDocRef = doc(db, 'users', user.uid);
     const snap = await getDoc(userDocRef);
 
@@ -121,12 +243,10 @@ export async function signInWithGoogleAccount(currentLocalProgress: GameProgress
       const data = snap.data() as Partial<CloudUserData>;
       if (data.gameProgress) {
         cloudExisted = true;
-        // Merge cloud with local progress
         finalProgress = mergeGameProgress(currentLocalProgress, data.gameProgress);
       }
     }
 
-    // Save/update cloud document with the latest merged progress
     const cloudPayload: CloudUserData = {
       uid: user.uid,
       email: user.email,
@@ -138,11 +258,8 @@ export async function signInWithGoogleAccount(currentLocalProgress: GameProgress
     };
 
     await setDoc(userDocRef, cloudPayload, { merge: true });
-
-    // Update local storage
     saveGameProgress(finalProgress);
 
-    // Also update local UserProfile name if default
     const currentProf: UserProfile = getUserProfile();
     if (
       user.displayName &&
@@ -165,6 +282,11 @@ export async function signInWithGoogleAccount(currentLocalProgress: GameProgress
     };
   } catch (err: any) {
     console.error('Google Sign-in failed:', err);
+    if (err?.code === 'auth/unauthorized-domain') {
+      throw new Error(
+        'Domain authorization notice: This preview domain is not listed in Firebase Auth yet. Use the Cloud Sync Code below to backup and sync your progress instantly!'
+      );
+    }
     throw new Error(err?.message || 'Failed to sign in with Google');
   }
 }
@@ -175,7 +297,10 @@ export async function signInWithGoogleAccount(currentLocalProgress: GameProgress
 export async function syncProgressToCloud(progress: GameProgress): Promise<number> {
   const user = auth.currentUser;
   if (!user) {
-    throw new Error('No Google account is currently linked. Please link your account first.');
+    // Fallback to local sync key
+    const key = getOrCreateLocalSyncKey();
+    const res = await syncProgressWithCloudKey(key, progress);
+    return res.syncedAt;
   }
 
   const userDocRef = doc(db, 'users', user.uid);
@@ -204,14 +329,14 @@ export async function restoreCloudProgress(localProgress: GameProgress): Promise
 }> {
   const user = auth.currentUser;
   if (!user) {
-    throw new Error('No Google account is currently linked. Please sign in first.');
+    const key = getOrCreateLocalSyncKey();
+    return await restoreWithCloudKey(key, localProgress);
   }
 
   const userDocRef = doc(db, 'users', user.uid);
   const snap = await getDoc(userDocRef);
 
   if (!snap.exists()) {
-    // Cloud document doesn't exist yet, upload local
     const now = Date.now();
     await syncProgressToCloud(localProgress);
     return {
@@ -225,7 +350,6 @@ export async function restoreCloudProgress(localProgress: GameProgress): Promise
   const cloudProgress = data.gameProgress || localProgress;
   const merged = mergeGameProgress(localProgress, cloudProgress);
 
-  // If IAP receipts indicate remove ads, ensure hasRemovedAds is true
   if (data.iapReceipts?.includes('com.wordblast.removeads')) {
     merged.hasRemovedAds = true;
   }

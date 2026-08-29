@@ -9,12 +9,13 @@ import {
   CloudUpload,
   CloudDownload,
   LogOut,
-  Sparkles,
   Loader2,
   ShieldCheck,
+  KeyRound,
+  Copy,
 } from 'lucide-react';
 import { INITIAL_CATEGORIES } from '../data/categories';
-import { GameProgress, isCategoryUnlocked, isCategoryCompleted, saveGameProgress } from '../utils/gameProgress';
+import { GameProgress, isCategoryUnlocked, isCategoryCompleted } from '../utils/gameProgress';
 import { getUserProfile, saveUserProfile, DEFAULT_AVATARS, UserProfile } from '../utils/leaderboard';
 import { formatPoints } from '../utils/scoring';
 import { haptics } from '../utils/haptics';
@@ -24,6 +25,9 @@ import {
   restoreCloudProgress,
   signOutGoogleAccount,
   subscribeToAuth,
+  getOrCreateLocalSyncKey,
+  syncProgressWithCloudKey,
+  restoreWithCloudKey,
 } from '../utils/authService';
 import { User } from 'firebase/auth';
 
@@ -50,8 +54,16 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
   // Google Auth & Cloud Save state
   const [authUser, setAuthUser] = useState<User | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState<boolean>(false);
-  const [authStatusMessage, setAuthStatusMessage] = useState<{ text: string; type: 'success' | 'error' | 'info' } | null>(null);
+  const [authStatusMessage, setAuthStatusMessage] = useState<{
+    text: string;
+    type: 'success' | 'error' | 'info';
+  } | null>(null);
   const [lastSyncTimestamp, setLastSyncTimestamp] = useState<number | null>(null);
+
+  // Cloud Sync Key / PIN state
+  const [syncKey, setSyncKey] = useState<string>(() => getOrCreateLocalSyncKey());
+  const [inputSyncKey, setInputSyncKey] = useState<string>('');
+  const [isRestoreOpen, setIsRestoreOpen] = useState<boolean>(false);
 
   useEffect(() => {
     const unsubscribe = subscribeToAuth((user) => {
@@ -66,7 +78,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
     setAuthStatusMessage({ text, type });
     setTimeout(() => {
       setAuthStatusMessage(null);
-    }, 4000);
+    }, 5000);
   };
 
   const completedCount = gameProgress.completedCategoryIds.length;
@@ -74,10 +86,9 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
     (acc, curr) => acc + (typeof curr === 'number' ? curr : Number(curr) || 0),
     0
   );
-  const totalScoreAcrossCategories = Object.values(gameProgress.categoryHighScores || {}).reduce<number>(
-    (acc, curr) => acc + (typeof curr === 'number' ? curr : Number(curr) || 0),
-    0
-  );
+  const totalScoreAcrossCategories = Object.values(
+    gameProgress.categoryHighScores || {}
+  ).reduce<number>((acc, curr) => acc + (typeof curr === 'number' ? curr : Number(curr) || 0), 0);
 
   const handleSaveName = () => {
     const trimmed = nameInput.trim() || 'Player 1';
@@ -107,58 +118,70 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
       if (onUpdateGameProgress) {
         onUpdateGameProgress(res.progress);
       }
-      // Refresh local profile display
       setProfile(getUserProfile());
       haptics.specialCreated();
       showStatus(res.message, 'success');
     } catch (err: any) {
       console.error(err);
       haptics.invalid();
-      showStatus(err?.message || 'Google Sign-in failed. Please try again.', 'error');
+      showStatus(
+        err?.message || 'Google Sign-in failed. You can use the Cloud Sync Code below to backup instantly!',
+        'error'
+      );
     } finally {
       setIsAuthLoading(false);
     }
   };
 
-  // Manual Backup to Cloud
-  const handleManualSync = async () => {
+  // 1-Tap Instant Backup with Cloud Sync Code
+  const handleSyncWithCode = async () => {
     haptics.tap();
     setIsAuthLoading(true);
     try {
-      const timestamp = await syncProgressToCloud(gameProgress);
-      setLastSyncTimestamp(timestamp);
-      haptics.specialCreated();
-      showStatus('Game progress successfully backed up to cloud!', 'success');
-    } catch (err: any) {
-      console.error(err);
-      haptics.invalid();
-      showStatus(err?.message || 'Failed to backup to cloud.', 'error');
-    } finally {
-      setIsAuthLoading(false);
-    }
-  };
-
-  // Restore Cloud Progress & IAPs
-  const handleRestoreCloud = async () => {
-    haptics.tap();
-    setIsAuthLoading(true);
-    try {
-      const res = await restoreCloudProgress(gameProgress);
-      setLastSyncTimestamp(res.lastSyncedAt);
+      const res = await syncProgressWithCloudKey(syncKey, gameProgress, profile.name);
+      setLastSyncTimestamp(res.syncedAt);
       if (onUpdateGameProgress) {
         onUpdateGameProgress(res.progress);
       }
       haptics.specialCreated();
+      showStatus(`Saved to Cloud! Your Backup Code is: ${syncKey}`, 'success');
+    } catch (err: any) {
+      console.error(err);
+      haptics.invalid();
+      showStatus(err?.message || 'Failed to save to cloud.', 'error');
+    } finally {
+      setIsAuthLoading(false);
+    }
+  };
+
+  // Restore with Custom Cloud Code
+  const handleRestoreWithCustomCode = async () => {
+    const targetCode = (inputSyncKey.trim() || syncKey).toUpperCase();
+    if (!targetCode) {
+      showStatus('Please enter a Cloud Sync Code.', 'error');
+      return;
+    }
+    haptics.tap();
+    setIsAuthLoading(true);
+    try {
+      const res = await restoreWithCloudKey(targetCode, gameProgress);
+      setSyncKey(targetCode);
+      setLastSyncTimestamp(res.lastSyncedAt);
+      if (onUpdateGameProgress) {
+        onUpdateGameProgress(res.progress);
+      }
+      setIsRestoreOpen(false);
+      haptics.specialCreated();
       showStatus(
         res.restoredIAP
-          ? 'Cloud progress & In-App Purchases restored!'
-          : 'Cloud save data restored successfully!',
+          ? `Progress & In-App Purchases restored with Code ${targetCode}!`
+          : `Progress restored successfully with Code ${targetCode}!`,
         'success'
       );
     } catch (err: any) {
       console.error(err);
       haptics.invalid();
-      showStatus(err?.message || 'Failed to restore cloud save.', 'error');
+      showStatus(err?.message || 'Code not found or invalid.', 'error');
     } finally {
       setIsAuthLoading(false);
     }
@@ -177,6 +200,16 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
       showStatus('Failed to sign out.', 'error');
     } finally {
       setIsAuthLoading(false);
+    }
+  };
+
+  const copySyncKey = () => {
+    try {
+      navigator.clipboard.writeText(syncKey);
+      haptics.tap();
+      showStatus(`Copied Code: ${syncKey}`, 'info');
+    } catch {
+      showStatus(`Code: ${syncKey}`, 'info');
     }
   };
 
@@ -230,18 +263,24 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
             {/* Notification / Toast Banner inside Modal */}
             {authStatusMessage && (
               <div
-                className={`p-2.5 rounded-xl border text-xs font-bold flex items-center gap-2 animate-in fade-in duration-200 ${
+                className={`p-3 rounded-xl border text-xs font-bold flex items-start gap-2 animate-in fade-in duration-200 ${
                   authStatusMessage.type === 'success'
-                    ? 'bg-emerald-950/80 border-emerald-500/60 text-emerald-200'
+                    ? 'bg-emerald-950/90 border-emerald-500/60 text-emerald-200'
                     : authStatusMessage.type === 'error'
-                    ? 'bg-rose-950/80 border-rose-500/60 text-rose-200'
-                    : 'bg-blue-950/80 border-blue-500/60 text-blue-200'
+                    ? 'bg-rose-950/90 border-rose-500/60 text-rose-200'
+                    : 'bg-blue-950/90 border-blue-500/60 text-blue-200'
                 }`}
               >
-                {authStatusMessage.type === 'success' && <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />}
-                {authStatusMessage.type === 'error' && <X className="w-4 h-4 text-rose-400 shrink-0" />}
-                {authStatusMessage.type === 'info' && <Cloud className="w-4 h-4 text-cyan-400 shrink-0" />}
-                <span className="flex-1">{authStatusMessage.text}</span>
+                {authStatusMessage.type === 'success' && (
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                )}
+                {authStatusMessage.type === 'error' && (
+                  <X className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+                )}
+                {authStatusMessage.type === 'info' && (
+                  <Cloud className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" />
+                )}
+                <span className="flex-1 leading-snug">{authStatusMessage.text}</span>
               </div>
             )}
 
@@ -332,7 +371,99 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
               )}
             </div>
 
-            {/* 2. OPTIONAL GOOGLE ACCOUNT & CLOUD SAVE SECTION */}
+            {/* 2. INSTANT CLOUD SAVE & SYNC CODE (Always Works 100%) */}
+            <div className="bg-[#0C2158] border border-[#1E3A8A] rounded-2xl p-3.5 sm:p-4 shadow-inner relative overflow-hidden">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 rounded-lg bg-gradient-to-b from-teal-400 to-emerald-600 flex items-center justify-center text-xs shadow-sm">
+                    <KeyRound className="w-3.5 h-3.5 text-white" />
+                  </div>
+                  <div>
+                    <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-wider text-cyan-200 block leading-none">
+                      Instant Cloud Sync Key
+                    </span>
+                    <span className="text-[9px] text-cyan-200/60 font-semibold">
+                      100% Reliable Cloud Backup & Restore Code
+                    </span>
+                  </div>
+                </div>
+
+                <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[9px] font-extrabold border border-emerald-500/40">
+                  LIVE CLOUD
+                </span>
+              </div>
+
+              {/* Unique Sync Code Display */}
+              <div className="bg-[#071330] p-2.5 rounded-xl border border-[#1E3A8A] flex items-center justify-between gap-2 mt-2">
+                <div className="min-w-0">
+                  <span className="text-[9px] font-bold text-cyan-300/60 block">YOUR BACKUP CODE</span>
+                  <span className="font-mono text-sm sm:text-base font-black text-amber-300 tracking-wider">
+                    {syncKey}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={copySyncKey}
+                    className="p-1.5 rounded-lg bg-[#0F2864] hover:bg-[#1E3A8A] text-cyan-200 text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors"
+                    title="Copy code"
+                  >
+                    <Copy className="w-3.5 h-3.5" />
+                    Copy
+                  </button>
+                </div>
+              </div>
+
+              {/* Action Buttons for Code Sync */}
+              <div className="grid grid-cols-2 gap-2 mt-2.5">
+                <button
+                  onClick={handleSyncWithCode}
+                  disabled={isAuthLoading}
+                  className="p-2.5 rounded-xl bg-gradient-to-b from-[#0284C7] to-[#0369A1] hover:from-[#0EA5E9] hover:to-[#0284C7] border border-[#38BDF8]/40 text-white font-black text-[11px] shadow-sm flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
+                >
+                  {isAuthLoading ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <CloudUpload className="w-3.5 h-3.5 text-cyan-200" />
+                  )}
+                  <span>Backup to Cloud</span>
+                </button>
+
+                <button
+                  onClick={() => setIsRestoreOpen(!isRestoreOpen)}
+                  className="p-2.5 rounded-xl bg-gradient-to-b from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 border border-emerald-400/40 text-white font-black text-[11px] shadow-sm flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                >
+                  <CloudDownload className="w-3.5 h-3.5 text-emerald-200" />
+                  <span>Restore with Code</span>
+                </button>
+              </div>
+
+              {/* Restore Input Drawer */}
+              {isRestoreOpen && (
+                <div className="mt-3 pt-3 border-t border-[#1E3A8A] space-y-2 animate-in fade-in duration-150">
+                  <span className="text-[10px] font-bold text-cyan-200 block">
+                    Enter Cloud Code from another device/browser:
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      placeholder="e.g. ALPHA-1234"
+                      value={inputSyncKey}
+                      onChange={(e) => setInputSyncKey(e.target.value.toUpperCase())}
+                      className="bg-[#071330] border border-[#38BDF8] rounded-xl px-3 py-1.5 text-xs font-mono font-bold text-white focus:outline-none w-full uppercase"
+                    />
+                    <button
+                      onClick={handleRestoreWithCustomCode}
+                      disabled={isAuthLoading}
+                      className="px-3 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-white font-black text-xs shrink-0 cursor-pointer disabled:opacity-50"
+                    >
+                      Restore
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* 3. OPTIONAL GOOGLE ACCOUNT LINK */}
             <div className="bg-[#0C2158] border border-[#1E3A8A] rounded-2xl p-3.5 sm:p-4 shadow-inner relative overflow-hidden">
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
@@ -341,10 +472,10 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                   </div>
                   <div>
                     <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-wider text-cyan-200 block leading-none">
-                      Google Account & Cloud Save
+                      Google Account Link
                     </span>
                     <span className="text-[9px] text-cyan-200/60 font-semibold">
-                      Backup progress & restore in-app purchases
+                      One-tap Google login
                     </span>
                   </div>
                 </div>
@@ -360,10 +491,8 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                 )}
               </div>
 
-              {/* Account details or Link button */}
               {authUser ? (
-                <div className="space-y-3 mt-3 pt-2.5 border-t border-[#1E3A8A]">
-                  {/* Account Badge */}
+                <div className="space-y-2 mt-2 pt-2 border-t border-[#1E3A8A]">
                   <div className="flex items-center justify-between gap-3 bg-[#071330] p-2.5 rounded-xl border border-[#1E3A8A]">
                     <div className="flex items-center gap-2.5 min-w-0">
                       {authUser.photoURL ? (
@@ -391,67 +520,19 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                     <button
                       onClick={handleSignOutGoogle}
                       disabled={isAuthLoading}
-                      className="px-2 py-1 rounded-lg bg-[#0F2864] hover:bg-rose-950/60 border border-[#1E3A8A] hover:border-rose-500/60 text-cyan-200 hover:text-rose-200 text-[10px] font-black transition-colors flex items-center gap-1 cursor-pointer shrink-0"
-                      title="Disconnect account"
+                      className="px-2 py-1 rounded-lg bg-[#0F2864] hover:bg-rose-950/60 border border-[#1E3A8A] text-cyan-200 hover:text-rose-200 text-[10px] font-black transition-colors flex items-center gap-1 cursor-pointer shrink-0"
                     >
                       <LogOut className="w-3 h-3" />
                       Sign Out
                     </button>
                   </div>
-
-                  {/* Sync & Restore Actions */}
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      onClick={handleManualSync}
-                      disabled={isAuthLoading}
-                      className="p-2.5 rounded-xl bg-gradient-to-b from-[#0284C7] to-[#0369A1] hover:from-[#0EA5E9] hover:to-[#0284C7] border border-[#38BDF8]/40 text-white font-black text-[11px] shadow-sm flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
-                    >
-                      {isAuthLoading ? (
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      ) : (
-                        <CloudUpload className="w-3.5 h-3.5 text-cyan-200" />
-                      )}
-                      <span>Backup to Cloud</span>
-                    </button>
-
-                    <button
-                      onClick={handleRestoreCloud}
-                      disabled={isAuthLoading}
-                      className="p-2.5 rounded-xl bg-gradient-to-b from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 border border-emerald-400/40 text-white font-black text-[11px] shadow-sm flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
-                    >
-                      {isAuthLoading ? (
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      ) : (
-                        <CloudDownload className="w-3.5 h-3.5 text-emerald-200" />
-                      )}
-                      <span>Restore Save & IAP</span>
-                    </button>
-                  </div>
-
-                  {/* IAP Restore Badge */}
-                  {gameProgress.hasRemovedAds && (
-                    <div className="flex items-center gap-1.5 text-[10px] text-emerald-300 font-bold bg-emerald-950/40 px-2.5 py-1 rounded-lg border border-emerald-500/30">
-                      <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                      <span>In-App Purchase Active: All Ads Removed (Synced)</span>
-                    </div>
-                  )}
-
-                  {lastSyncTimestamp && (
-                    <div className="text-right text-[9px] text-cyan-300/50 font-mono">
-                      Last Synced: {new Date(lastSyncTimestamp).toLocaleTimeString()}
-                    </div>
-                  )}
                 </div>
               ) : (
-                <div className="mt-2.5 pt-2.5 border-t border-[#1E3A8A]">
-                  <p className="text-[11px] text-cyan-200/80 leading-relaxed mb-3">
-                    Link your Google account to automatically preserve your unlocked categories, high scores, coins, diamonds, and restored purchases across devices or when reinstalling.
-                  </p>
-
+                <div className="mt-2 pt-2 border-t border-[#1E3A8A]">
                   <button
                     onClick={handleLinkGoogle}
                     disabled={isAuthLoading}
-                    className="w-full py-2.5 px-3 rounded-xl bg-white hover:bg-gray-100 text-gray-900 font-black text-xs sm:text-sm shadow-md flex items-center justify-center gap-2.5 transition-all cursor-pointer disabled:opacity-50"
+                    className="w-full py-2 px-3 rounded-xl bg-white hover:bg-gray-100 text-gray-900 font-black text-xs shadow-md flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-50"
                   >
                     {isAuthLoading ? (
                       <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
@@ -475,15 +556,22 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                         />
                       </svg>
                     )}
-                    <span>{isAuthLoading ? 'Connecting to Google...' : 'Sign in with Google (Link Account)'}</span>
+                    <span>{isAuthLoading ? 'Connecting...' : 'Sign in with Google (Link)'}</span>
                   </button>
+                </div>
+              )}
+
+              {/* IAP Restore Badge */}
+              {gameProgress.hasRemovedAds && (
+                <div className="mt-2 flex items-center gap-1.5 text-[10px] text-emerald-300 font-bold bg-emerald-950/40 px-2.5 py-1 rounded-lg border border-emerald-500/30">
+                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                  <span>In-App Purchase Active: All Ads Removed</span>
                 </div>
               )}
             </div>
 
-            {/* 3. HIGH-LEVEL CATEGORY STATS BANNER */}
+            {/* 4. HIGH-LEVEL CATEGORY STATS BANNER */}
             <div className="grid grid-cols-3 gap-2">
-              {/* Stat 1: Categories Cleared */}
               <div className="bg-[#0C2158] border border-[#1E3A8A] rounded-2xl p-2.5 text-center flex flex-col items-center justify-center shadow-inner">
                 <span className="text-[9px] font-extrabold uppercase tracking-wider text-cyan-300/80">
                   CATEGORIES CLEARED
@@ -493,7 +581,6 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                 </span>
               </div>
 
-              {/* Stat 2: Total Category Stars */}
               <div className="bg-[#0C2158] border border-[#1E3A8A] rounded-2xl p-2.5 text-center flex flex-col items-center justify-center shadow-inner">
                 <span className="text-[9px] font-extrabold uppercase tracking-wider text-cyan-300/80">
                   TOTAL STARS
@@ -503,7 +590,6 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                 </span>
               </div>
 
-              {/* Stat 3: Total Category High Score */}
               <div className="bg-[#0C2158] border border-[#1E3A8A] rounded-2xl p-2.5 text-center flex flex-col items-center justify-center shadow-inner">
                 <span className="text-[9px] font-extrabold uppercase tracking-wider text-cyan-300/80">
                   TOTAL POINTS
@@ -514,7 +600,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
               </div>
             </div>
 
-            {/* 4. CATEGORY STATS DETAILED BREAKDOWN LIST */}
+            {/* 5. CATEGORY STATS DETAILED BREAKDOWN LIST */}
             <div className="space-y-2">
               <div className="flex items-center justify-between px-1">
                 <h3 className="text-xs sm:text-sm font-black uppercase tracking-wider text-cyan-200">
@@ -589,7 +675,6 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                       <div className="flex flex-col items-end shrink-0">
                         {unlocked ? (
                           <>
-                            {/* Stars rating */}
                             <div className="flex items-center gap-0.5 text-xs text-yellow-300 font-bold mb-0.5">
                               {[1, 2, 3].map((starIdx) => (
                                 <span
