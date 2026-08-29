@@ -525,6 +525,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({
                     }
 
                     const breakingBlockAnimationClass = tile.isBreakingBlock ? 'animate-block-break z-30' : '';
+                    const flipAnimationClass = tile.isFlipping ? 'animate-tile-flip z-35' : '';
                     const rollAnimationClass = isRolling ? 'animate-tile-roll z-10' : '';
                     const rollDelay = isRolling ? `${(r * 0.035 + c * 0.015).toFixed(3)}s` : undefined;
 
@@ -552,7 +553,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({
                             ['--swap-y' as any]: isSwappingThisTile ? `calc(${swapDy} * (100% + var(--grid-gap, 4px)))` : undefined,
                             animationDelay: rollDelay,
                           }}
-                          className={`relative w-full h-full flex items-center justify-center rounded-[6px] sm:rounded-lg font-bold transition-all active:translate-y-[2px] sm:active:translate-y-[3px] active:border-b-[2px] active:shadow-xs duration-150 ease-out select-none overflow-hidden ${tileBg} ${glowRing} ${swapAnimationClass} ${rollAnimationClass} ${dropAnimationClass} ${popAnimationClass} ${knockOffAnimationClass} ${vaporizeAnimationClass} ${breakingBlockAnimationClass} ${
+                          className={`relative w-full h-full flex items-center justify-center rounded-[6px] sm:rounded-lg font-bold transition-all active:translate-y-[2px] sm:active:translate-y-[3px] active:border-b-[2px] active:shadow-xs duration-150 ease-out select-none overflow-hidden ${tileBg} ${glowRing} ${swapAnimationClass} ${flipAnimationClass} ${rollAnimationClass} ${dropAnimationClass} ${popAnimationClass} ${knockOffAnimationClass} ${vaporizeAnimationClass} ${breakingBlockAnimationClass} ${
                             tile.isMatched && !tile.isKnockedOff && !tile.isVaporizing && !tile.isBreakingBlock ? 'opacity-0 scale-50 transition-all duration-300 pointer-events-none' : ''
                           }`}
                         >
@@ -971,23 +972,27 @@ export const GameBoard: React.FC<GameBoardProps> = ({
               return (
                 <div
                   key={fx.id}
-                  className="absolute inset-0 z-30 pointer-events-none flex flex-col items-center justify-center bg-gradient-to-b from-red-950/80 via-orange-950/75 to-amber-950/85 backdrop-blur-xs rounded-2xl overflow-hidden"
+                  className="absolute inset-0 z-30 pointer-events-none flex flex-col items-center justify-center overflow-hidden"
                 >
-                  {/* Fiery Heat Distortion & Dancing Flames Background */}
-                  <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-orange-500/25 via-red-600/20 to-transparent animate-pulse" />
+                  {/* Fiery Heat Distortion & Ambient Fire Glow */}
+                  <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-orange-600/35 via-red-700/25 to-transparent animate-pulse" />
 
                   {/* Animated Flame Streams & Rising Sparks */}
-                  <div className="absolute inset-0 overflow-hidden pointer-events-none flex items-center justify-around">
-                    <Flame className="w-24 h-24 text-orange-500/40 animate-flame-lick -translate-y-4" />
-                    <Flame className="w-32 h-32 text-yellow-400/50 animate-flame-lick translate-y-2" />
-                    <Flame className="w-28 h-28 text-red-500/40 animate-flame-lick -translate-y-6" />
+                  <div className="absolute inset-0 overflow-hidden pointer-events-none flex items-center justify-around opacity-75">
+                    <Flame className="w-20 h-20 text-orange-500/50 animate-flame-lick -translate-y-4" />
+                    <Flame className="w-28 h-28 text-yellow-400/60 animate-flame-lick translate-y-2" />
+                    <Flame className="w-24 h-24 text-red-500/50 animate-flame-lick -translate-y-6" />
                   </div>
 
-                  <div className="relative px-8 py-4 bg-gradient-to-r from-red-600 via-orange-500 to-amber-500 rounded-3xl border-4 border-white shadow-[0_0_60px_rgba(239,68,68,1),0_0_30px_rgba(245,158,11,0.8)] flex items-center gap-3 animate-bounce z-20">
-                    <Flame className="w-10 h-10 text-yellow-200 animate-pulse drop-shadow-[0_0_10px_rgba(255,255,255,0.9)]" />
-                    <span className="text-white font-black text-xl sm:text-2xl tracking-wider drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
-                      FIERY INFERNO BOARD CLEAR!
-                    </span>
+                  {/* Pure Floating "FIRE WIPE OUT!" in Fire Letters (No Rectangle Margin or Card Border) */}
+                  <div className="relative flex flex-col items-center justify-center z-40 animate-fire-text-pop select-none">
+                    <div className="flex items-center justify-center gap-2 sm:gap-3">
+                      <Flame className="w-8 h-8 sm:w-12 sm:h-12 text-yellow-300 animate-flame-lick filter drop-shadow-[0_0_15px_rgba(249,115,22,1)]" />
+                      <span className="font-futuristic font-black text-2xl sm:text-4xl md:text-5xl tracking-widest text-transparent bg-clip-text bg-gradient-to-t from-red-600 via-orange-400 to-yellow-100 uppercase animate-fire-text-glow drop-shadow-[0_0_30px_rgba(239,68,68,1)]">
+                        FIRE WIPE OUT!
+                      </span>
+                      <Flame className="w-8 h-8 sm:w-12 sm:h-12 text-yellow-300 animate-flame-lick filter drop-shadow-[0_0_15px_rgba(249,115,22,1)]" />
+                    </div>
                   </div>
                 </div>
               );

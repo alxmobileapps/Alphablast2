@@ -640,9 +640,10 @@ export default function App() {
       targetCoords,
     };
     setExplosions((prev) => [...prev, fx]);
+    const duration = type === 'board_wipe' ? 1500 : 950;
     setTimeout(() => {
       setExplosions((prev) => prev.filter((item) => item.id !== id));
-    }, 950);
+    }, duration);
   };
 
   // Start/Reset a round for any category (Campaign or Custom 1-Hour Community)
@@ -1153,8 +1154,9 @@ export default function App() {
         }
 
         // REQUIREMENT: When the board is cleared due to 6+ letter word (Fire Wipeout):
-        // Each letter catches fire and disappears one by one (fast fiery wave)
-        // New set of letters should only show when all letters have burned into ashes and disappeared.
+        // 1. All individual letters catch fire and incinerate simultaneously (sabay-sabay).
+        // 2. The tiles flip in 3D simultaneously (sabay-sabay din) revealing the new set of letters!
+        // 3. "FIRE WIPE OUT!" appears in fire letters without rectangle margin.
         if (hasBoardClear) {
           // Award points for all disappeared tiles on the board
           const wipeLetters: string[] = [];
@@ -1172,64 +1174,63 @@ export default function App() {
 
           haptics.fireWipe();
           playFireInferno();
+          playFireSizzle();
           playBoardClear();
           triggerExplosion(3, 3, 'board_wipe');
 
-          // Sequential fire wave across all 64 coordinates
-          // Each letter visibly catches fire, burning into embers and disappearing one by one (fast)
-          for (let r = 0; r < BOARD_SIZE; r++) {
-            for (let c = 0; c < BOARD_SIZE; c++) {
-              if ((r * BOARD_SIZE + c) % 4 === 0) {
-                playFireSizzle();
-              }
-              haptics.fireCrackle();
-
-              // 1. Tile letter catches fire and begins smooth burn away
-              setBoard((prev) =>
-                prev.map((rowArr, rIdx) =>
-                  rowArr.map((tile, cIdx) => {
-                    if (rIdx === r && cIdx === c) {
-                      return {
-                        ...tile,
-                        isBurning: true,
-                        isVaporizing: true,
-                      };
-                    }
-                    return tile;
-                  })
-                )
-              );
-
-              // 2. Letter dissolves fast (18ms) as fire incinerates it
-              await new Promise((res) => setTimeout(res, 18));
-
-              setBoard((prev) =>
-                prev.map((rowArr, rIdx) =>
-                  rowArr.map((tile, cIdx) => {
-                    if (rIdx === r && cIdx === c) {
-                      return {
-                        ...tile,
-                        letter: '',
-                        isBurning: true,
-                        isVaporizing: false,
-                        isMatched: true,
-                      };
-                    }
-                    return tile;
-                  })
-                )
-              );
-            }
-          }
-
-          // All letters have now caught fire and burned away -> Hold clean fiery board for a brief pause
-          await new Promise((res) => setTimeout(res, 220));
-
-          // Reset burning states before dropping new letters
+          // Step 1: All individual letters on the entire board catch fire SIMULTANEOUSLY (sabay-sabay)
           setBoard((prev) =>
             prev.map((rowArr) =>
               rowArr.map((tile) => ({
                 ...tile,
+                isBurning: true,
+                isVaporizing: true,
+              }))
+            )
+          );
+
+          // Wait for fiery incineration animation to burn individual letters simultaneously (~360ms)
+          await new Promise((res) => setTimeout(res, 360));
+
+          // Step 2: Old letters incinerate to ashes while tiles prepare for simultaneous 3D flip
+          setBoard((prev) =>
+            prev.map((rowArr) =>
+              rowArr.map((tile) => ({
+                ...tile,
+                letter: '',
+                isBurning: false,
+                isVaporizing: false,
+                isMatched: true,
+              }))
+            )
+          );
+
+          await new Promise((res) => setTimeout(res, 100));
+
+          // Step 3: SIMULTANEOUS 3D TILE FLIP revealing the new set of letters (sabay-sabay din)!
+          activeBoard = generateInitialBoard(catId, formedWordsRef.current);
+          activeBoard = activeBoard.map((rowArr) =>
+            rowArr.map((tile) => ({
+              ...tile,
+              isFlipping: true,
+              isBurning: false,
+              isMatched: false,
+              isFalling: false,
+            }))
+          );
+          setBoard(activeBoard);
+          playLetterPop();
+          haptics.fireCrackle();
+
+          // Wait for simultaneous 3D tile flip animation (~450ms)
+          await new Promise((res) => setTimeout(res, 450));
+
+          // Reset flipping and temporary states
+          setBoard((prev) =>
+            prev.map((rowArr) =>
+              rowArr.map((tile) => ({
+                ...tile,
+                isFlipping: false,
                 isBurning: false,
                 isElectrified: false,
                 isKnockedOff: false,
@@ -1239,15 +1240,7 @@ export default function App() {
             )
           );
 
-          // ONLY after all letters have disappeared, generate and drop in the fresh set of letters!
-          activeBoard = generateInitialBoard(catId, formedWordsRef.current);
-          activeBoard = activeBoard.map((rowArr) =>
-            rowArr.map((tile) => ({ ...tile, isFalling: true }))
-          );
-          setBoard(activeBoard);
-          playLetterPop();
-
-          await new Promise((res) => setTimeout(res, 450));
+          await new Promise((res) => setTimeout(res, 120));
           continue;
         }
 

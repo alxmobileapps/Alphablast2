@@ -31,6 +31,7 @@ export interface Tile {
   isMerged?: boolean;
   isBreakingBlock?: boolean;
   isBurning?: boolean;
+  isFlipping?: boolean;
   highlightDirection?: WordDirection; // For perpendicular beam calculation
 }
 
