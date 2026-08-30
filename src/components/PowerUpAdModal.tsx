@@ -5,14 +5,16 @@ import { PowerUpType } from '../types';
 import { HammerIcon } from './HammerIcon';
 import { showUniversalRewardedAd } from '../utils/universalAds';
 import { haptics } from '../utils/haptics';
+import { CurrencyPromptModal, CurrencyPromptType } from './CurrencyPromptModal';
 
 interface PowerUpAdModalProps {
   isOpen: boolean;
   selectedPowerUpType?: PowerUpType | null;
   coins?: number;
+  diamonds?: number;
   onBuyWithCoins?: (type: PowerUpType, cost: number) => boolean;
   onClaimReward: (type: PowerUpType) => void;
-  onOpenShop?: () => void;
+  onOpenShop?: (tab?: 'powerups' | 'coins' | 'diamonds') => void;
   onClose: () => void;
 }
 
@@ -84,6 +86,7 @@ export const PowerUpAdModal: React.FC<PowerUpAdModalProps> = ({
   isOpen,
   selectedPowerUpType,
   coins = 0,
+  diamonds = 0,
   onBuyWithCoins,
   onClaimReward,
   onOpenShop,
@@ -93,6 +96,7 @@ export const PowerUpAdModal: React.FC<PowerUpAdModalProps> = ({
   const [isPlaying, setIsPlaying] = useState(false);
   const [timeLeft, setTimeLeft] = useState(5);
   const [completed, setCompleted] = useState(false);
+  const [currencyPrompt, setCurrencyPrompt] = useState<CurrencyPromptType>(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -219,8 +223,9 @@ export const PowerUpAdModal: React.FC<PowerUpAdModalProps> = ({
                     if (coins >= selectedOption.coinCost) {
                       onBuyWithCoins(chosenPowerUp, selectedOption.coinCost);
                       onClose();
-                    } else if (onOpenShop) {
-                      onOpenShop();
+                    } else {
+                      haptics.invalid();
+                      setCurrencyPrompt('buy_coins_with_diamonds');
                     }
                   }}
                   className={`w-full py-3 px-5 rounded-2xl font-black text-sm shadow-md flex items-center justify-between transition-transform active:scale-95 ${
@@ -317,6 +322,24 @@ export const PowerUpAdModal: React.FC<PowerUpAdModalProps> = ({
             </button>
           </div>
         )}
+
+        {/* Currency Insufficient Confirmation Prompt */}
+        <CurrencyPromptModal
+          isOpen={!!currencyPrompt}
+          type={currencyPrompt}
+          coins={coins}
+          diamonds={diamonds}
+          onConfirm={() => {
+            if (currencyPrompt === 'buy_coins_with_diamonds') {
+              if (onOpenShop) onOpenShop('coins');
+            } else if (currencyPrompt === 'buy_more_diamonds') {
+              if (onOpenShop) onOpenShop('diamonds');
+            }
+            setCurrencyPrompt(null);
+            onClose();
+          }}
+          onClose={() => setCurrencyPrompt(null)}
+        />
       </div>
     </div>
   );

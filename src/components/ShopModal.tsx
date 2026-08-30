@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { PowerUpInventory, PowerUpType } from '../types';
 import { HammerIcon } from './HammerIcon';
+import { CurrencyPromptModal, CurrencyPromptType } from './CurrencyPromptModal';
 import { playRewardRefill, playSpecialCard, playWin } from '../utils/audio';
 import { haptics } from '../utils/haptics';
 import { purchaseIAP, purchaseMedianIAP, restoreMedianPurchases } from '../utils/medianBridge';
@@ -33,6 +34,7 @@ interface ShopModalProps {
   diamonds: number;
   inventory: PowerUpInventory;
   hasRemovedAds?: boolean;
+  initialTab?: 'powerups' | 'coins' | 'diamonds';
   onBuyPowerUp: (type: PowerUpType, costInCoins: number, count?: number) => boolean;
   onBuyMegaBundle: (costInCoins: number) => boolean;
   onExchangeDiamonds: (diamonds: number, coins: number) => boolean;
@@ -47,14 +49,22 @@ export const ShopModal: React.FC<ShopModalProps> = ({
   diamonds,
   inventory,
   hasRemovedAds = false,
+  initialTab = 'powerups',
   onBuyPowerUp,
   onBuyMegaBundle,
   onExchangeDiamonds,
   onAddDiamonds,
   onPurchaseRemoveAds,
 }) => {
-  const [activeTab, setActiveTab] = useState<'powerups' | 'coins' | 'diamonds'>('powerups');
+  const [activeTab, setActiveTab] = useState<'powerups' | 'coins' | 'diamonds'>(initialTab);
+  const [currencyPrompt, setCurrencyPrompt] = useState<CurrencyPromptType>(null);
   const [successToast, setSuccessToast] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isOpen && initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [isOpen, initialTab]);
   const [hasClaimedDaily, setHasClaimedDaily] = useState<boolean>(() => {
     try {
       const last = localStorage.getItem('word_blast_daily_diamond_claim');
@@ -133,7 +143,7 @@ export const ShopModal: React.FC<ShopModalProps> = ({
   const handlePurchasePowerUp = (type: PowerUpType, cost: number, count: number = 1, name: string) => {
     if (coins < cost) {
       haptics.invalid();
-      showNotification(`Need ${cost - coins} more coins! Convert diamonds below.`);
+      setCurrencyPrompt('buy_coins_with_diamonds');
       return;
     }
 
@@ -149,7 +159,7 @@ export const ShopModal: React.FC<ShopModalProps> = ({
     const cost = 225; // 50 * 5 = 250 - 10% discount = 225 coins
     if (coins < cost) {
       haptics.invalid();
-      showNotification(`Need ${cost - coins} more coins! Convert diamonds below.`);
+      setCurrencyPrompt('buy_coins_with_diamonds');
       return;
     }
 
@@ -164,7 +174,7 @@ export const ShopModal: React.FC<ShopModalProps> = ({
   const handleExchange = (gemCost: number, coinGain: number, label: string) => {
     if (diamonds < gemCost) {
       haptics.invalid();
-      showNotification(`Need ${gemCost - diamonds} more diamonds!`);
+      setCurrencyPrompt('buy_more_diamonds');
       return;
     }
 
@@ -831,6 +841,23 @@ export const ShopModal: React.FC<ShopModalProps> = ({
             </div>
           </div>
         )}
+
+        {/* Currency Insufficient Confirmation Prompt */}
+        <CurrencyPromptModal
+          isOpen={!!currencyPrompt}
+          type={currencyPrompt}
+          coins={coins}
+          diamonds={diamonds}
+          onConfirm={() => {
+            if (currencyPrompt === 'buy_coins_with_diamonds') {
+              setActiveTab('coins');
+            } else if (currencyPrompt === 'buy_more_diamonds') {
+              setActiveTab('diamonds');
+            }
+            setCurrencyPrompt(null);
+          }}
+          onClose={() => setCurrencyPrompt(null)}
+        />
       </div>
     </div>
   );

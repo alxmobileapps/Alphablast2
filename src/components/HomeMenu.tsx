@@ -27,7 +27,7 @@ interface HomeMenuProps {
   onOpenLeaderboard: () => void;
   onOpenHelp: () => void;
   onOpenSettings: () => void;
-  onOpenShop?: () => void;
+  onOpenShop?: (tab?: 'powerups' | 'coins' | 'diamonds') => void;
 }
 
 export const HomeMenu: React.FC<HomeMenuProps> = ({
@@ -86,25 +86,33 @@ export const HomeMenu: React.FC<HomeMenuProps> = ({
         </button>
 
         {/* Currency Widget */}
-        <button
-          onClick={() => onOpenShop && handleAction(onOpenShop)}
-          className="flex items-center gap-1.5 sm:gap-2.5 bg-gradient-to-r from-[#0C2158]/95 to-[#162E6C]/95 hover:from-[#132E75] hover:to-[#1E3A8A] border-2 border-amber-400/70 hover:border-amber-400 rounded-2xl px-2.5 py-1.5 sm:px-3.5 sm:py-2 shadow-[0_4px_16px_rgba(245,158,11,0.25)] backdrop-blur-md transition-all active:scale-95 cursor-pointer group"
-          title="Shop & Bank: Add Coins & Diamonds"
-        >
-          <div className="flex items-center gap-1 font-futuristic text-xs sm:text-sm font-black text-amber-300 text-glow-amber tracking-wider">
-            <span className="text-sm sm:text-base group-hover:scale-110 transition-transform">🪙</span>
+        <div className="flex items-center gap-1.5 sm:gap-2.5 bg-gradient-to-r from-[#0C2158]/95 to-[#162E6C]/95 border-2 border-amber-400/70 rounded-2xl px-2.5 py-1.5 sm:px-3.5 sm:py-2 shadow-[0_4px_16px_rgba(245,158,11,0.25)] backdrop-blur-md">
+          <button
+            onClick={() => onOpenShop && handleAction(() => onOpenShop('coins'))}
+            className="flex items-center gap-1 font-futuristic text-xs sm:text-sm font-black text-amber-300 text-glow-amber tracking-wider hover:opacity-80 transition-opacity cursor-pointer"
+            title="Coins - Tap to get more"
+          >
+            <span className="text-sm sm:text-base">🪙</span>
             <span>{gameProgress.coins || 0}</span>
-          </div>
+          </button>
           <div className="h-4 sm:h-5 w-[1.5px] bg-blue-400/40 rounded-full" />
-          <div className="flex items-center gap-1 font-futuristic text-xs sm:text-sm font-black text-cyan-300 text-glow-cyan tracking-wider">
-            <span className="text-sm sm:text-base group-hover:scale-110 transition-transform">💎</span>
+          <button
+            onClick={() => onOpenShop && handleAction(() => onOpenShop('diamonds'))}
+            className="flex items-center gap-1 font-futuristic text-xs sm:text-sm font-black text-cyan-300 text-glow-cyan tracking-wider hover:opacity-80 transition-opacity cursor-pointer"
+            title="Diamonds - Tap to get more"
+          >
+            <span className="text-sm sm:text-base">💎</span>
             <span>{gameProgress.diamonds || 0}</span>
-          </div>
+          </button>
           {/* Prominent Plus Button Indicator */}
-          <div className="w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-gradient-to-b from-amber-300 to-amber-500 text-slate-950 flex items-center justify-center text-[10px] sm:text-xs font-black shadow-[0_2px_8px_rgba(245,158,11,0.5)] border border-white/80 ml-0.5 group-hover:scale-110 transition-transform shrink-0">
+          <button
+            onClick={() => onOpenShop && handleAction(() => onOpenShop('coins'))}
+            className="w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-gradient-to-b from-amber-300 to-amber-500 text-slate-950 flex items-center justify-center text-[10px] sm:text-xs font-black shadow-[0_2px_8px_rgba(245,158,11,0.5)] border border-white/80 ml-0.5 hover:scale-110 active:scale-95 transition-transform shrink-0 cursor-pointer"
+            title="Open Shop"
+          >
             <Plus className="w-3 h-3 sm:w-3.5 sm:h-3.5 stroke-[3]" />
-          </div>
-        </button>
+          </button>
+        </div>
       </div>
 
       {/* Center Container: Official AlphaBlast Logo & Main Game Menu Card */}

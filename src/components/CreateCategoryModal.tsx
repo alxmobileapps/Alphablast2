@@ -11,15 +11,17 @@ import { Category, CustomGameMode } from '../types';
 import { playRewardRefill, playWin } from '../utils/audio';
 import { haptics } from '../utils/haptics';
 import { generateAiCategory, suggestWordsWithAi } from '../utils/geminiService';
+import { CurrencyPromptModal, CurrencyPromptType } from './CurrencyPromptModal';
 
 interface CreateCategoryModalProps {
   isOpen: boolean;
   onClose: () => void;
   diamonds: number;
+  coins?: number;
   onDeductDiamonds: (amount: number) => boolean;
   onCategoryCreated: (category: Category) => void;
   onCategoryUpdated?: (category: Category) => void;
-  onOpenShop?: () => void;
+  onOpenShop?: (tab?: 'powerups' | 'coins' | 'diamonds') => void;
   editingCategory?: Category | null;
 }
 
@@ -104,6 +106,7 @@ export const CreateCategoryModal: React.FC<CreateCategoryModalProps> = ({
   isOpen,
   onClose,
   diamonds,
+  coins = 0,
   onDeductDiamonds,
   onCategoryCreated,
   onCategoryUpdated,
@@ -127,6 +130,7 @@ export const CreateCategoryModal: React.FC<CreateCategoryModalProps> = ({
   const [wordsInput, setWordsInput] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [currencyPrompt, setCurrencyPrompt] = useState<CurrencyPromptType>(null);
 
   // Gemini AI Generation States
   const [aiPrompt, setAiPrompt] = useState('');
@@ -374,8 +378,8 @@ export const CreateCategoryModal: React.FC<CreateCategoryModalProps> = ({
               <button
                 type="button"
                 onClick={() => {
-                  onClose();
-                  onOpenShop();
+                  haptics.tap();
+                  setCurrencyPrompt('buy_more_diamonds');
                 }}
                 className="bg-amber-400 hover:bg-amber-500 border border-amber-600 text-amber-950 font-black text-xs px-3 py-1.5 rounded-xl shadow-xs active:scale-95 transition-all flex items-center gap-1 cursor-pointer"
               >
@@ -836,6 +840,25 @@ export const CreateCategoryModal: React.FC<CreateCategoryModalProps> = ({
             </button>
           </div>
         </form>
+
+        {/* Currency Insufficient Confirmation Prompt */}
+        <CurrencyPromptModal
+          isOpen={!!currencyPrompt}
+          type={currencyPrompt}
+          coins={coins}
+          diamonds={diamonds}
+          onConfirm={() => {
+            if (currencyPrompt === 'buy_more_diamonds') {
+              onClose();
+              if (onOpenShop) onOpenShop('diamonds');
+            } else if (currencyPrompt === 'buy_coins_with_diamonds') {
+              onClose();
+              if (onOpenShop) onOpenShop('coins');
+            }
+            setCurrencyPrompt(null);
+          }}
+          onClose={() => setCurrencyPrompt(null)}
+        />
       </div>
     </div>
   );

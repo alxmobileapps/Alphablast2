@@ -1,7 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { AlertTriangle, RotateCcw, Trophy, Home } from 'lucide-react';
 import { Category, WordHistoryItem } from '../types';
 import { formatPoints } from '../utils/scoring';
+import { CurrencyPromptModal, CurrencyPromptType } from './CurrencyPromptModal';
+import { haptics } from '../utils/haptics';
 
 interface GameOverModalProps {
   isOpen: boolean;
@@ -10,11 +12,12 @@ interface GameOverModalProps {
   history: WordHistoryItem[];
   score?: number;
   coins?: number;
+  diamonds?: number;
   diamondMilestoneAwarded?: { count: number; milestoneName: string } | null;
   adRefillsUsed?: number;
   maxRefills?: number;
   onUseCoinsForMoves?: (coinsCost: number) => boolean;
-  onOpenShop?: () => void;
+  onOpenShop?: (tab?: 'powerups' | 'coins' | 'diamonds') => void;
   onRetry: () => void;
   onGoHome?: () => void;
   onOpenLeaderboard?: () => void;
@@ -27,6 +30,7 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({
   history,
   score = 0,
   coins = 0,
+  diamonds = 0,
   diamondMilestoneAwarded,
   adRefillsUsed = 0,
   maxRefills = 3,
@@ -36,6 +40,7 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({
   onGoHome,
   onOpenLeaderboard,
 }) => {
+  const [currencyPrompt, setCurrencyPrompt] = useState<CurrencyPromptType>(null);
   if (!isOpen) return null;
 
   const isExhausted = adRefillsUsed >= maxRefills;
@@ -155,8 +160,9 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({
               onClick={() => {
                 if (coins >= 50) {
                   onUseCoinsForMoves(50);
-                } else if (onOpenShop) {
-                  onOpenShop();
+                } else {
+                  haptics.invalid();
+                  setCurrencyPrompt('buy_coins_with_diamonds');
                 }
               }}
               className={`w-full py-2.5 px-4 rounded-xl font-black text-xs sm:text-sm shadow-sm flex items-center justify-between transition-transform active:scale-95 cursor-pointer ${
@@ -201,6 +207,23 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({
             </button>
           </div>
         </div>
+
+        {/* Currency Insufficient Confirmation Prompt */}
+        <CurrencyPromptModal
+          isOpen={!!currencyPrompt}
+          type={currencyPrompt}
+          coins={coins}
+          diamonds={diamonds}
+          onConfirm={() => {
+            if (currencyPrompt === 'buy_coins_with_diamonds') {
+              if (onOpenShop) onOpenShop('coins');
+            } else if (currencyPrompt === 'buy_more_diamonds') {
+              if (onOpenShop) onOpenShop('diamonds');
+            }
+            setCurrencyPrompt(null);
+          }}
+          onClose={() => setCurrencyPrompt(null)}
+        />
       </div>
     </div>
   );

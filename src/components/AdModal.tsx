@@ -3,6 +3,7 @@ import { Play, Sparkles, Gift, CheckCircle, RotateCcw, AlertTriangle } from 'luc
 import { playRewardRefill } from '../utils/audio';
 import { showUniversalRewardedAd } from '../utils/universalAds';
 import { haptics } from '../utils/haptics';
+import { CurrencyPromptModal, CurrencyPromptType } from './CurrencyPromptModal';
 
 interface AdModalProps {
   isOpen: boolean;
@@ -10,10 +11,11 @@ interface AdModalProps {
   maxRefills: number;
   hasRemovedAds?: boolean;
   coins?: number;
+  diamonds?: number;
   onUseCoinsForMoves?: (coinsCost: number) => boolean;
   onClaimReward: () => void;
   onResetGame: () => void;
-  onOpenShop?: () => void;
+  onOpenShop?: (tab?: 'powerups' | 'coins' | 'diamonds') => void;
 }
 
 export const AdModal: React.FC<AdModalProps> = ({
@@ -22,6 +24,7 @@ export const AdModal: React.FC<AdModalProps> = ({
   maxRefills = 3,
   hasRemovedAds = false,
   coins = 0,
+  diamonds = 0,
   onUseCoinsForMoves,
   onClaimReward,
   onResetGame,
@@ -30,6 +33,7 @@ export const AdModal: React.FC<AdModalProps> = ({
   const [isPlaying, setIsPlaying] = useState(false);
   const [timeLeft, setTimeLeft] = useState(5);
   const [completed, setCompleted] = useState(false);
+  const [currencyPrompt, setCurrencyPrompt] = useState<CurrencyPromptType>(null);
 
   const isExhausted = adRefillsUsed >= maxRefills;
   const refillsRemaining = Math.max(0, maxRefills - adRefillsUsed);
@@ -39,6 +43,7 @@ export const AdModal: React.FC<AdModalProps> = ({
       setIsPlaying(false);
       setTimeLeft(5);
       setCompleted(false);
+      setCurrencyPrompt(null);
     }
   }, [isOpen]);
 
@@ -89,9 +94,9 @@ export const AdModal: React.FC<AdModalProps> = ({
     if (coins >= 50 && onUseCoinsForMoves) {
       haptics.specialCreated();
       onUseCoinsForMoves(50);
-    } else if (onOpenShop) {
-      haptics.tap();
-      onOpenShop();
+    } else {
+      haptics.invalid();
+      setCurrencyPrompt('buy_coins_with_diamonds');
     }
   };
 
@@ -271,6 +276,23 @@ export const AdModal: React.FC<AdModalProps> = ({
             </button>
           </div>
         )}
+
+        {/* Currency Insufficient Confirmation Prompt */}
+        <CurrencyPromptModal
+          isOpen={!!currencyPrompt}
+          type={currencyPrompt}
+          coins={coins}
+          diamonds={diamonds}
+          onConfirm={() => {
+            if (currencyPrompt === 'buy_coins_with_diamonds') {
+              if (onOpenShop) onOpenShop('coins');
+            } else if (currencyPrompt === 'buy_more_diamonds') {
+              if (onOpenShop) onOpenShop('diamonds');
+            }
+            setCurrencyPrompt(null);
+          }}
+          onClose={() => setCurrencyPrompt(null)}
+        />
       </div>
     </div>
   );

@@ -297,6 +297,12 @@ export default function App() {
   const [isAdModalOpen, setIsAdModalOpen] = useState<boolean>(false);
   const [isPowerUpAdOpen, setIsPowerUpAdOpen] = useState<boolean>(false);
   const [isShopOpen, setIsShopOpen] = useState<boolean>(false);
+  const [shopInitialTab, setShopInitialTab] = useState<'powerups' | 'coins' | 'diamonds'>('powerups');
+
+  const handleOpenShop = useCallback((tab: 'powerups' | 'coins' | 'diamonds' = 'powerups') => {
+    setShopInitialTab(tab);
+    setIsShopOpen(true);
+  }, []);
   const [roundEndCoinConversion, setRoundEndCoinConversion] = useState<{
     coloredTiles: number;
     powerups: number;
@@ -2465,7 +2471,7 @@ export default function App() {
               onOpenLeaderboard={() => setIsLeaderboardOpen(true)}
               onOpenHelp={() => setIsHelpOpen(true)}
               onOpenSettings={() => setIsSettingsOpen(true)}
-              onOpenShop={() => setIsShopOpen(true)}
+              onOpenShop={handleOpenShop}
             />
           </div>
         ) : (
@@ -2482,7 +2488,7 @@ export default function App() {
               diamonds={gameProgress.diamonds || 0}
               onOpenCategories={() => setIsCategoryModalOpen(true)}
               onOpenHome={() => setCurrentScreen('menu')}
-              onOpenShop={() => setIsShopOpen(true)}
+              onOpenShop={handleOpenShop}
             />
 
             {/* Main Gameplay Container: Vertically balanced to fit all screen ratios & iPad without overlapping banner ads */}
@@ -2684,22 +2690,24 @@ export default function App() {
         maxRefills={MAX_AD_REFILLS}
         hasRemovedAds={gameProgress.hasRemovedAds || false}
         coins={gameProgress.coins || 0}
+        diamonds={gameProgress.diamonds || 0}
         onUseCoinsForMoves={handleUseCoinsForMoves}
         onClaimReward={handleClaimAdReward}
         onResetGame={() => {
           setIsAdModalOpen(false);
           playCategoryRound(currentCategory);
         }}
-        onOpenShop={() => setIsShopOpen(true)}
+        onOpenShop={handleOpenShop}
       />
 
       <PowerUpAdModal
         isOpen={isPowerUpAdOpen}
         selectedPowerUpType={targetAdPowerUpType}
         coins={gameProgress.coins || 0}
+        diamonds={gameProgress.diamonds || 0}
         onBuyWithCoins={handleBuyPowerUpWithCoins}
         onClaimReward={handleClaimPowerUpReward}
-        onOpenShop={() => setIsShopOpen(true)}
+        onOpenShop={handleOpenShop}
         onClose={() => setIsPowerUpAdOpen(false)}
       />
 
@@ -2719,7 +2727,7 @@ export default function App() {
         onReplayRound={() => playCategoryRound(currentCategory)}
         onGoHome={handleGoHome}
         onOpenLeaderboard={() => setIsLeaderboardOpen(true)}
-        onOpenShop={() => setIsShopOpen(true)}
+        onOpenShop={handleOpenShop}
         hasNextRound={categoryIndex < INITIAL_CATEGORIES.length - 1 || !!selectedCustomCategory}
       />
 
@@ -2731,10 +2739,11 @@ export default function App() {
         score={roundScore}
         diamondMilestoneAwarded={diamondMilestoneAwarded}
         coins={gameProgress.coins || 0}
+        diamonds={gameProgress.diamonds || 0}
         adRefillsUsed={adRefillsUsed}
         maxRefills={MAX_AD_REFILLS}
         onUseCoinsForMoves={handleUseCoinsForMoves}
-        onOpenShop={() => setIsShopOpen(true)}
+        onOpenShop={handleOpenShop}
         onRetry={() => playCategoryRound(currentCategory)}
         onGoHome={handleGoHome}
         onOpenLeaderboard={() => setIsLeaderboardOpen(true)}
@@ -2742,6 +2751,7 @@ export default function App() {
 
       <ShopModal
         isOpen={isShopOpen}
+        initialTab={shopInitialTab}
         onClose={() => setIsShopOpen(false)}
         coins={gameProgress.coins || 0}
         diamonds={gameProgress.diamonds || 0}
@@ -2799,11 +2809,12 @@ export default function App() {
           setEditingCustomCategory(null);
         }}
         diamonds={gameProgress.diamonds || 0}
+        coins={gameProgress.coins || 0}
         onDeductDiamonds={handleDeductDiamondsForCategory}
         onCategoryCreated={handleCustomCategoryCreated}
         editingCategory={editingCustomCategory}
         onCategoryUpdated={handleCustomCategoryUpdated}
-        onOpenShop={() => setIsShopOpen(true)}
+        onOpenShop={handleOpenShop}
       />
 
       {/* Interstitial Ad: Shown every 2 categories before opening the 3rd */}
@@ -2814,14 +2825,14 @@ export default function App() {
         onAdCompleted={handleInterstitialAdCompleted}
         onOpenShop={() => {
           setIsInterstitialOpen(false);
-          setIsShopOpen(true);
+          handleOpenShop('powerups');
         }}
       />
 
       {/* Bottom Banner Ad across the screen */}
       <BottomBannerAd
         hasRemovedAds={gameProgress.hasRemovedAds}
-        onOpenShop={() => setIsShopOpen(true)}
+        onOpenShop={() => handleOpenShop('powerups')}
       />
 
       {currentScreen === 'game' && (
