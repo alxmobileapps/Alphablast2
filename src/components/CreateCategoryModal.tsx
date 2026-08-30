@@ -43,7 +43,7 @@ const PRESET_THEMES = [
   {
     name: 'Space Explorer',
     icon: '🚀',
-    targetCount: 8,
+    targetCount: 10,
     words: [
       'ROCKET', 'PLANET', 'METEOR', 'GALAXY', 'COMET', 'ORBIT', 'STAR', 'MOON',
       'ASTEROID', 'NEBULA', 'COSMOS', 'SOLAR', 'ALIEN', 'MARS', 'VENUS', 'JUPITER',
@@ -53,7 +53,7 @@ const PRESET_THEMES = [
   {
     name: 'Video Games',
     icon: '🎮',
-    targetCount: 8,
+    targetCount: 10,
     words: [
       'GAMER', 'QUEST', 'PIXEL', 'ARCADE', 'BOSS', 'LEVEL', 'CONSOLE', 'PLAYER',
       'BONUS', 'SHIELD', 'JOYSTICK', 'RETRO', 'SPEED', 'POWER', 'SCORE', 'AVATAR',
@@ -63,7 +63,7 @@ const PRESET_THEMES = [
   {
     name: 'Coffee & Cafe',
     icon: '☕',
-    targetCount: 8,
+    targetCount: 10,
     words: [
       'LATTE', 'MOCHA', 'ESPRESSO', 'BEANS', 'BREW', 'ROAST', 'MATCHA', 'CARAMEL',
       'BARISTA', 'FRAPPE', 'CREAM', 'PASTRY', 'SUGAR', 'MUG', 'STEAM', 'VANILLA',
@@ -73,7 +73,7 @@ const PRESET_THEMES = [
   {
     name: 'Superheroes',
     icon: '⚡',
-    targetCount: 8,
+    targetCount: 10,
     words: [
       'HERO', 'POWER', 'MUTANT', 'FLYING', 'LASER', 'STRONG', 'ARMOR', 'STEEL',
       'SHIELD', 'MASK', 'BRAVE', 'SPEED', 'AVENGER', 'CAPE', 'FORCE', 'VILLAIN',
@@ -83,7 +83,7 @@ const PRESET_THEMES = [
   {
     name: 'Sweet Desserts',
     icon: '🍩',
-    targetCount: 8,
+    targetCount: 10,
     words: [
       'COOKIE', 'DONUT', 'CANDY', 'WAFFLE', 'PUDDING', 'SUNDAE', 'FUDGE', 'TART',
       'CARAMEL', 'CREAM', 'PASTRY', 'JELLY', 'ICING', 'CAKE', 'MUFFIN', 'GELATO',
@@ -93,7 +93,7 @@ const PRESET_THEMES = [
   {
     name: 'Rock & Music',
     icon: '🎸',
-    targetCount: 8,
+    targetCount: 10,
     words: [
       'GUITAR', 'DRUMS', 'PIANO', 'CHORD', 'RHYTHM', 'MELODY', 'TEMPO', 'SYNTH',
       'FLUTE', 'VIOLIN', 'BRASS', 'SONG', 'BEAT', 'ALBUM', 'SOLO', 'SINGER',
@@ -117,9 +117,9 @@ export const CreateCategoryModal: React.FC<CreateCategoryModalProps> = ({
 
   const [name, setName] = useState('');
   const [icon, setIcon] = useState('🚀');
-  const [gameMode, setGameMode] = useState<CustomGameMode>('timer');
+  const [gameMode, setGameMode] = useState<CustomGameMode>('target');
   const [timerSeconds, setTimerSeconds] = useState<number>(DEFAULT_TIMER_SECONDS);
-  const [targetCount, setTargetCount] = useState<number>(8);
+  const [targetCount, setTargetCount] = useState<number>(10);
   const [creatorName, setCreatorName] = useState(() => {
     try {
       return localStorage.getItem('word_blast_player_name') || 'WordMaster';
@@ -144,16 +144,16 @@ export const CreateCategoryModal: React.FC<CreateCategoryModalProps> = ({
       setIcon(editingCategory.icon || '⭐');
       setGameMode(editingCategory.gameMode || (editingCategory.timerSeconds ? 'timer' : 'target'));
       setTimerSeconds(editingCategory.timerSeconds || DEFAULT_TIMER_SECONDS);
-      setTargetCount(editingCategory.targetCount || 8);
+      setTargetCount(editingCategory.targetCount || 10);
       setCreatorName(editingCategory.creatorName || 'WordMaster');
       setWordsInput((editingCategory.words || []).join(', '));
       setErrorMessage(null);
     } else {
       setName('');
       setIcon('🚀');
-      setGameMode('timer');
+      setGameMode('target');
       setTimerSeconds(DEFAULT_TIMER_SECONDS);
-      setTargetCount(8);
+      setTargetCount(10);
       setWordsInput('');
       setErrorMessage(null);
     }
@@ -503,36 +503,7 @@ export const CreateCategoryModal: React.FC<CreateCategoryModalProps> = ({
             </div>
 
             <div className="grid grid-cols-2 gap-2">
-              {/* Option 1: Timed Rush */}
-              <button
-                type="button"
-                onClick={() => {
-                  setGameMode('timer');
-                  haptics.tap();
-                }}
-                className={`p-3 rounded-xl border-2 text-left transition-all cursor-pointer flex flex-col justify-between ${
-                  gameMode === 'timer'
-                    ? 'bg-gradient-to-br from-purple-700 to-indigo-700 text-white border-purple-400 shadow-md ring-2 ring-purple-300'
-                    : 'bg-white hover:bg-purple-50 text-gray-700 border-purple-200'
-                }`}
-              >
-                <div className="flex items-center justify-between mb-1">
-                  <div className="flex items-center gap-1.5 font-black text-xs sm:text-sm">
-                    <Timer className={`w-4 h-4 ${gameMode === 'timer' ? 'text-amber-300' : 'text-purple-600'}`} />
-                    <span>Timed Rush</span>
-                  </div>
-                  {gameMode === 'timer' && (
-                    <span className="px-1.5 py-0.2 bg-amber-400 text-amber-950 text-[9px] font-black rounded uppercase">
-                      Selected
-                    </span>
-                  )}
-                </div>
-                <p className={`text-[11px] leading-tight ${gameMode === 'timer' ? 'text-purple-100' : 'text-gray-500'}`}>
-                  Find as many words as you can within the timer! (e.g. 2 Mins)
-                </p>
-              </button>
-
-              {/* Option 2: Target Goal */}
+              {/* Option 1: Target Goal */}
               <button
                 type="button"
                 onClick={() => {
@@ -560,54 +531,47 @@ export const CreateCategoryModal: React.FC<CreateCategoryModalProps> = ({
                   Clear target count of theme words with move limits (7 moves).
                 </p>
               </button>
+
+              {/* Option 2: Timed Rush */}
+              <button
+                type="button"
+                onClick={() => {
+                  setGameMode('timer');
+                  haptics.tap();
+                }}
+                className={`p-3 rounded-xl border-2 text-left transition-all cursor-pointer flex flex-col justify-between ${
+                  gameMode === 'timer'
+                    ? 'bg-gradient-to-br from-purple-700 to-indigo-700 text-white border-purple-400 shadow-md ring-2 ring-purple-300'
+                    : 'bg-white hover:bg-purple-50 text-gray-700 border-purple-200'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <div className="flex items-center gap-1.5 font-black text-xs sm:text-sm">
+                    <Timer className={`w-4 h-4 ${gameMode === 'timer' ? 'text-amber-300' : 'text-purple-600'}`} />
+                    <span>Timed Rush</span>
+                  </div>
+                  {gameMode === 'timer' && (
+                    <span className="px-1.5 py-0.2 bg-amber-400 text-amber-950 text-[9px] font-black rounded uppercase">
+                      Selected
+                    </span>
+                  )}
+                </div>
+                <p className={`text-[11px] leading-tight ${gameMode === 'timer' ? 'text-purple-100' : 'text-gray-500'}`}>
+                  Find as many words as you can within the timer! (e.g. 2 Mins)
+                </p>
+              </button>
             </div>
-
-            {/* If Timer Mode: Timer Duration Selector */}
-            {gameMode === 'timer' && (
-              <div className="bg-white border border-purple-200 rounded-xl p-2.5 flex flex-col gap-2 animate-fade-in">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-black text-purple-950 flex items-center gap-1">
-                    <Clock className="w-3.5 h-3.5 text-purple-600" /> Timer Duration:
-                  </span>
-                  <span className="text-xs font-black font-mono text-purple-800 bg-purple-100 px-2.5 py-0.5 rounded-lg border border-purple-300">
-                    ⏱ {Math.floor(timerSeconds / 60)}:{(timerSeconds % 60).toString().padStart(2, '0')} ({Math.floor(timerSeconds / 60)} min{timerSeconds >= 120 ? 's' : ''})
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
-                  {PRESET_TIMERS.map((preset) => (
-                    <button
-                      key={preset.seconds}
-                      type="button"
-                      onClick={() => handleTimerChange(preset.seconds)}
-                      className={`px-2.5 py-1.5 rounded-xl border text-center transition-all cursor-pointer ${
-                        timerSeconds === preset.seconds
-                          ? 'bg-purple-600 text-white border-purple-700 shadow-xs font-black scale-105'
-                          : 'bg-purple-50/50 hover:bg-purple-100 border-purple-200 text-purple-900 font-bold'
-                      }`}
-                    >
-                      <div className="text-xs font-black">{preset.label}</div>
-                      <div className={`text-[9px] ${timerSeconds === preset.seconds ? 'text-amber-300' : 'text-purple-600/80'}`}>
-                        {preset.desc}
-                      </div>
-                    </button>
-                  ))}
-                </div>
-
-                <div className="flex items-center justify-between text-[10.5px] text-gray-500 font-medium pt-1 border-t border-purple-100">
-                  <span>Players find as many words as possible before time runs out.</span>
-                  <span className="text-purple-700 font-bold">Editable later</span>
-                </div>
-              </div>
-            )}
 
             {/* If Target Goal Mode: Target Goal Selector */}
             {gameMode === 'target' && (
               <div className="bg-white border border-purple-200 rounded-xl p-2.5 flex flex-col gap-2 animate-fade-in">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-black text-purple-950 flex items-center gap-1">
-                    <Target className="w-3.5 h-3.5 text-purple-600" /> Target Word Goal:
-                  </span>
+                  <div className="flex flex-col">
+                    <span className="text-xs font-black text-purple-950 flex items-center gap-1">
+                      <Target className="w-3.5 h-3.5 text-purple-600" /> Target Word Goal:
+                    </span>
+                    <span className="text-[10px] font-bold text-purple-600">Editable later</span>
+                  </div>
                   <span className="text-xs font-black font-mono text-purple-800 bg-purple-100 px-2.5 py-0.5 rounded-lg border border-purple-300">
                     {targetCount} Words Goal
                   </span>
@@ -661,6 +625,47 @@ export const CreateCategoryModal: React.FC<CreateCategoryModalProps> = ({
                   <span className="font-mono text-purple-700 text-[10.5px]">
                     ({targetCount} × 2 = {minRequiredWords})
                   </span>
+                </div>
+              </div>
+            )}
+
+            {/* If Timer Mode: Timer Duration Selector */}
+            {gameMode === 'timer' && (
+              <div className="bg-white border border-purple-200 rounded-xl p-2.5 flex flex-col gap-2 animate-fade-in">
+                <div className="flex items-center justify-between">
+                  <div className="flex flex-col">
+                    <span className="text-xs font-black text-purple-950 flex items-center gap-1">
+                      <Clock className="w-3.5 h-3.5 text-purple-600" /> Timer Duration:
+                    </span>
+                    <span className="text-[10px] font-bold text-purple-600">Editable later</span>
+                  </div>
+                  <span className="text-xs font-black font-mono text-purple-800 bg-purple-100 px-2.5 py-0.5 rounded-lg border border-purple-300">
+                    ⏱ {Math.floor(timerSeconds / 60)}:{(timerSeconds % 60).toString().padStart(2, '0')} ({Math.floor(timerSeconds / 60)} min{timerSeconds >= 120 ? 's' : ''})
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                  {PRESET_TIMERS.map((preset) => (
+                    <button
+                      key={preset.seconds}
+                      type="button"
+                      onClick={() => handleTimerChange(preset.seconds)}
+                      className={`px-2.5 py-1.5 rounded-xl border text-center transition-all cursor-pointer ${
+                        timerSeconds === preset.seconds
+                          ? 'bg-purple-600 text-white border-purple-700 shadow-xs font-black scale-105'
+                          : 'bg-purple-50/50 hover:bg-purple-100 border-purple-200 text-purple-900 font-bold'
+                      }`}
+                    >
+                      <div className="text-xs font-black">{preset.label}</div>
+                      <div className={`text-[9px] ${timerSeconds === preset.seconds ? 'text-amber-300' : 'text-purple-600/80'}`}>
+                        {preset.desc}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+
+                <div className="text-[10.5px] text-gray-500 font-medium pt-1 border-t border-purple-100">
+                  Players find as many words as possible before time runs out.
                 </div>
               </div>
             )}

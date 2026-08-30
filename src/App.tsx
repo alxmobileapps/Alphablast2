@@ -2477,6 +2477,7 @@ export default function App() {
                 }
               }}
               onOpenCategories={() => setIsCategoryModalOpen(true)}
+              onOpenCreateCategory={handleOpenCreateCategory}
               onOpenProfile={() => setIsProfileOpen(true)}
               onOpenLeaderboard={() => setIsLeaderboardOpen(true)}
               onOpenHelp={() => setIsHelpOpen(true)}

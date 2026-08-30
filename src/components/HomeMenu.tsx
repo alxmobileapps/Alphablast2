@@ -10,6 +10,7 @@ import {
   Layers,
   Plus,
   ShoppingBag,
+  Wand2,
 } from 'lucide-react';
 import { Category } from '../types';
 import { GameProgress } from '../utils/gameProgress';
@@ -23,6 +24,7 @@ interface HomeMenuProps {
   score: number;
   onPlayGame: () => void;
   onOpenCategories: () => void;
+  onOpenCreateCategory?: () => void;
   onOpenProfile: () => void;
   onOpenLeaderboard: () => void;
   onOpenHelp: () => void;
@@ -36,6 +38,7 @@ export const HomeMenu: React.FC<HomeMenuProps> = ({
   score,
   onPlayGame,
   onOpenCategories,
+  onOpenCreateCategory,
   onOpenProfile,
   onOpenLeaderboard,
   onOpenHelp,
@@ -206,7 +209,35 @@ export const HomeMenu: React.FC<HomeMenuProps> = ({
               <ChevronRight className="w-4 h-4 text-cyan-400/60 group-hover:text-cyan-300 group-hover:translate-x-0.5 transition-all shrink-0" />
             </button>
 
-            {/* 3. DEDICATED STORE & BANK BUTTON */}
+            {/* 3. DEDICATED CUSTOM GAME BUTTON */}
+            <button
+              id="menu-btn-custom-game"
+              onClick={() => onOpenCreateCategory && handleAction(onOpenCreateCategory)}
+              className="w-full group p-2 sm:p-2.5 rounded-xl sm:rounded-2xl bg-gradient-to-r from-[#121B4B] via-[#1A1854] to-[#121B4B] hover:from-[#1A2566] hover:via-[#261E78] hover:to-[#1A2566] border border-[#8B5CF6]/50 hover:border-[#C084FC] active:translate-y-[1px] shadow-[0_2px_12px_rgba(139,92,246,0.15)] transition-all cursor-pointer flex items-center justify-between text-left"
+            >
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-8 h-8 rounded-xl bg-[#071330] border border-[#A78BFA]/50 flex items-center justify-center text-base shrink-0 group-hover:scale-105 transition-transform shadow-[0_0_10px_rgba(167,139,250,0.3)]">
+                  <Sparkles className="w-4 h-4 text-fuchsia-300" />
+                </div>
+                <div className="min-w-0">
+                  <div className="text-xs sm:text-sm font-black text-white leading-tight flex items-center gap-1.5">
+                    <span className="font-futuristic tracking-wider uppercase group-hover:text-fuchsia-300 transition-colors text-glow-fuchsia">
+                      CUSTOM GAME
+                    </span>
+                    <span className="font-futuristic text-[8px] sm:text-[9px] font-black uppercase bg-gradient-to-r from-cyan-400 to-blue-500 text-slate-950 px-1.5 py-0.2 rounded-md shadow-xs tracking-wider flex items-center gap-0.5">
+                      <span>10</span>
+                      <span className="text-[9px]">💎</span>
+                    </span>
+                  </div>
+                  <div className="font-tech text-[10px] sm:text-[11px] text-fuchsia-200/70 font-semibold truncate tracking-wide flex items-center gap-1">
+                    <span>Create your own category for 10 💎</span>
+                  </div>
+                </div>
+              </div>
+              <ChevronRight className="w-4 h-4 text-fuchsia-400/60 group-hover:text-fuchsia-300 group-hover:translate-x-0.5 transition-all shrink-0" />
+            </button>
+
+            {/* 4. DEDICATED STORE & BANK BUTTON */}
             <button
               id="menu-btn-store"
               onClick={() => onOpenShop && handleAction(onOpenShop)}
