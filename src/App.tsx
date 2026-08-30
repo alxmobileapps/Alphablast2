@@ -2189,19 +2189,29 @@ export default function App() {
     const updated = addDiamonds(amount);
     setGameProgress(updated);
     triggerBanner(`Added +${amount} Diamonds to your Vault!`, 'special', '💎', '+DIAMONDS');
+    syncProgressToCloud(updated).catch((err) => {
+      console.warn('Auto cloud sync after adding diamonds:', err);
+    });
   };
 
   const handlePurchaseRemoveAds = () => {
     const { progress } = purchaseRemoveAllAds();
     setGameProgress(progress);
-    setPowerUps({
+    const vipPowerUps = {
       hammer: 2,
       swap: 2,
       rearrange: 2,
       clue: 2,
       replace: 2,
+    };
+    setPowerUps(vipPowerUps);
+    try {
+      localStorage.setItem('alphablast_powerups', JSON.stringify(vipPowerUps));
+    } catch {}
+    triggerBanner('All Ads Removed Forever! +100 💎 & Power-ups Set to 2!', 'special', '🛡️', 'NO ADS ACTIVE');
+    syncProgressToCloud(progress).catch((err) => {
+      console.warn('Auto cloud sync after removing ads:', err);
     });
-    triggerBanner('All Ads Removed! +100 💎 & Power-ups Set to 2!', 'special', '🛡️', 'NO ADS ACTIVE');
   };
 
   const handleUseCoinsForMoves = (coinsCost: number = 50): boolean => {

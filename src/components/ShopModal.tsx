@@ -24,7 +24,7 @@ import { HammerIcon } from './HammerIcon';
 import { CurrencyPromptModal, CurrencyPromptType } from './CurrencyPromptModal';
 import { playRewardRefill, playSpecialCard, playWin } from '../utils/audio';
 import { haptics } from '../utils/haptics';
-import { purchaseIAP, purchaseMedianIAP, restoreMedianPurchases } from '../utils/medianBridge';
+import { purchaseIAP, purchaseMedianIAP } from '../utils/medianBridge';
 import { showUniversalRewardedAd } from '../utils/universalAds';
 
 interface ShopModalProps {
@@ -122,20 +122,6 @@ export const ShopModal: React.FC<ShopModalProps> = ({
         } else {
           showNotification('Purchase cancelled.');
         }
-      }
-    });
-  };
-
-  const handleRestorePurchases = () => {
-    haptics.tap();
-    restoreMedianPurchases((purchasedIds) => {
-      if (purchasedIds.includes('com.wordblast.removeads')) {
-        if (onPurchaseRemoveAds) {
-          onPurchaseRemoveAds();
-          showNotification('Purchases Restored: Remove Ads Active!');
-        }
-      } else {
-        showNotification('No prior purchases found.');
       }
     });
   };
@@ -399,14 +385,6 @@ export const ShopModal: React.FC<ShopModalProps> = ({
                   </>
                 )}
               </button>
-              {!hasRemovedAds && (
-                <button
-                  onClick={handleRestorePurchases}
-                  className="text-[10px] text-blue-300 hover:text-white underline font-semibold text-center py-0.5 cursor-pointer"
-                >
-                  Restore IAP
-                </button>
-              )}
             </div>
           </div>
 
@@ -760,16 +738,10 @@ export const ShopModal: React.FC<ShopModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="p-3 border-t border-[#1E3A8A] bg-[#071330] flex items-center justify-between text-xs text-blue-200">
-          <button
-            onClick={handleRestorePurchases}
-            className="text-[11px] text-blue-300 hover:text-white underline underline-offset-2 transition-colors cursor-pointer"
-          >
-            Restore Purchases
-          </button>
+        <div className="p-3 border-t border-[#1E3A8A] bg-[#071330] flex items-center justify-end text-xs text-blue-200">
           <button
             onClick={onClose}
-            className="px-4 py-1.5 bg-[#0E286C] hover:bg-[#143588] text-white font-bold rounded-xl border border-[#204090] text-xs active:scale-95 cursor-pointer"
+            className="px-5 py-2 bg-[#0E286C] hover:bg-[#143588] text-white font-black rounded-xl border border-[#204090] text-xs sm:text-sm active:scale-95 transition-all shadow-md cursor-pointer"
           >
             Done
           </button>
