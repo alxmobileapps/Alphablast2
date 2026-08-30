@@ -163,186 +163,190 @@ export const HomeMenu: React.FC<HomeMenuProps> = ({
             <button
               id="menu-btn-play"
               onClick={() => handleAction(onPlayGame)}
-              className="w-full group relative py-2 sm:py-2.5 px-3 rounded-xl bg-gradient-to-b from-[#38BDF8] via-[#0EA5E9] to-[#0284C7] hover:from-[#7DD3FC] hover:via-[#38BDF8] hover:to-[#0EA5E9] border-t border-white/90 border-b-3 border-b-[#034C70] active:border-b active:translate-y-[1px] shadow-[0_4px_14px_rgba(14,165,233,0.45)] transition-all cursor-pointer flex items-center justify-between text-left overflow-hidden"
+              className="w-full group relative py-2 sm:py-2.5 px-3 rounded-xl bg-gradient-to-b from-[#38BDF8] via-[#0EA5E9] to-[#0284C7] hover:from-[#7DD3FC] hover:via-[#38BDF8] hover:to-[#0EA5E9] border-t border-white/90 border-b-3 border-b-[#034C70] active:border-b active:translate-y-[1px] shadow-[0_4px_14px_rgba(14,165,233,0.5)] transition-all cursor-pointer flex items-center justify-between text-left overflow-hidden"
             >
               {/* Highlight Shimmer */}
               <div className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/30 to-transparent pointer-events-none" />
 
-              <div className="flex items-center gap-2.5 relative z-10 min-w-0">
+              <div className="flex items-center gap-2 sm:gap-2.5 relative z-10 min-w-0">
                 <div className="w-8 h-8 rounded-lg bg-white/20 border border-white/40 flex items-center justify-center text-lg shadow-inner group-hover:scale-105 transition-transform shrink-0">
                   <Play className="w-4 h-4 text-white fill-white ml-0.5" />
                 </div>
-                <div>
-                  <div
-                    className="font-futuristic text-sm sm:text-base font-black text-white leading-tight truncate tracking-[0.08em] uppercase"
-                    style={{
-                      textShadow:
-                        '0 1px 0 #0284C7, 0 2px 0 #0369A1, 0 3px 1px #0C4A6E, 0 4px 6px rgba(0, 0, 0, 0.8), 0 0 10px rgba(255, 255, 255, 0.6)'
-                    }}
-                  >
-                    PLAY GAME
-                  </div>
-                  <div className="font-tech text-[9.5px] sm:text-[10px] text-cyan-100/90 font-bold truncate">
-                    Round #{currentCategory.id}: {currentCategory.name}
-                  </div>
+                <div
+                  className="font-futuristic text-base sm:text-lg font-black text-white leading-tight truncate tracking-[0.08em] uppercase"
+                  style={{
+                    textShadow:
+                      '0 1px 0 #0284C7, 0 2px 0 #0369A1, 0 3px 0 #075985, 0 4px 1px #0C4A6E, 0 5px 8px rgba(0, 0, 0, 0.8), 0 0 12px rgba(255, 255, 255, 0.6)'
+                  }}
+                >
+                  GAME BOARD
                 </div>
               </div>
 
               <div className="w-6 h-6 rounded-full bg-white/20 border border-white/40 flex items-center justify-center text-white shrink-0 group-hover:translate-x-0.5 transition-transform">
-                <ChevronRight className="w-3 h-3" />
+                <ChevronRight className="w-3.5 h-3.5" />
               </div>
             </button>
 
-            {/* 2. SUB-ROW: CATEGORIES & CUSTOM GAME (2 Columns) */}
-            <div className="grid grid-cols-2 gap-1.5">
-              {/* CATEGORIES BUTTON */}
-              <button
-                id="menu-btn-categories"
-                onClick={() => handleAction(onOpenCategories)}
-                className="group p-1.5 sm:p-2 rounded-xl bg-[#0C2158] hover:bg-[#132E75] border border-[#1E3A8A] hover:border-[#38BDF8] active:translate-y-[1px] shadow-inner transition-all cursor-pointer flex items-center justify-between text-left"
-              >
-                <div className="flex items-center gap-1.5 min-w-0">
-                  <div className="w-7 h-7 rounded-lg bg-[#071330] border border-[#38BDF8]/40 flex items-center justify-center text-sm shrink-0 group-hover:scale-105 transition-transform">
-                    <Layers className="w-3.5 h-3.5 text-cyan-300" />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="font-futuristic text-[11px] sm:text-xs font-black text-white leading-tight tracking-wider uppercase group-hover:text-cyan-300 transition-colors truncate">
-                      CATEGORIES
-                    </div>
-                    <div className="font-tech text-[9px] text-cyan-200/70 font-semibold truncate">
-                      {completedCount}/100 Cleared
-                    </div>
-                  </div>
+            {/* 2. DEDICATED CATEGORIES BUTTON */}
+            <button
+              id="menu-btn-categories"
+              onClick={() => handleAction(onOpenCategories)}
+              className="w-full group py-1.5 sm:py-2 px-2.5 rounded-xl bg-[#0C2158] hover:bg-[#132E75] border border-[#1E3A8A] hover:border-[#38BDF8] active:translate-y-[1px] shadow-inner transition-all cursor-pointer flex items-center justify-between text-left"
+            >
+              <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+                <div className="w-7 h-7 rounded-lg bg-[#071330] border border-[#38BDF8]/40 flex items-center justify-center text-sm shrink-0 group-hover:scale-105 transition-transform">
+                  <Layers className="w-3.5 h-3.5 text-cyan-300" />
                 </div>
-                <ChevronRight className="w-3.5 h-3.5 text-cyan-400/60 group-hover:text-cyan-300 shrink-0 ml-1" />
-              </button>
-
-              {/* CUSTOM GAME BUTTON */}
-              <button
-                id="menu-btn-custom-game"
-                onClick={() => onOpenCreateCategory && handleAction(onOpenCreateCategory)}
-                className="group p-1.5 sm:p-2 rounded-xl bg-gradient-to-r from-[#121B4B] to-[#1E195E] hover:from-[#1A2566] hover:to-[#2A237F] border border-[#8B5CF6]/50 hover:border-[#C084FC] active:translate-y-[1px] shadow-[0_2px_10px_rgba(139,92,246,0.15)] transition-all cursor-pointer flex items-center justify-between text-left"
-              >
-                <div className="flex items-center gap-1.5 min-w-0">
-                  <div className="w-7 h-7 rounded-lg bg-[#071330] border border-[#A78BFA]/50 flex items-center justify-center text-sm shrink-0 group-hover:scale-105 transition-transform shadow-[0_0_8px_rgba(167,139,250,0.3)]">
-                    <Sparkles className="w-3.5 h-3.5 text-fuchsia-300" />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="font-futuristic text-[11px] sm:text-xs font-black text-white leading-tight tracking-wider uppercase group-hover:text-fuchsia-300 transition-colors truncate flex items-center gap-1">
-                      <span>CUSTOM</span>
-                      <span className="text-[8px] bg-gradient-to-r from-cyan-400 to-blue-500 text-slate-950 px-1 rounded font-black">
-                        10💎
-                      </span>
-                    </div>
-                    <div className="font-tech text-[9px] text-fuchsia-200/70 font-semibold truncate">
-                      Create category
-                    </div>
-                  </div>
+                <div className="font-futuristic text-xs sm:text-sm font-black text-white leading-tight tracking-wider uppercase group-hover:text-cyan-300 transition-colors truncate">
+                  CATEGORIES
                 </div>
-                <ChevronRight className="w-3.5 h-3.5 text-fuchsia-400/60 group-hover:text-fuchsia-300 shrink-0 ml-1" />
-              </button>
-            </div>
-
-            {/* 3. 2x2 FEATURE TILES: STORE, PROFILE, LEADERBOARD, SETTINGS */}
-            <div className="grid grid-cols-2 gap-1.5">
-              {/* STORE & BANK */}
-              <button
-                id="menu-btn-store"
-                onClick={() => onOpenShop && handleAction(onOpenShop)}
-                className="group p-1.5 sm:p-2 rounded-xl bg-[#0C2158] hover:bg-[#132E75] border border-[#1E3A8A] hover:border-amber-400 active:translate-y-[1px] shadow-inner transition-all cursor-pointer flex items-center justify-between text-left"
-              >
-                <div className="flex items-center gap-1.5 min-w-0">
-                  <div className="w-7 h-7 rounded-lg bg-[#071330] border border-amber-400/40 flex items-center justify-center text-sm shrink-0 group-hover:scale-105 transition-transform">
-                    <ShoppingBag className="w-3.5 h-3.5 text-amber-300" />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="font-futuristic text-[11px] sm:text-xs font-black text-white leading-tight tracking-wider uppercase group-hover:text-amber-300 transition-colors truncate">
-                      STORE & BANK
-                    </div>
-                    <div className="font-tech text-[9px] text-amber-200/70 font-semibold truncate">
-                      Power-ups & Packs
-                    </div>
-                  </div>
-                </div>
-                <ChevronRight className="w-3.5 h-3.5 text-amber-400/60 group-hover:text-amber-300 shrink-0 ml-1" />
-              </button>
-
-              {/* PROFILE & STATS */}
-              <button
-                id="menu-btn-profile"
-                onClick={() => handleAction(onOpenProfile)}
-                className="group p-1.5 sm:p-2 rounded-xl bg-[#0C2158] hover:bg-[#132E75] border border-[#1E3A8A] hover:border-[#38BDF8] active:translate-y-[1px] shadow-inner transition-all cursor-pointer flex items-center justify-between text-left"
-              >
-                <div className="flex items-center gap-1.5 min-w-0">
-                  <div className="w-7 h-7 rounded-lg bg-[#071330] border border-[#38BDF8]/40 flex items-center justify-center text-sm shrink-0 group-hover:scale-105 transition-transform">
-                    <User className="w-3.5 h-3.5 text-cyan-300" />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="font-futuristic text-[11px] sm:text-xs font-black text-white leading-tight tracking-wider uppercase group-hover:text-cyan-300 transition-colors truncate">
-                      PROFILE
-                    </div>
-                    <div className="font-tech text-[9px] text-cyan-200/70 font-semibold truncate">
-                      ★ {totalStars} Total Stars
-                    </div>
-                  </div>
-                </div>
-                <ChevronRight className="w-3.5 h-3.5 text-cyan-400/60 group-hover:text-cyan-300 shrink-0 ml-1" />
-              </button>
-
-              {/* LEADERBOARD */}
-              <button
-                id="menu-btn-leaderboard"
-                onClick={() => handleAction(onOpenLeaderboard)}
-                className="group p-1.5 sm:p-2 rounded-xl bg-[#0C2158] hover:bg-[#132E75] border border-[#1E3A8A] hover:border-amber-400 active:translate-y-[1px] shadow-inner transition-all cursor-pointer flex items-center justify-between text-left"
-              >
-                <div className="flex items-center gap-1.5 min-w-0">
-                  <div className="w-7 h-7 rounded-lg bg-[#071330] border border-amber-400/40 flex items-center justify-center text-sm shrink-0 group-hover:scale-105 transition-transform">
-                    <Trophy className="w-3.5 h-3.5 text-amber-300" />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="font-futuristic text-[11px] sm:text-xs font-black text-white leading-tight tracking-wider uppercase group-hover:text-amber-300 transition-colors truncate">
-                      LEADERBOARD
-                    </div>
-                    <div className="font-tech text-[9px] text-amber-200/70 font-semibold truncate">
-                      Global Rankings
-                    </div>
-                  </div>
-                </div>
-                <ChevronRight className="w-3.5 h-3.5 text-amber-400/60 group-hover:text-amber-300 shrink-0 ml-1" />
-              </button>
-
-              {/* SETTINGS & HELP */}
-              <div className="flex items-center gap-1">
-                <button
-                  id="menu-btn-settings"
-                  onClick={() => handleAction(onOpenSettings)}
-                  className="flex-1 group p-1.5 sm:p-2 rounded-xl bg-[#0C2158] hover:bg-[#132E75] border border-[#1E3A8A] hover:border-indigo-400 active:translate-y-[1px] shadow-inner transition-all cursor-pointer flex items-center justify-between text-left min-w-0"
-                >
-                  <div className="flex items-center gap-1.5 min-w-0">
-                    <div className="w-7 h-7 rounded-lg bg-[#071330] border border-indigo-400/40 flex items-center justify-center text-sm shrink-0 group-hover:scale-105 transition-transform">
-                      <Settings className="w-3.5 h-3.5 text-indigo-300" />
-                    </div>
-                    <div className="min-w-0">
-                      <div className="font-futuristic text-[11px] sm:text-xs font-black text-white leading-tight tracking-wider uppercase group-hover:text-indigo-300 transition-colors truncate">
-                        SETTINGS
-                      </div>
-                      <div className="font-tech text-[9px] text-indigo-200/70 font-semibold truncate">
-                        FX & Data
-                      </div>
-                    </div>
-                  </div>
-                </button>
-
-                <button
-                  id="menu-btn-how-to-play"
-                  onClick={() => handleAction(onOpenHelp)}
-                  className="w-8 h-full rounded-xl bg-[#0C2158] hover:bg-[#132E75] border border-[#1E3A8A] hover:border-emerald-400 active:translate-y-[1px] shadow-inner transition-all cursor-pointer flex items-center justify-center text-emerald-300 shrink-0 py-2"
-                  title="How to Play"
-                >
-                  <HelpCircle className="w-4 h-4 text-emerald-300" />
-                </button>
               </div>
-            </div>
+              <ChevronRight className="w-3.5 h-3.5 text-cyan-400/60 group-hover:text-cyan-300 group-hover:translate-x-0.5 transition-all shrink-0" />
+            </button>
+
+            {/* 3. DEDICATED CUSTOM GAME BUTTON */}
+            <button
+              id="menu-btn-custom-game"
+              onClick={() => onOpenCreateCategory && handleAction(onOpenCreateCategory)}
+              className="w-full group py-1.5 sm:py-2 px-2.5 rounded-xl bg-gradient-to-r from-[#121B4B] via-[#1A1854] to-[#121B4B] hover:from-[#1A2566] hover:via-[#261E78] hover:to-[#1A2566] border border-[#8B5CF6]/50 hover:border-[#C084FC] active:translate-y-[1px] shadow-[0_2px_12px_rgba(139,92,246,0.15)] transition-all cursor-pointer flex items-center justify-between text-left"
+            >
+              <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+                <div className="w-7 h-7 rounded-lg bg-[#071330] border border-[#A78BFA]/50 flex items-center justify-center text-sm shrink-0 group-hover:scale-105 transition-transform shadow-[0_0_8px_rgba(167,139,250,0.3)]">
+                  <Sparkles className="w-3.5 h-3.5 text-fuchsia-300" />
+                </div>
+                <div className="min-w-0">
+                  <div className="text-xs sm:text-sm font-black text-white leading-tight flex items-center gap-1.5">
+                    <span className="font-futuristic tracking-wider uppercase group-hover:text-fuchsia-300 transition-colors text-glow-fuchsia">
+                      CUSTOM GAME
+                    </span>
+                    <span className="font-futuristic text-[8px] font-black uppercase bg-gradient-to-r from-cyan-400 to-blue-500 text-slate-950 px-1.5 py-0.2 rounded-md shadow-xs tracking-wider flex items-center gap-0.5">
+                      <span>10</span>
+                      <span className="text-[8px]">💎</span>
+                    </span>
+                  </div>
+                  <div className="font-tech text-[9.5px] sm:text-[10px] text-fuchsia-200/70 font-semibold truncate tracking-wide">
+                    Create your own category for 10 💎
+                  </div>
+                </div>
+              </div>
+              <ChevronRight className="w-3.5 h-3.5 text-fuchsia-400/60 group-hover:text-fuchsia-300 group-hover:translate-x-0.5 transition-all shrink-0" />
+            </button>
+
+            {/* 4. DEDICATED STORE & BANK BUTTON */}
+            <button
+              id="menu-btn-store"
+              onClick={() => onOpenShop && handleAction(onOpenShop)}
+              className="w-full group py-1.5 sm:py-2 px-2.5 rounded-xl bg-[#0C2158] hover:bg-[#132E75] border border-[#1E3A8A] hover:border-amber-400 active:translate-y-[1px] shadow-inner transition-all cursor-pointer flex items-center justify-between text-left"
+            >
+              <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+                <div className="w-7 h-7 rounded-lg bg-[#071330] border border-amber-400/40 flex items-center justify-center text-sm shrink-0 group-hover:scale-105 transition-transform">
+                  <ShoppingBag className="w-3.5 h-3.5 text-amber-300" />
+                </div>
+                <div className="min-w-0">
+                  <div className="text-xs sm:text-sm font-black text-white leading-tight flex items-center gap-1.5">
+                    <span className="font-futuristic tracking-wider uppercase group-hover:text-amber-300 transition-colors">
+                      STORE & BANK
+                    </span>
+                    <span className="font-futuristic text-[8px] font-black uppercase bg-gradient-to-r from-amber-400 to-yellow-400 text-amber-950 px-1.5 py-0.2 rounded-md shadow-xs tracking-wider">
+                      STORE
+                    </span>
+                  </div>
+                  <div className="font-tech text-[9.5px] sm:text-[10px] text-amber-200/70 font-semibold truncate tracking-wide">
+                    Power-ups, coins, diamonds & packs
+                  </div>
+                </div>
+              </div>
+              <ChevronRight className="w-3.5 h-3.5 text-amber-400/60 group-hover:text-amber-300 group-hover:translate-x-0.5 transition-all shrink-0" />
+            </button>
+
+            {/* 5. PROFILE BUTTON (Username & Category Stats) */}
+            <button
+              id="menu-btn-profile"
+              onClick={() => handleAction(onOpenProfile)}
+              className="w-full group py-1.5 sm:py-2 px-2.5 rounded-xl bg-[#0C2158] hover:bg-[#132E75] border border-[#1E3A8A] hover:border-[#38BDF8] active:translate-y-[1px] shadow-inner transition-all cursor-pointer flex items-center justify-between text-left"
+            >
+              <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+                <div className="w-7 h-7 rounded-lg bg-[#071330] border border-[#38BDF8]/40 flex items-center justify-center text-sm shrink-0 group-hover:scale-105 transition-transform">
+                  <User className="w-3.5 h-3.5 text-cyan-300" />
+                </div>
+                <div className="min-w-0">
+                  <div className="font-futuristic text-xs sm:text-sm font-black text-white leading-tight tracking-wider uppercase group-hover:text-cyan-300 transition-colors">
+                    PROFILE & STATS
+                  </div>
+                  <div className="font-tech text-[9.5px] sm:text-[10px] text-cyan-200/70 font-semibold truncate tracking-wide">
+                    {profile.name || 'PLAYER 1'} • ★ {totalStars} TOTAL STARS
+                  </div>
+                </div>
+              </div>
+              <ChevronRight className="w-3.5 h-3.5 text-cyan-400/60 group-hover:text-cyan-300 group-hover:translate-x-0.5 transition-all shrink-0" />
+            </button>
+
+            {/* 6. LEADERBOARD BUTTON */}
+            <button
+              id="menu-btn-leaderboard"
+              onClick={() => handleAction(onOpenLeaderboard)}
+              className="w-full group py-1.5 sm:py-2 px-2.5 rounded-xl bg-[#0C2158] hover:bg-[#132E75] border border-[#1E3A8A] hover:border-amber-400 active:translate-y-[1px] shadow-inner transition-all cursor-pointer flex items-center justify-between text-left"
+            >
+              <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+                <div className="w-7 h-7 rounded-lg bg-[#071330] border border-amber-400/40 flex items-center justify-center text-sm shrink-0 group-hover:scale-105 transition-transform">
+                  <Trophy className="w-3.5 h-3.5 text-amber-300" />
+                </div>
+                <div className="min-w-0">
+                  <div className="font-futuristic text-xs sm:text-sm font-black text-white leading-tight tracking-wider uppercase group-hover:text-amber-300 transition-colors">
+                    LEADERBOARD
+                  </div>
+                  <div className="font-tech text-[9.5px] sm:text-[10px] text-amber-200/70 font-semibold truncate tracking-wide">
+                    Global rankings & high scores
+                  </div>
+                </div>
+              </div>
+              <ChevronRight className="w-3.5 h-3.5 text-amber-400/60 group-hover:text-amber-300 group-hover:translate-x-0.5 transition-all shrink-0" />
+            </button>
+
+            {/* 7. HOW TO PLAY BUTTON */}
+            <button
+              id="menu-btn-how-to-play"
+              onClick={() => handleAction(onOpenHelp)}
+              className="w-full group py-1.5 sm:py-2 px-2.5 rounded-xl bg-[#0C2158] hover:bg-[#132E75] border border-[#1E3A8A] hover:border-emerald-400 active:translate-y-[1px] shadow-inner transition-all cursor-pointer flex items-center justify-between text-left"
+            >
+              <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+                <div className="w-7 h-7 rounded-lg bg-[#071330] border border-emerald-400/40 flex items-center justify-center text-sm shrink-0 group-hover:scale-105 transition-transform">
+                  <HelpCircle className="w-3.5 h-3.5 text-emerald-300" />
+                </div>
+                <div className="min-w-0">
+                  <div className="font-futuristic text-xs sm:text-sm font-black text-white leading-tight tracking-wider uppercase group-hover:text-emerald-300 transition-colors">
+                    HOW TO PLAY
+                  </div>
+                  <div className="font-tech text-[9.5px] sm:text-[10px] text-emerald-200/70 font-semibold truncate tracking-wide">
+                    Rules, swaps, bombs & specials
+                  </div>
+                </div>
+              </div>
+              <ChevronRight className="w-3.5 h-3.5 text-emerald-400/60 group-hover:text-emerald-300 group-hover:translate-x-0.5 transition-all shrink-0" />
+            </button>
+
+            {/* 8. SETTINGS BUTTON */}
+            <button
+              id="menu-btn-settings"
+              onClick={() => handleAction(onOpenSettings)}
+              className="w-full group py-1.5 sm:py-2 px-2.5 rounded-xl bg-[#0C2158] hover:bg-[#132E75] border border-[#1E3A8A] hover:border-indigo-400 active:translate-y-[1px] shadow-inner transition-all cursor-pointer flex items-center justify-between text-left"
+            >
+              <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+                <div className="w-7 h-7 rounded-lg bg-[#071330] border border-indigo-400/40 flex items-center justify-center text-sm shrink-0 group-hover:scale-105 transition-transform">
+                  <Settings className="w-3.5 h-3.5 text-indigo-300" />
+                </div>
+                <div className="min-w-0">
+                  <div className="font-futuristic text-xs sm:text-sm font-black text-white leading-tight tracking-wider uppercase group-hover:text-indigo-300 transition-colors">
+                    SETTINGS
+                  </div>
+                  <div className="font-tech text-[9.5px] sm:text-[10px] text-indigo-200/70 font-semibold truncate tracking-wide">
+                    Audio FX, music, haptics & data
+                  </div>
+                </div>
+              </div>
+              <ChevronRight className="w-3.5 h-3.5 text-indigo-400/60 group-hover:text-indigo-300 group-hover:translate-x-0.5 transition-all shrink-0" />
+            </button>
           </div>
         </div>
       </div>
