@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Sparkles, ExternalLink, X, Shield, Star, Play } from 'lucide-react';
 import { setUniversalBannerVisible } from '../utils/universalAds';
 import { haptics } from '../utils/haptics';
@@ -73,6 +73,8 @@ export const BottomBannerAd: React.FC<BottomBannerAdProps> = ({
 }) => {
   const [currentIdx, setCurrentIdx] = useState(0);
   const [clickedEffect, setClickedEffect] = useState(false);
+  const [adSenseLoaded, setAdSenseLoaded] = useState(false);
+  const adRef = useRef<HTMLModElement | null>(null);
 
   // Sync native / universal banner visibility
   useEffect(() => {
@@ -86,7 +88,20 @@ export const BottomBannerAd: React.FC<BottomBannerAdProps> = ({
     };
   }, [hasRemovedAds]);
 
-  // Rotate ad campaigns every 12 seconds
+  // Try pushing to Google AdSense adsbygoogle queue once mounted
+  useEffect(() => {
+    if (hasRemovedAds) return;
+    try {
+      if (typeof window !== 'undefined') {
+        // @ts-ignore
+        (window.adsbygoogle = window.adsbygoogle || []).push({});
+      }
+    } catch (e) {
+      console.warn('AdSense push notice:', e);
+    }
+  }, [hasRemovedAds]);
+
+  // Rotate fallback campaigns every 12 seconds
   useEffect(() => {
     if (hasRemovedAds) return;
     const interval = setInterval(() => {
@@ -110,9 +125,23 @@ export const BottomBannerAd: React.FC<BottomBannerAdProps> = ({
   return (
     <div
       id="bottom-banner-ad-container"
-      className="w-full bg-slate-900 border-t border-slate-700/80 shadow-lg py-1.5 px-2.5 sm:px-4 pb-[max(0.375rem,env(safe-area-inset-bottom))] z-30 select-none shrink-0 transition-all duration-300"
+      className="w-full bg-slate-900 border-t border-slate-700/80 shadow-lg py-1 px-2 sm:px-4 pb-[max(0.25rem,env(safe-area-inset-bottom))] z-30 select-none shrink-0 transition-all duration-300 flex flex-col items-center justify-center min-h-[52px]"
     >
-      <div className="max-w-5xl mx-auto flex items-center justify-between gap-2 sm:gap-4">
+      {/* Official Google AdSense ad slot */}
+      <div className="w-full max-w-[728px] mx-auto overflow-hidden text-center flex flex-col items-center justify-center">
+        <ins
+          ref={adRef}
+          className="adsbygoogle"
+          style={{ display: 'block', minHeight: '50px', width: '100%', maxHeight: '65px' }}
+          data-ad-client="ca-pub-2452250229562082"
+          data-ad-slot="2174440998"
+          data-ad-format="horizontal"
+          data-full-width-responsive="true"
+        />
+      </div>
+
+      {/* Fallback Display Bar in case live network ad is filling / loading */}
+      <div className="w-full max-w-5xl mx-auto flex items-center justify-between gap-2 sm:gap-4 py-0.5">
         {/* Left Side: AD badge & App Icon + Details */}
         <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
           {/* Official Google/AdMob Style "Ad" Tag */}
@@ -124,7 +153,7 @@ export const BottomBannerAd: React.FC<BottomBannerAdProps> = ({
 
           {/* App Icon */}
           <div
-            className={`w-9 h-9 sm:w-10 sm:h-10 shrink-0 rounded-xl bg-gradient-to-br ${campaign.iconBg} flex items-center justify-center text-lg sm:text-xl shadow-md border border-white/20 transform transition-transform hover:scale-105`}
+            className={`w-8 h-8 sm:w-9 sm:h-9 shrink-0 rounded-xl bg-gradient-to-br ${campaign.iconBg} flex items-center justify-center text-base sm:text-lg shadow-md border border-white/20 transform transition-transform hover:scale-105`}
           >
             {campaign.iconEmoji}
           </div>
@@ -176,3 +205,4 @@ export const BottomBannerAd: React.FC<BottomBannerAdProps> = ({
     </div>
   );
 };
+

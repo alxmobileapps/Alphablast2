@@ -54,29 +54,42 @@ export function showUniversalRewardedAd(options: {
   const { name = 'rewarded_bonus', onReward, onDismiss, onError, fallbackToInteractiveModal } = options;
 
   // 1. Check Google H5 Game Ads (PWABuilder / Web)
-  if (isH5GamesSdkAvailable() && typeof window.adBreak === 'function') {
+  if (typeof window !== 'undefined' && typeof window.adBreak === 'function') {
     try {
       let rewarded = false;
+      console.log('[UniversalAds] Invoking Google H5 adBreak for Rewarded Ad:', name);
       window.adBreak({
         type: 'reward',
         name,
+        beforeAd: () => {
+          console.log('[UniversalAds] H5 Rewarded: beforeAd (Audio muted)');
+        },
+        afterAd: () => {
+          console.log('[UniversalAds] H5 Rewarded: afterAd (Audio restored)');
+        },
         beforeReward: (showAdFn: () => void) => {
-          showAdFn();
+          console.log('[UniversalAds] H5 Rewarded: beforeReward prompt');
+          if (typeof showAdFn === 'function') {
+            showAdFn();
+          }
         },
         adViewed: () => {
+          console.log('[UniversalAds] H5 Rewarded: adViewed (Reward Granted!)');
           rewarded = true;
           onReward();
         },
         adDismissed: () => {
+          console.log('[UniversalAds] H5 Rewarded: adDismissed');
           if (!rewarded && onDismiss) {
             onDismiss();
           }
         },
         adBreakDone: (placementInfo: any) => {
+          console.log('[UniversalAds] H5 Rewarded: adBreakDone status:', placementInfo?.breakStatus);
           if (placementInfo?.breakStatus === 'dismissed' && !rewarded && onDismiss) {
             onDismiss();
-          } else if (placementInfo?.breakStatus === 'error') {
-            console.warn('[UniversalAds] H5 Rewarded error, falling back to simulated modal');
+          } else if (placementInfo?.breakStatus === 'error' || placementInfo?.breakStatus === 'timeout') {
+            console.warn('[UniversalAds] H5 Rewarded not filled or in cooldown, falling back to in-game reward modal');
             if (fallbackToInteractiveModal) fallbackToInteractiveModal();
             else onReward();
           }
@@ -84,7 +97,7 @@ export function showUniversalRewardedAd(options: {
       });
       return;
     } catch (e: any) {
-      console.warn('[UniversalAds] H5 adBreak failed:', e);
+      console.warn('[UniversalAds] H5 adBreak failed, falling back:', e);
     }
   }
 
@@ -129,12 +142,20 @@ export function showUniversalInterstitialAd(options?: {
   const name = options?.name || 'next_level';
 
   // 1. Check Google H5 Game Ads
-  if (isH5GamesSdkAvailable() && typeof window.adBreak === 'function') {
+  if (typeof window !== 'undefined' && typeof window.adBreak === 'function') {
     try {
+      console.log('[UniversalAds] Invoking Google H5 adBreak for Interstitial Ad:', name);
       window.adBreak({
         type: 'next',
         name,
+        beforeAd: () => {
+          console.log('[UniversalAds] H5 Interstitial: beforeAd');
+        },
+        afterAd: () => {
+          console.log('[UniversalAds] H5 Interstitial: afterAd');
+        },
         adBreakDone: (placementInfo: any) => {
+          console.log('[UniversalAds] H5 Interstitial: adBreakDone status:', placementInfo?.breakStatus);
           if (options?.onAdCompleted) options.onAdCompleted();
         },
       });
