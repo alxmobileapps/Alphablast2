@@ -220,23 +220,21 @@ export function isCategoryWord(word: string, categoryId: number): boolean {
   const catSet = categoryWordSets.get(categoryId);
   if (!catSet) return false;
 
-  // 1. Direct O(1) set lookup
+  // 1. Direct O(1) set lookup in pre-indexed category dictionary
   if (catSet.has(upper)) return true;
 
-  // 2. Check if singular form of word belongs to category
+  // 2. Check if a valid singular form belongs to category
   const singulars = getSingularForms(upper);
   for (const s of singulars) {
     if (catSet.has(s)) {
-      catSet.add(upper); // Cache for future fast lookups
       return true;
     }
   }
 
-  // 3. Check if plural form of word belongs to category
+  // 3. Check if a valid plural form belongs to category
   const plurals = getPluralForms(upper);
   for (const p of plurals) {
     if (catSet.has(p)) {
-      catSet.add(upper); // Cache for future fast lookups
       return true;
     }
   }

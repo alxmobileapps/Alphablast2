@@ -191,7 +191,7 @@ export const CATEGORIES_BATCH_2: Category[] = [
     icon: '🍟',
     color: 'red',
     words: [
-      'BURGER', 'CHEESEBURGER', 'FRIES', 'NUGGETS', 'HOTDOG', 'CORN DOG', 'PIZZA', 'SLICES', 'WINGS', 'TACO', 'BURRITO',
+      'BURGER', 'CHEESEBURGER', 'FRIES', 'NUGGETS', 'HOTDOG', 'CORNDOG', 'PIZZA', 'SLICES', 'WINGS', 'TACO', 'BURRITO',
       'NACHOS', 'QUESADILLA', 'ONIONRINGS', 'CHIPS', 'CRISP', 'POPCORN', 'PRETZEL', 'PEANUTS', 'CASHEWS',
       'SLIDER', 'WRAP', 'SUBWAY', 'SANDWICH', 'SODA', 'SHAKE', 'MILKSHAKE', 'SUNDAE', 'PIE', 'CHURRO', 'DIP', 'KETCHUP', 'MUSTARD', 'MAYO'
     ]
@@ -320,7 +320,7 @@ export const CATEGORIES_BATCH_2: Category[] = [
     icon: '💃',
     color: 'pink',
     words: [
-      'BALLET', 'TANGO', 'SALSA', 'WALTZ', 'RUMBA', 'SAMBA', 'CHA-CHA', 'FOXTROT', 'FLAMENCO', 'POLKA',
+      'BALLET', 'TANGO', 'SALSA', 'WALTZ', 'RUMBA', 'SAMBA', 'CHACHA', 'FOXTROT', 'FLAMENCO', 'POLKA',
       'HIPHOP', 'BREAKDANCE', 'TAP', 'JAZZ', 'SWING', 'DISCO', 'FOLK', 'LINE', 'SQUARE', 'BELLYDANCE',
       'STEP', 'SPIN', 'TWIRL', 'LEAP', 'JUMP', 'RHYTHM', 'TEMPO', 'BEAT', 'CHOREOGRAPHY', 'DANCER', 'BALLROOM'
     ]

@@ -225,7 +225,7 @@ export const CATEGORIES_BATCH_4: Category[] = [
     color: 'red',
     words: [
       'KARATE', 'JUDO', 'TAEKWONDO', 'KUNGFU', 'JIUJITSU', 'AIKIDO', 'BOXING', 'KICKBOXING', 'MUAYTHAI', 'WRESTLING',
-      'DOJO', 'MAT', 'RING', 'BELT', 'BLACKBELT', 'GI', 'UNIFORM', 'GLOVES', 'GUARD', 'PADS',
+      'DOJO', 'MAT', 'RING', 'BELT', 'BLACKBELT', 'ROBE', 'UNIFORM', 'GLOVES', 'GUARD', 'PADS',
       'PUNCH', 'KICK', 'STRIKE', 'BLOCK', 'PARRY', 'THROW', 'TAKEDOWN', 'GRAPPLE', 'SUBMISSION', 'SPARRING', 'SENSEI', 'MASTER'
     ]
   },
