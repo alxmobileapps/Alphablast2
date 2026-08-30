@@ -1,66 +1,255 @@
 <svg viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <radialGradient id="iconGlow" cx="50%" cy="50%" r="50%">
-      <stop offset="0%" stop-color="#0EA5E9" stop-opacity="0.6" />
-      <stop offset="60%" stop-color="#0284C7" stop-opacity="0.3" />
-      <stop offset="100%" stop-color="#071330" stop-opacity="0" />
-    </radialGradient>
+    <!-- Background Gradients -->
     <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#0F172A" />
-      <stop offset="50%" stop-color="#071330" />
-      <stop offset="100%" stop-color="#020817" />
+      <stop offset="0%" stop-color="#0E2A68" />
+      <stop offset="35%" stop-color="#081845" />
+      <stop offset="70%" stop-color="#050F2C" />
+      <stop offset="100%" stop-color="#020716" />
     </linearGradient>
-    <linearGradient id="tileA" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#38BDF8" />
+    <radialGradient id="bgGlow" cx="50%" cy="50%" r="55%">
+      <stop offset="0%" stop-color="#38BDF8" stop-opacity="0.45" />
+      <stop offset="45%" stop-color="#0284C7" stop-opacity="0.25" />
+      <stop offset="85%" stop-color="#07173E" stop-opacity="0" />
+    </radialGradient>
+    <radialGradient id="burstGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.6" />
+      <stop offset="30%" stop-color="#38BDF8" stop-opacity="0.3" />
+      <stop offset="100%" stop-color="#0B1E4A" stop-opacity="0" />
+    </radialGradient>
+
+    <!-- Tile 1: A (Cyan/Sky Blue) -->
+    <linearGradient id="tileAGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#7DD3FC" />
+      <stop offset="40%" stop-color="#38BDF8" />
       <stop offset="100%" stop-color="#0284C7" />
     </linearGradient>
-    <linearGradient id="tileB" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#FBBF24" />
+
+    <!-- Tile 2: Bomb (Vibrant Crimson Red) -->
+    <linearGradient id="tileBombGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FCA5A5" />
+      <stop offset="35%" stop-color="#EF4444" />
+      <stop offset="100%" stop-color="#B91C1C" />
+    </linearGradient>
+
+    <!-- Tile 3: Electrocute (Vibrant Electric Purple) -->
+    <linearGradient id="tileElecGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#E9D5FF" />
+      <stop offset="35%" stop-color="#A855F7" />
+      <stop offset="100%" stop-color="#7E22CE" />
+    </linearGradient>
+
+    <!-- Tile 4: B (Golden Amber Yellow) -->
+    <linearGradient id="tileBGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FEF08A" />
+      <stop offset="35%" stop-color="#FBBF24" />
       <stop offset="100%" stop-color="#D97706" />
     </linearGradient>
-    <linearGradient id="tileC" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#C084FC" />
-      <stop offset="100%" stop-color="#9333EA" />
-    </linearGradient>
-    <filter id="tileShadow" x="-20%" y="-20%" width="140%" height="140%">
-      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#000000" flood-opacity="0.6" />
+
+    <!-- Sparkle & Lightning Glows -->
+    <radialGradient id="sparkGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#FFFFFF" />
+      <stop offset="40%" stop-color="#FDE047" />
+      <stop offset="100%" stop-color="#F59E0B" stop-opacity="0" />
+    </radialGradient>
+    <radialGradient id="elecGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#FFFFFF" />
+      <stop offset="50%" stop-color="#67E8F9" />
+      <stop offset="100%" stop-color="#A855F7" stop-opacity="0" />
+    </radialGradient>
+    <radialGradient id="bombSpark" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#FFFFFF" />
+      <stop offset="40%" stop-color="#FDE047" />
+      <stop offset="80%" stop-color="#EF4444" />
+      <stop offset="100%" stop-color="#DC2626" stop-opacity="0" />
+    </radialGradient>
+
+    <!-- Drop Shadows for 3D Tiles -->
+    <filter id="tileDropShadow" x="-30%" y="-20%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="12" stdDeviation="14" flood-color="#000000" flood-opacity="0.65" />
+    </filter>
+    <filter id="tileBevelGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#000000" flood-opacity="0.3" />
     </filter>
   </defs>
 
   <!-- App Icon Rounded Container -->
   <rect width="512" height="512" rx="115" fill="url(#bgGrad)" />
-  <circle cx="256" cy="256" r="230" fill="url(#iconGlow)" />
+  <circle cx="256" cy="256" r="235" fill="url(#bgGlow)" />
+  <circle cx="256" cy="256" r="160" fill="url(#burstGlow)" />
 
   <!-- Outer Neon Border Ring -->
-  <rect x="12" y="12" width="488" height="488" rx="103" fill="none" stroke="#38BDF8" stroke-width="4" stroke-opacity="0.4" />
+  <rect x="14" y="14" width="484" height="484" rx="103" fill="none" stroke="#38BDF8" stroke-width="4.5" stroke-opacity="0.5" />
+  <rect x="22" y="22" width="468" height="468" rx="95" fill="none" stroke="#7DD3FC" stroke-width="1.5" stroke-opacity="0.3" />
 
-  <!-- Decorative Sparkles -->
-  <circle cx="90" cy="110" r="8" fill="#FDE047" />
-  <circle cx="430" cy="120" r="10" fill="#38BDF8" />
-  <circle cx="410" cy="400" r="7" fill="#F472B6" />
-
-  <!-- Tile A (Top-Left Blue) -->
-  <g transform="translate(100, 95) rotate(-10)" filter="url(#tileShadow)">
-    <rect x="0" y="8" width="140" height="140" rx="32" fill="#0B1E4A" />
-    <rect x="0" y="4" width="140" height="140" rx="32" fill="#0369A1" />
-    <rect x="0" y="0" width="140" height="140" rx="32" fill="url(#tileA)" stroke="#BAE6FD" stroke-width="4" />
-    <path d="M 16 16 Q 70 10 124 16 Q 116 45 22 45 Z" fill="#FFFFFF" fill-opacity="0.45" />
-    <text x="70" y="102" font-size="92" font-family="'Arial Black', 'Impact', sans-serif" font-weight="900" fill="#FFFFFF" text-anchor="middle">A</text>
+  <!-- Background Decorative Sparkles & Stars -->
+  <!-- Top Left Spark -->
+  <g transform="translate(68, 80)">
+    <path d="M 0 -12 Q 2 -2 12 0 Q 2 2 0 12 Q -2 2 -12 0 Q -2 -2 0 -12 Z" fill="#FDE047" />
+    <circle cx="0" cy="0" r="3" fill="#FFFFFF" />
+  </g>
+  <!-- Top Right Star -->
+  <g transform="translate(435, 75)">
+    <path d="M 0 -15 Q 3 -3 15 0 Q 3 3 0 15 Q -3 3 -15 0 Q -3 -3 0 -15 Z" fill="#67E8F9" />
+    <circle cx="0" cy="0" r="4" fill="#FFFFFF" />
+  </g>
+  <!-- Bottom Left Star -->
+  <g transform="translate(65, 420)">
+    <path d="M 0 -10 Q 2 -2 10 0 Q 2 2 0 10 Q -2 2 -10 0 Q -2 -2 0 -10 Z" fill="#C084FC" />
+  </g>
+  <!-- Bottom Right Star -->
+  <g transform="translate(440, 425)">
+    <path d="M 0 -14 Q 3 -3 14 0 Q 3 3 0 14 Q -3 3 -14 0 Q -3 -3 0 -14 Z" fill="#FDE047" />
+    <circle cx="0" cy="0" r="3.5" fill="#FFFFFF" />
   </g>
 
-  <!-- Tile B (Bottom-Right Amber Blast) -->
-  <g transform="translate(235, 215) rotate(8)" filter="url(#tileShadow)">
-    <rect x="0" y="10" width="165" height="165" rx="38" fill="#78350F" />
-    <rect x="0" y="5" width="165" height="165" rx="38" fill="#B45309" />
-    <rect x="0" y="0" width="165" height="165" rx="38" fill="url(#tileB)" stroke="#FEF08A" stroke-width="5" />
-    <path d="M 20 20 Q 82 12 145 20 Q 135 55 26 55 Z" fill="#FFFFFF" fill-opacity="0.5" />
-    <text x="82" y="120" font-size="110" font-family="'Arial Black', 'Impact', sans-serif" font-weight="900" fill="#FFFFFF" text-anchor="middle">B</text>
+  <!-- ========================================== -->
+  <!-- TILE 1: UPPER-LEFT -> "A" (CYAN / SKY BLUE) -->
+  <!-- ========================================== -->
+  <g transform="translate(75, 70) rotate(-11)" filter="url(#tileDropShadow)">
+    <!-- 3D Base Edge (Depth) -->
+    <rect x="0" y="12" width="152" height="152" rx="34" fill="#03456C" />
+    <rect x="0" y="6" width="152" height="152" rx="34" fill="#0284C7" />
+    <!-- Front Face -->
+    <rect x="0" y="0" width="152" height="152" rx="34" fill="url(#tileAGrad)" stroke="#BAE6FD" stroke-width="4.5" />
+    
+    <!-- Top Gloss Highlight Curve -->
+    <path d="M 18 16 Q 76 9 134 16 C 130 52 100 56 18 48 Z" fill="#FFFFFF" fill-opacity="0.55" />
+    <ellipse cx="44" cy="26" rx="18" ry="7" fill="#FFFFFF" fill-opacity="0.75" />
+
+    <!-- 3D Letter "A" (Cartoon Style) -->
+    <!-- Shadow Letter -->
+    <text x="76" y="115" font-size="108" font-family="'Nunito', 'Impact', 'Arial Black', sans-serif" font-weight="900" fill="#03456C" text-anchor="middle">A</text>
+    <!-- Mid Letter -->
+    <text x="76" y="112" font-size="108" font-family="'Nunito', 'Impact', 'Arial Black', sans-serif" font-weight="900" fill="#0284C7" text-anchor="middle">A</text>
+    <!-- Main White Letter -->
+    <text x="76" y="108" font-size="108" font-family="'Nunito', 'Impact', 'Arial Black', sans-serif" font-weight="900" fill="#FFFFFF" text-anchor="middle" filter="url(#tileBevelGlow)">A</text>
   </g>
 
-  <!-- Tile C (Small floating Purple) -->
-  <g transform="translate(290, 75) rotate(18)" filter="url(#tileShadow)">
-    <rect x="0" y="6" width="90" height="90" rx="22" fill="#3B0764" />
-    <rect x="0" y="0" width="90" height="90" rx="22" fill="url(#tileC)" stroke="#E9D5FF" stroke-width="3" />
-    <text x="45" y="65" font-size="58" font-family="'Arial Black', 'Impact', sans-serif" font-weight="900" fill="#FFFFFF" text-anchor="middle">★</text>
+  <!-- ========================================== -->
+  <!-- TILE 2: UPPER-RIGHT -> BOMB (RED SPECIAL)  -->
+  <!-- ========================================== -->
+  <g transform="translate(270, 60) rotate(13)" filter="url(#tileDropShadow)">
+    <!-- 3D Base Edge (Depth) -->
+    <rect x="0" y="12" width="155" height="155" rx="34" fill="#5C0A0A" />
+    <rect x="0" y="6" width="155" height="155" rx="34" fill="#991B1B" />
+    <!-- Front Face -->
+    <rect x="0" y="0" width="155" height="155" rx="34" fill="url(#tileBombGrad)" stroke="#FECACA" stroke-width="4.5" />
+
+    <!-- Top Gloss Highlight Curve -->
+    <path d="M 18 16 Q 78 9 137 16 C 133 52 100 56 18 48 Z" fill="#FFFFFF" fill-opacity="0.5" />
+    <ellipse cx="45" cy="26" rx="18" ry="7" fill="#FFFFFF" fill-opacity="0.7" />
+
+    <!-- Cartoon Bomb Illustration Inside Tile -->
+    <!-- Bomb Fuse & Spark -->
+    <path d="M 78 52 Q 95 38 108 42" fill="none" stroke="#FDE047" stroke-width="4.5" stroke-linecap="round" />
+    <path d="M 78 52 Q 95 38 108 42" fill="none" stroke="#78350F" stroke-width="2.5" stroke-linecap="round" />
+    
+    <!-- Spark Energy at Fuse Tip -->
+    <circle cx="110" cy="41" r="14" fill="url(#bombSpark)" />
+    <path d="M 110 32 L 110 50 M 101 41 L 119 41 M 104 35 L 116 47 M 104 47 L 116 35" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" />
+    <circle cx="110" cy="41" r="4.5" fill="#FFFFFF" />
+
+    <!-- Bomb Cap -->
+    <rect x="70" y="47" width="16" height="9" rx="3" fill="#374151" stroke="#111827" stroke-width="1.5" />
+
+    <!-- Bomb Sphere (Glossy Cartoon Black) -->
+    <!-- Bomb Shadow -->
+    <circle cx="78" cy="93" r="38" fill="#111827" />
+    <circle cx="78" cy="91" r="36" fill="#1F2937" />
+    <circle cx="78" cy="89" r="35" fill="#374151" />
+    
+    <!-- Red Inner Power Core Glow -->
+    <circle cx="78" cy="89" r="18" fill="#EF4444" fill-opacity="0.7" />
+    <circle cx="78" cy="89" r="10" fill="#FDE047" fill-opacity="0.85" />
+    
+    <!-- Bomb Gloss Highlights -->
+    <ellipse cx="64" cy="74" rx="10" ry="6" fill="#FFFFFF" fill-opacity="0.8" transform="rotate(-30, 64, 74)" />
+    <circle cx="60" cy="85" r="3.5" fill="#FFFFFF" fill-opacity="0.6" />
+
+    <!-- Cute Red Blast Energy Sparks around Bomb -->
+    <circle cx="36" cy="70" r="3" fill="#FEF08A" />
+    <circle cx="120" cy="112" r="3.5" fill="#FEF08A" />
+    <circle cx="42" cy="120" r="2.5" fill="#FCA5A5" />
+  </g>
+
+  <!-- ========================================== -->
+  <!-- TILE 3: LOWER-LEFT -> ELECTROCUTE (PURPLE) -->
+  <!-- ========================================== -->
+  <g transform="translate(68, 260) rotate(8)" filter="url(#tileDropShadow)">
+    <!-- 3D Base Edge (Depth) -->
+    <rect x="0" y="12" width="154" height="154" rx="34" fill="#3B0764" />
+    <rect x="0" y="6" width="154" height="154" rx="34" fill="#6B21A8" />
+    <!-- Front Face -->
+    <rect x="0" y="0" width="154" height="154" rx="34" fill="url(#tileElecGrad)" stroke="#F3E8FF" stroke-width="4.5" />
+
+    <!-- Top Gloss Highlight Curve -->
+    <path d="M 18 16 Q 77 9 136 16 C 132 52 100 56 18 48 Z" fill="#FFFFFF" fill-opacity="0.55" />
+    <ellipse cx="44" cy="26" rx="18" ry="7" fill="#FFFFFF" fill-opacity="0.75" />
+
+    <!-- Electric Aura Glow -->
+    <circle cx="77" cy="77" r="46" fill="url(#elecGlow)" opacity="0.8" />
+
+    <!-- 3D High-Voltage Lightning Bolt Icon -->
+    <!-- Bolt Dark Deep Shadow -->
+    <path d="M 86 28 L 52 74 L 75 74 L 62 126 L 104 68 L 81 68 Z" fill="#2E1065" transform="translate(0, 5)" />
+    <!-- Bolt Purple Mid -->
+    <path d="M 86 28 L 52 74 L 75 74 L 62 126 L 104 68 L 81 68 Z" fill="#581C87" transform="translate(0, 2.5)" />
+    <!-- Bolt Cyan Glow Ring -->
+    <path d="M 86 28 L 52 74 L 75 74 L 62 126 L 104 68 L 81 68 Z" fill="#38BDF8" stroke="#38BDF8" stroke-width="5" stroke-linejoin="round" />
+    <!-- Bolt Yellow Core -->
+    <path d="M 86 28 L 52 74 L 75 74 L 62 126 L 104 68 L 81 68 Z" fill="#FEF08A" stroke="#FDE047" stroke-width="2.5" stroke-linejoin="round" />
+    <!-- Bolt Brilliant White Hot Center -->
+    <path d="M 85 34 L 59 72 L 77 72 L 67 116 L 98 70 L 80 70 Z" fill="#FFFFFF" />
+
+    <!-- Electric Sparks Floating -->
+    <g transform="translate(34, 48)">
+      <path d="M 0 -7 L 0 7 M -7 0 L 7 0" stroke="#67E8F9" stroke-width="2.5" stroke-linecap="round" />
+      <circle cx="0" cy="0" r="2.5" fill="#FFFFFF" />
+    </g>
+    <g transform="translate(122, 102)">
+      <path d="M 0 -8 L 0 8 M -8 0 L 8 0" stroke="#FDE047" stroke-width="2.5" stroke-linecap="round" />
+      <circle cx="0" cy="0" r="3" fill="#FFFFFF" />
+    </g>
+    <circle cx="120" cy="44" r="3" fill="#67E8F9" />
+  </g>
+
+  <!-- ========================================== -->
+  <!-- TILE 4: LOWER-RIGHT -> "B" (AMBER / GOLD)  -->
+  <!-- ========================================== -->
+  <g transform="translate(262, 252) rotate(-9)" filter="url(#tileDropShadow)">
+    <!-- 3D Base Edge (Depth) -->
+    <rect x="0" y="12" width="158" height="158" rx="36" fill="#582305" />
+    <rect x="0" y="6" width="158" height="158" rx="36" fill="#B45309" />
+    <!-- Front Face -->
+    <rect x="0" y="0" width="158" height="158" rx="36" fill="url(#tileBGrad)" stroke="#FEF08A" stroke-width="5" />
+
+    <!-- Top Gloss Highlight Curve -->
+    <path d="M 19 17 Q 79 10 139 17 C 135 54 102 58 19 50 Z" fill="#FFFFFF" fill-opacity="0.6" />
+    <ellipse cx="46" cy="27" rx="19" ry="7.5" fill="#FFFFFF" fill-opacity="0.8" />
+
+    <!-- 3D Letter "B" (Cartoon Style) -->
+    <!-- Shadow Letter -->
+    <text x="79" y="118" font-size="112" font-family="'Nunito', 'Impact', 'Arial Black', sans-serif" font-weight="900" fill="#78350F" text-anchor="middle">B</text>
+    <!-- Mid Letter -->
+    <text x="79" y="115" font-size="112" font-family="'Nunito', 'Impact', 'Arial Black', sans-serif" font-weight="900" fill="#D97706" text-anchor="middle">B</text>
+    <!-- Main White Letter -->
+    <text x="79" y="111" font-size="112" font-family="'Nunito', 'Impact', 'Arial Black', sans-serif" font-weight="900" fill="#FFFFFF" text-anchor="middle" filter="url(#tileBevelGlow)">B</text>
+
+    <!-- Little Star on B Tile -->
+    <g transform="translate(130, 36)">
+      <path d="M 0 -8 Q 1.5 -1.5 8 0 Q 1.5 1.5 0 8 Q -1.5 1.5 -8 0 Q -1.5 -1.5 0 -8 Z" fill="#FFFFFF" />
+    </g>
+  </g>
+
+  <!-- ========================================== -->
+  <!-- CENTER ENERGY SPARKLE & ACTION STARBURST   -->
+  <!-- ========================================== -->
+  <g transform="translate(256, 245)">
+    <!-- Central Golden Star -->
+    <path d="M 0 -22 Q 4 -4 22 0 Q 4 4 0 22 Q -4 4 -22 0 Q -4 -4 0 -22 Z" fill="#FDE047" filter="url(#tileBevelGlow)" />
+    <path d="M 0 -14 Q 2.5 -2.5 14 0 Q 2.5 2.5 0 14 Q -2.5 2.5 -14 0 Q -2.5 -2.5 0 -14 Z" fill="#FFFFFF" />
+    <circle cx="0" cy="0" r="5" fill="#FFFFFF" />
   </g>
 </svg>
+
