@@ -95,7 +95,7 @@ export interface ExplosionEffect {
   id: string;
   row: number;
   col: number;
-  type: 'bomb' | 'shining' | 'beam_row' | 'beam_col' | 'card_wipe' | 'board_wipe' | 'hammer';
+  type: 'bomb' | 'shining' | 'beam_row' | 'beam_col' | 'card_wipe' | 'board_wipe' | 'hammer' | 'board_shine';
   letter?: string;
   sourceRow?: number;
   sourceCol?: number;

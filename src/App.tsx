@@ -190,18 +190,7 @@ export default function App() {
   const lastTutorialActivityRef = useRef<number>(Date.now());
 
   // Real-time Statement Banner State
-  const [boardBanner, setBoardBanner] = useState<BoardBanner | null>(() => {
-    const saved = loadGameProgress();
-    const highestUnlocked = getHighestUnlockedCategoryId(saved);
-    const cat = INITIAL_CATEGORIES.find((c) => c.id === highestUnlocked) || INITIAL_CATEGORIES[0];
-    return {
-      id: 'b-init',
-      text: `Category Goal: Find ${cat?.targetCount || 5} "${cat?.name || 'Animals'}" words!`,
-      icon: '🎯',
-      type: 'category',
-      subtext: 'GOAL',
-    };
-  });
+  const [boardBanner, setBoardBanner] = useState<BoardBanner | null>(null);
   const bannerTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const triggerBanner = useCallback(
@@ -640,7 +629,7 @@ export default function App() {
       targetCoords,
     };
     setExplosions((prev) => [...prev, fx]);
-    const duration = type === 'board_wipe' ? 1500 : 950;
+    const duration = type === 'board_wipe' ? 2000 : type === 'board_shine' ? 1000 : 950;
     setTimeout(() => {
       setExplosions((prev) => prev.filter((item) => item.id !== id));
     }, duration);
@@ -706,22 +695,9 @@ export default function App() {
       if (targetCat.gameMode === 'timer') {
         const initSeconds = targetCat.timerSeconds || 120;
         setTimerSecondsRemaining(initSeconds);
-        triggerBanner(
-          `Round Start: ${Math.round(initSeconds / 60)}m Timer Rush for "${targetCat.name}" (Find as many words as you can!)`,
-          'category',
-          targetCat.icon || '⏱',
-          'TIMER RUSH'
-        );
-      } else {
-        triggerBanner(
-          `Round Start: Target ${targetCat.targetCount} words for "${targetCat.name}" (7 Moves, +5 per Word, Max 7)`,
-          'category',
-          targetCat.icon || '🎯',
-          targetCat.isCustom ? 'COMMUNITY' : 'START'
-        );
       }
     },
-    [triggerBanner, highlightOneMoveOpportunity]
+    [highlightOneMoveOpportunity]
   );
 
   const requestOpenCategory = useCallback(
@@ -1172,42 +1148,34 @@ export default function App() {
             addRoundPoints(wipePts, catId);
           }
 
+          // REQUIREMENT:
+          // 1. Show the alert for 2 seconds total.
+          // 2. Start turning the tiles red 1 second after the alert appears.
+          // 3. Sabay mawawala yung alert and magpapakita yung new letters with 3D tile flip!
           haptics.fireWipe();
           playFireInferno();
-          playFireSizzle();
-          playBoardClear();
           triggerExplosion(3, 3, 'board_wipe');
 
-          // Step 1: All individual letters on the entire board catch fire SIMULTANEOUSLY (sabay-sabay)
+          // PHASE 1: Wait 1.0 second after alert appears before tiles start turning red
+          await new Promise((res) => setTimeout(res, 1000));
+
+          // PHASE 2: Board letters and tiles turn red within 1.0 second (t=1.0s to 2.0s)
+          playFireSizzle();
+          haptics.fireCrackle();
           setBoard((prev) =>
             prev.map((rowArr) =>
               rowArr.map((tile) => ({
                 ...tile,
                 isBurning: true,
-                isVaporizing: true,
-              }))
-            )
-          );
-
-          // Wait for fiery incineration animation to burn individual letters simultaneously (~360ms)
-          await new Promise((res) => setTimeout(res, 360));
-
-          // Step 2: Old letters incinerate to ashes while tiles prepare for simultaneous 3D flip
-          setBoard((prev) =>
-            prev.map((rowArr) =>
-              rowArr.map((tile) => ({
-                ...tile,
-                letter: '',
-                isBurning: false,
                 isVaporizing: false,
-                isMatched: true,
               }))
             )
           );
 
-          await new Promise((res) => setTimeout(res, 100));
+          // Glow red for 1.0 full second until t=2.0s
+          await new Promise((res) => setTimeout(res, 1000));
 
-          // Step 3: SIMULTANEOUS 3D TILE FLIP revealing the new set of letters (sabay-sabay din)!
+          // PHASE 3: Sabay mawawala yung alert and magpapakita yung new letters with simultaneous 3D flip!
           activeBoard = generateInitialBoard(catId, formedWordsRef.current);
           activeBoard = activeBoard.map((rowArr) =>
             rowArr.map((tile) => ({
@@ -1220,7 +1188,12 @@ export default function App() {
           );
           setBoard(activeBoard);
           playLetterPop();
+          playBoardClear();
           haptics.fireCrackle();
+
+          // Trigger shining glow running through the board for 1.0 second right after the new set of letters appear
+          triggerExplosion(3, 3, 'board_shine');
+          playShining();
 
           // Wait for simultaneous 3D tile flip animation (~450ms)
           await new Promise((res) => setTimeout(res, 450));
@@ -2245,6 +2218,74 @@ export default function App() {
     return false;
   };
 
+  // Demo Trigger for Fire Wipeout FX in preview
+  const handleTriggerFireWipeoutDemo = useCallback(async () => {
+    if (isAnimating) return;
+    setIsAnimating(true);
+    haptics.fireWipe();
+    playFireInferno();
+    triggerExplosion(3, 3, 'board_wipe');
+
+    // PHASE 1: Wait 1.0 second after alert appears before tiles start turning red
+    await new Promise((res) => setTimeout(res, 1000));
+
+    // PHASE 2: Board letters and tiles turn red within 1.0 second (t=1.0s to 2.0s)
+    playFireSizzle();
+    haptics.fireCrackle();
+    setBoard((prev) =>
+      prev.map((rowArr) =>
+        rowArr.map((tile) => ({
+          ...tile,
+          isBurning: true,
+          isVaporizing: false,
+        }))
+      )
+    );
+
+    // Glow red for 1.0 full second until t=2.0s
+    await new Promise((res) => setTimeout(res, 1000));
+
+    // PHASE 3: Sabay mawawala yung alert and magpapakita yung new letters with simultaneous 3D flip!
+    const catId = currentCategory.id;
+    let freshBoard = generateInitialBoard(catId, formedWordsRef.current);
+    freshBoard = freshBoard.map((rowArr) =>
+      rowArr.map((tile) => ({
+        ...tile,
+        isFlipping: true,
+        isBurning: false,
+        isMatched: false,
+        isFalling: false,
+      }))
+    );
+    setBoard(freshBoard);
+    playLetterPop();
+    playBoardClear();
+    haptics.fireCrackle();
+
+    // Trigger shining glow running through the board for 1.0 second right after the new set of letters appear
+    triggerExplosion(3, 3, 'board_shine');
+    playShining();
+
+    await new Promise((res) => setTimeout(res, 450));
+
+    // Reset flipping states
+    setBoard((prev) =>
+      prev.map((rowArr) =>
+        rowArr.map((tile) => ({
+          ...tile,
+          isFlipping: false,
+          isBurning: false,
+          isElectrified: false,
+          isKnockedOff: false,
+          isVaporizing: false,
+          isMatched: false,
+        }))
+      )
+    );
+
+    setIsAnimating(false);
+  }, [isAnimating, currentCategory.id]);
+
   // Move to Next Category
   const handleNextRound = () => {
     if (selectedCustomCategory) {
@@ -2465,6 +2506,7 @@ export default function App() {
                     tutorialTip={currentTutorialTip}
                     onDismissTutorialTip={handleDismissTutorialTip}
                     onDismissBanner={() => setBoardBanner(null)}
+                    onTriggerFireWipeoutDemo={handleTriggerFireWipeoutDemo}
                   />
                 </div>
 
@@ -2633,6 +2675,7 @@ export default function App() {
             setRobotWords(null);
           }
         }}
+        onTriggerFireWipeoutDemo={handleTriggerFireWipeoutDemo}
       />
 
       <AdModal

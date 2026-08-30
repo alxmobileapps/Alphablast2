@@ -3,6 +3,8 @@ import { Bomb, Sparkles, Zap, Flame, Hammer, ArrowLeftRight, Edit3, X } from 'lu
 import { HammerIcon } from './HammerIcon';
 import { Tile, SpecialTileType, ClueInfo, ExplosionEffect, BoardBanner, PowerUpType, WordAlert } from '../types';
 import { ThinkingRobot } from './ThinkingRobot';
+import { FireFlameGraphic } from './FireFlameGraphic';
+import { FireWipeoutAnnouncement } from './FireWipeoutAnnouncement';
 import { haptics } from '../utils/haptics';
 
 interface GameBoardProps {
@@ -554,9 +556,16 @@ export const GameBoard: React.FC<GameBoardProps> = ({
                             animationDelay: rollDelay,
                           }}
                           className={`relative w-full h-full flex items-center justify-center rounded-[6px] sm:rounded-lg font-bold transition-all active:translate-y-[2px] sm:active:translate-y-[3px] active:border-b-[2px] active:shadow-xs duration-150 ease-out select-none overflow-hidden ${tileBg} ${glowRing} ${swapAnimationClass} ${flipAnimationClass} ${rollAnimationClass} ${dropAnimationClass} ${popAnimationClass} ${knockOffAnimationClass} ${vaporizeAnimationClass} ${breakingBlockAnimationClass} ${
+                            tile.isBurning ? 'animate-tile-heat-glow z-30 !bg-gradient-to-b !from-red-600 !via-[#990000] !to-[#4a0000] !border-red-500 !border-b-[#300000] !text-white' : ''
+                          } ${
                             tile.isMatched && !tile.isKnockedOff && !tile.isVaporizing && !tile.isBreakingBlock ? 'opacity-0 scale-50 transition-all duration-300 pointer-events-none' : ''
                           }`}
                         >
+                          {/* Fiery Blood-Red Flash Overlay when Burning */}
+                          {tile.isBurning && (
+                            <div className="absolute inset-0 bg-gradient-to-b from-red-600/90 via-[#990000]/90 to-[#4a0000]/95 pointer-events-none z-20 animate-pulse" />
+                          )}
+
                           {/* 3D Glossy Specular Top Sheen */}
                           <div className="absolute inset-x-1 top-0.5 h-1/3 bg-gradient-to-b from-white/60 to-transparent rounded-t-sm sm:rounded-t-md pointer-events-none" />
 
@@ -627,18 +636,9 @@ export const GameBoard: React.FC<GameBoardProps> = ({
                               <Zap className={`${iconSizeClass} text-purple-100 drop-shadow-[0_2px_4px_rgba(0,0,0,0.85)] animate-pulse`} />
                             </div>
                           ) : (
-                            <span className={`board-tile-font font-black ${letterSizeClass} leading-none tracking-tight relative z-10 flex items-center justify-center select-none ${letterColor} ${tile.isBurning ? 'animate-fire-burn' : ''}`}>
+                            <span className={`board-tile-font font-black ${letterSizeClass} leading-none tracking-tight relative z-30 flex items-center justify-center select-none ${letterColor} ${tile.isBurning ? 'animate-letter-heat-glow !text-white !drop-shadow-[0_2px_10px_rgba(0,0,0,0.95)]' : ''}`}>
                               {tile.letter}
                             </span>
-                          )}
-
-                          {/* Fire Burning Animation Overlay on Tile when Wipeout is active */}
-                          {!isReady && tile.isBurning && (
-                            <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center z-30 overflow-visible">
-                              <div className="absolute inset-0 bg-gradient-to-t from-red-600/90 via-orange-500/80 to-yellow-300/60 rounded-[6px] sm:rounded-lg animate-pulse" />
-                              <Flame className="w-7 h-7 sm:w-9 sm:h-9 md:w-10 md:h-10 text-yellow-200 drop-shadow-[0_0_12px_rgba(249,115,22,1)] animate-flame-lick relative z-40" />
-                              <div className="absolute w-2 h-2 rounded-full bg-yellow-200 animate-ember-float" />
-                            </div>
                           )}
 
                           {/* Electrocuted High Voltage Spark Particles */}
@@ -759,43 +759,6 @@ export const GameBoard: React.FC<GameBoardProps> = ({
                       <span className="text-base">🔨</span>
                       <span className="tracking-wider uppercase font-black drop-shadow">3×3 HAMMER SMASH!</span>
                     </div>
-                  </div>
-                </div>
-              );
-            }
-
-            if (fx.type === 'shining') {
-              const topPercent = Math.max(0, fx.row - 1) * 12.5;
-              const leftPercent = Math.max(0, fx.col - 1) * 12.5;
-              const heightPercent = (Math.min(7, fx.row + 1) - Math.max(0, fx.row - 1) + 1) * 12.5;
-              const widthPercent = (Math.min(7, fx.col + 1) - Math.max(0, fx.col - 1) + 1) * 12.5;
-
-              return (
-                <div
-                  key={fx.id}
-                  className="absolute pointer-events-none z-30 flex items-center justify-center"
-                  style={{
-                    top: `${topPercent}%`,
-                    left: `${leftPercent}%`,
-                    width: `${widthPercent}%`,
-                    height: `${heightPercent}%`,
-                  }}
-                >
-                  {/* Outer Golden Supernova Shockwave */}
-                  <div className="absolute inset-0 rounded-3xl bg-gradient-to-r from-amber-400 via-yellow-200 to-amber-500 border-4 border-white shadow-[0_0_50px_rgba(251,191,36,1)] animate-shining-blast opacity-90" />
-                  
-                  {/* Orbiting Starlight Sparkles */}
-                  <div className="absolute inset-0 flex items-center justify-center animate-star-orbit pointer-events-none">
-                    <span className="absolute -top-3 text-2xl text-yellow-100 drop-shadow-md">★</span>
-                    <span className="absolute -bottom-3 text-2xl text-amber-200 drop-shadow-md">✦</span>
-                    <span className="absolute -left-3 text-xl text-white drop-shadow-md">✨</span>
-                    <span className="absolute -right-3 text-xl text-yellow-300 drop-shadow-md">★</span>
-                  </div>
-
-                  {/* Core Radiant Emblem */}
-                  <div className="relative px-3 py-1.5 bg-gradient-to-b from-yellow-300 via-amber-400 to-amber-600 rounded-full border-2 border-white shadow-2xl flex items-center gap-1.5 animate-bounce">
-                    <Sparkles className="w-5 h-5 text-white animate-spin" />
-                    <span className="text-xs sm:text-sm font-black text-amber-950 tracking-wider">SUPERNOVA!</span>
                   </div>
                 </div>
               );
@@ -972,28 +935,48 @@ export const GameBoard: React.FC<GameBoardProps> = ({
               return (
                 <div
                   key={fx.id}
-                  className="absolute inset-0 z-30 pointer-events-none flex flex-col items-center justify-center overflow-hidden"
+                  className="absolute inset-0 z-40 pointer-events-none flex flex-col items-center justify-center overflow-hidden"
                 >
-                  {/* Fiery Heat Distortion & Ambient Fire Glow */}
-                  <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-orange-600/35 via-red-700/25 to-transparent animate-pulse" />
+                  <FireWipeoutAnnouncement />
 
-                  {/* Animated Flame Streams & Rising Sparks */}
-                  <div className="absolute inset-0 overflow-hidden pointer-events-none flex items-center justify-around opacity-75">
-                    <Flame className="w-20 h-20 text-orange-500/50 animate-flame-lick -translate-y-4" />
-                    <Flame className="w-28 h-28 text-yellow-400/60 animate-flame-lick translate-y-2" />
-                    <Flame className="w-24 h-24 text-red-500/50 animate-flame-lick -translate-y-6" />
+                  {/* Burning Fire in Corners and Middles of the Board */}
+                  {/* Top-Left Corner */}
+                  <div className="absolute top-1 left-1 sm:top-2 sm:left-2 z-50 scale-90 sm:scale-110 pointer-events-none filter drop-shadow-[0_0_15px_rgba(239,68,68,0.9)] animate-pulse">
+                    <FireFlameGraphic size="md" />
                   </div>
+                  {/* Top-Middle */}
+                  <div className="absolute top-1 left-1/2 -translate-x-1/2 sm:top-2 z-50 scale-90 sm:scale-110 pointer-events-none filter drop-shadow-[0_0_15px_rgba(239,68,68,0.9)] animate-pulse">
+                    <FireFlameGraphic size="md" />
+                  </div>
+                  {/* Top-Right Corner */}
+                  <div className="absolute top-1 right-1 sm:top-2 sm:right-2 z-50 scale-90 sm:scale-110 pointer-events-none filter drop-shadow-[0_0_15px_rgba(239,68,68,0.9)] animate-pulse">
+                    <FireFlameGraphic size="md" />
+                  </div>
+                  {/* Bottom-Left Corner */}
+                  <div className="absolute bottom-1 left-1 sm:bottom-2 sm:left-2 z-50 scale-90 sm:scale-110 pointer-events-none filter drop-shadow-[0_0_15px_rgba(239,68,68,0.9)] animate-pulse">
+                    <FireFlameGraphic size="md" />
+                  </div>
+                  {/* Bottom-Middle */}
+                  <div className="absolute bottom-1 left-1/2 -translate-x-1/2 sm:bottom-2 z-50 scale-90 sm:scale-110 pointer-events-none filter drop-shadow-[0_0_15px_rgba(239,68,68,0.9)] animate-pulse">
+                    <FireFlameGraphic size="md" />
+                  </div>
+                  {/* Bottom-Right Corner */}
+                  <div className="absolute bottom-1 right-1 sm:bottom-2 sm:right-2 z-50 scale-90 sm:scale-110 pointer-events-none filter drop-shadow-[0_0_15px_rgba(239,68,68,0.9)] animate-pulse">
+                    <FireFlameGraphic size="md" />
+                  </div>
+                </div>
+              );
+            }
 
-                  {/* Pure Floating "FIRE WIPE OUT!" in Fire Letters (No Rectangle Margin or Card Border) */}
-                  <div className="relative flex flex-col items-center justify-center z-40 animate-fire-text-pop select-none">
-                    <div className="flex items-center justify-center gap-2 sm:gap-3">
-                      <Flame className="w-8 h-8 sm:w-12 sm:h-12 text-yellow-300 animate-flame-lick filter drop-shadow-[0_0_15px_rgba(249,115,22,1)]" />
-                      <span className="font-futuristic font-black text-2xl sm:text-4xl md:text-5xl tracking-widest text-transparent bg-clip-text bg-gradient-to-t from-red-600 via-orange-400 to-yellow-100 uppercase animate-fire-text-glow drop-shadow-[0_0_30px_rgba(239,68,68,1)]">
-                        FIRE WIPE OUT!
-                      </span>
-                      <Flame className="w-8 h-8 sm:w-12 sm:h-12 text-yellow-300 animate-flame-lick filter drop-shadow-[0_0_15px_rgba(249,115,22,1)]" />
-                    </div>
-                  </div>
+            if (fx.type === 'shining' || fx.type === 'board_shine') {
+              return (
+                <div
+                  key={fx.id}
+                  className="absolute inset-0 z-40 pointer-events-none overflow-hidden rounded-xl sm:rounded-2xl"
+                >
+                  {/* Shining Glow Light Beam Running Across The Entire Board */}
+                  <div className="absolute inset-y-0 w-1/2 bg-gradient-to-r from-transparent via-white/80 to-transparent -skew-x-25 animate-board-shine-sweep filter drop-shadow-[0_0_25px_rgba(255,255,255,1)]" />
+                  <div className="absolute inset-0 bg-radial from-amber-300/20 via-cyan-400/10 to-transparent pointer-events-none animate-pulse" />
                 </div>
               );
             }

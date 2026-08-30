@@ -582,28 +582,108 @@ body {
   backface-visibility: visible;
 }
 
-/* Fiery Inferno Wipeout Animations - Simultaneous All-Board Incineration */
-@keyframes fireBurnLetterKeyframes {
+/* Fiery Wipeout: Board letters & tiles turn Intense Blood Red within 1.0 second */
+@keyframes tileBloodRedKeyframes {
   0% {
     transform: scale(1);
-    filter: brightness(1.8) drop-shadow(0 0 12px rgba(249, 115, 22, 1));
-    color: #fef08a;
   }
-  25% {
-    transform: scale(1.35) translateY(-3px);
-    filter: brightness(3.5) drop-shadow(0 0 30px rgba(239, 68, 68, 1)) drop-shadow(0 0 15px rgba(251, 191, 36, 1));
-    color: #ffffff;
+  30% {
+    background: linear-gradient(180deg, #ef4444 0%, #b91c1c 50%, #7f1d1d 100%) !important;
+    border-color: #dc2626 !important;
+    border-bottom-color: #580c0c !important;
+    box-shadow: 0 0 18px rgba(220, 38, 38, 0.9), inset 0 0 10px rgba(254, 202, 202, 0.5) !important;
+    transform: scale(1.03);
   }
-  65% {
-    transform: scale(0.85) translateY(-8px) rotate(8deg);
-    opacity: 0.8;
-    filter: brightness(2.2) drop-shadow(0 0 18px rgba(220, 38, 38, 0.95));
-    color: #fca5a5;
+  60% {
+    background: linear-gradient(180deg, #dc2626 0%, #990000 50%, #5a0000 100%) !important;
+    border-color: #b91c1c !important;
+    border-bottom-color: #450a0a !important;
+    box-shadow: 0 0 28px rgba(220, 38, 38, 1), inset 0 0 14px rgba(255, 120, 120, 0.6) !important;
+    transform: scale(1.05);
   }
   100% {
-    transform: scale(0.01) translateY(-18px) rotate(20deg);
+    background: linear-gradient(180deg, #b91c1c 0%, #7f0000 50%, #450000 100%) !important;
+    border-color: #990000 !important;
+    border-bottom-color: #300000 !important;
+    box-shadow: 0 0 36px rgba(220, 38, 38, 1), 0 0 50px rgba(185, 28, 28, 0.8), inset 0 0 18px rgba(255, 100, 100, 0.7) !important;
+    transform: scale(1.08);
+  }
+}
+
+@keyframes letterBloodRedKeyframes {
+  0% {
+    transform: scale(1);
+  }
+  30% {
+    color: #ffffff !important;
+    filter: drop-shadow(0 0 8px #ff0000) drop-shadow(0 0 14px #990000) brightness(1.6) !important;
+    transform: scale(1.08);
+  }
+  60% {
+    color: #ffffff !important;
+    filter: drop-shadow(0 0 12px #ff0000) drop-shadow(0 0 22px #7f0000) brightness(2.0) !important;
+    transform: scale(1.14);
+  }
+  100% {
+    color: #ffffff !important;
+    filter: drop-shadow(0 0 16px #ff0000) drop-shadow(0 0 30px #5a0000) brightness(2.4) !important;
+    transform: scale(1.2);
+  }
+}
+
+.animate-tile-heat-glow {
+  animation: tileBloodRedKeyframes 1.0s cubic-bezier(0.2, 0.8, 0.2, 1) forwards !important;
+  will-change: transform, background, border-color, box-shadow;
+}
+
+.animate-letter-heat-glow {
+  animation: letterBloodRedKeyframes 1.0s cubic-bezier(0.2, 0.8, 0.2, 1) forwards !important;
+  will-change: transform, color, filter;
+}
+
+/* Shining Glow Running Through The Board (1 second sweep right after new letters appear) */
+@keyframes boardShineSweepKeyframes {
+  0% {
+    transform: translateX(-150%) skewX(-25deg);
     opacity: 0;
-    filter: brightness(5);
+  }
+  15% {
+    opacity: 1;
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(250%) skewX(-25deg);
+    opacity: 0;
+  }
+}
+
+.animate-board-shine-sweep {
+  animation: boardShineSweepKeyframes 1.0s cubic-bezier(0.25, 1, 0.5, 1) forwards !important;
+  will-change: transform, opacity;
+}
+
+@keyframes fireBurnLetterKeyframes {
+  0% {
+    transform: scale(1) translateY(0);
+    filter: brightness(2) drop-shadow(0 0 12px rgba(249, 115, 22, 1));
+    color: #fef08a;
+  }
+  33% {
+    transform: scale(1.1) translateY(-2px);
+    filter: brightness(2.5) drop-shadow(0 0 20px rgba(249, 115, 22, 1));
+    color: #f97316;
+  }
+  66% {
+    transform: scale(1.15) translateY(-3px);
+    filter: brightness(3) drop-shadow(0 0 26px rgba(239, 68, 68, 1));
+    color: #ef4444;
+  }
+  100% {
+    transform: scale(1.2) translateY(-4px);
+    filter: brightness(3.5) drop-shadow(0 0 30px rgba(220, 38, 38, 1));
+    color: #ffffff;
   }
 }
 
@@ -634,7 +714,7 @@ body {
 }
 
 .animate-fire-burn {
-  animation: fireBurnLetterKeyframes 0.38s cubic-bezier(0.2, 0.9, 0.3, 1) forwards;
+  animation: fireBurnLetterKeyframes 1.0s cubic-bezier(0.2, 0.8, 0.3, 1) forwards;
   will-change: transform, filter, opacity;
 }
 
@@ -748,6 +828,19 @@ body {
 
 .animate-fire-text-glow {
   animation: fireTextFlickerKeyframes 0.55s ease-in-out infinite;
+}
+
+@keyframes shineBeamKeyframes {
+  0% {
+    transform: translateX(-120%) skewX(-25deg);
+  }
+  100% {
+    transform: translateX(250%) skewX(-25deg);
+  }
+}
+
+.animate-shine-beam {
+  animation: shineBeamKeyframes 0.9s cubic-bezier(0.4, 0, 0.2, 1) infinite;
 }
 
 :root {

@@ -154,7 +154,7 @@ export const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
                     <span>Form 3 Same Letters (Orange Star)</span>
                   </div>
                   <p className="text-[11px] text-blue-200/80 font-medium leading-normal">
-                    Creates an <strong className="text-amber-300">Orange Shining Star Tile</strong> (retains its letter). When matched in a word, triggers a <strong className="text-white">3 × 3 supernova blast</strong>.
+                    Creates an <strong className="text-amber-300">Orange Shining Star Tile</strong> (retains its letter). When matched in a word, triggers a <strong className="text-white">3 × 3 star burst</strong>.
                   </p>
                 </div>
               </div>

@@ -19,6 +19,7 @@ interface TopInfoBarProps {
   tutorialTip?: string | null;
   onDismissTutorialTip?: () => void;
   onDismissBanner?: () => void;
+  onTriggerFireWipeoutDemo?: () => void;
 }
 
 export const TopInfoBar: React.FC<TopInfoBarProps> = ({
@@ -30,6 +31,7 @@ export const TopInfoBar: React.FC<TopInfoBarProps> = ({
   tutorialTip,
   onDismissTutorialTip,
   onDismissBanner,
+  onTriggerFireWipeoutDemo,
 }) => {
   // Determine what to display based on hierarchy of urgency
   let content: React.ReactNode = null;
@@ -136,18 +138,15 @@ export const TopInfoBar: React.FC<TopInfoBarProps> = ({
       </div>
     );
   } else {
-    // 5. Default Informational Guide & Special Tile Tip (Fills the space gracefully when idle)
+    // 5. Default Informational Guide & Special Tile Tip
     content = (
-      <div className="w-full max-w-full px-3 py-1.5 rounded-xl sm:rounded-2xl border border-[#2A4365]/50 bg-gradient-to-r from-[#0C2158]/95 via-[#162E6C]/95 to-[#0C2158]/95 backdrop-blur-md text-white shadow-[0_3px_10px_rgba(0,0,0,0.15)] flex items-center justify-between gap-2 text-xs">
-        <div className="flex items-center gap-1.5 min-w-0">
+      <div className="w-full max-w-full px-2.5 sm:px-3 py-1.5 rounded-xl sm:rounded-2xl border border-[#2A4365]/50 bg-gradient-to-r from-[#0C2158]/95 via-[#162E6C]/95 to-[#0C2158]/95 backdrop-blur-md text-white shadow-[0_3px_10px_rgba(0,0,0,0.15)] flex items-center justify-between gap-1.5 sm:gap-2 text-xs">
+        <div className="flex items-center gap-1.5 min-w-0 flex-1">
           <Sparkles className="w-3.5 h-3.5 text-amber-300 shrink-0 animate-pulse" />
           <span className="text-[10px] sm:text-[11px] font-bold text-slate-200 truncate">
-            Tap any special tile (<span className="text-amber-300 font-extrabold">💣 💳 🌟 ⚡</span>) to view powers • 4+ letter words create specials!
+            Tap specials (<span className="text-amber-300 font-extrabold">💣 💳 🌟 ⚡</span>) • 6+ words trigger Fire Wipeout
           </span>
         </div>
-        <span className="text-[9px] font-extrabold uppercase tracking-wider text-cyan-300 px-1.5 py-0.5 rounded bg-cyan-950/80 border border-cyan-400/40 shrink-0 shadow-inner">
-          Tip
-        </span>
       </div>
     );
   }

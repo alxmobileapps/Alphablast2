@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Volume2, VolumeX, Music, Smartphone, RotateCcw, ShieldAlert, ArrowLeftRight, Lightbulb } from 'lucide-react';
+import { X, Volume2, VolumeX, Music, Smartphone, RotateCcw, ShieldAlert, ArrowLeftRight, Lightbulb, Flame } from 'lucide-react';
 import { isSoundEnabled, toggleSound, isMusicEnabled, toggleMusic } from '../utils/audio';
 import { isSwipeControlsEnabled, setSwipeControlsEnabled, isCluesEnabled as isCluesEnabledUtil, setCluesEnabled as setCluesEnabledUtil } from '../utils/settings';
 import { haptics } from '../utils/haptics';
@@ -12,6 +12,7 @@ interface SettingsModalProps {
   onToggleSwipe?: (enabled: boolean) => void;
   isCluesEnabled?: boolean;
   onToggleClues?: (enabled: boolean) => void;
+  onTriggerFireWipeoutDemo?: () => void;
 }
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({
@@ -22,6 +23,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onToggleSwipe,
   isCluesEnabled,
   onToggleClues,
+  onTriggerFireWipeoutDemo,
 }) => {
   const [sound, setSound] = useState<boolean>(() => isSoundEnabled());
   const [music, setMusic] = useState<boolean>(() => isMusicEnabled());
