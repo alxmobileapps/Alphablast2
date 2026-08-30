@@ -57,6 +57,16 @@ export function getPlayerUniqueId(): string {
   }
 }
 
+export function setPlayerUniqueId(id: string): void {
+  try {
+    if (id && typeof id === 'string') {
+      localStorage.setItem(STORAGE_KEY_PLAYER_ID, id.trim());
+    }
+  } catch {
+    // ignore
+  }
+}
+
 // Generate realistic default pre-seeded category entries as initial foundation
 function generateDefaultCategoryEntries(categoryId: number, categoryName: string): LeaderboardEntry[] {
   const baseScores = [
@@ -172,6 +182,87 @@ function saveLocalLeaderboards(data: StoredLeaderboards): void {
 }
 
 /**
+ * Deduplicate leaderboard entries so that the current user's local & cloud sessions
+ * are consolidated into a single entry with their highest career stats, while
+ * other distinct players who happen to share the same name REMAIN SEPARATE entries!
+ */
+function deduplicateLeaderboardEntries(entries: LeaderboardEntry[], currentProfile: UserProfile): LeaderboardEntry[] {
+  const map = new Map<string, LeaderboardEntry>();
+  const currentLocalId = (currentProfile.playerId || '').trim();
+
+  for (const entry of entries) {
+    const entryId = (entry.id || '').trim();
+
+    // Determine if this entry belongs to the current local player
+    const isCurrent =
+      entry.isCurrentUser === true ||
+      (Boolean(currentLocalId) && (entryId === currentLocalId || entryId.includes(currentLocalId) || currentLocalId.includes(entryId)));
+
+    // Grouping key:
+    // - The current active player collapses into '__CURRENT_USER__' (merging past local/cloud sessions)
+    // - Other players use their unique `entry.id` (or fallback unique key), so multiple distinct players with the same nickname NEVER overwrite or merge each other!
+    const groupKey = isCurrent ? '__CURRENT_USER__' : (entryId || `player_${entry.playerName}_${entry.score}`);
+
+    const candidate: LeaderboardEntry = {
+      ...entry,
+      isCurrentUser: isCurrent,
+      playerName: isCurrent ? (currentProfile.name || entry.playerName || 'You') : entry.playerName,
+      avatar: isCurrent ? (currentProfile.avatar || entry.avatar || '👑') : (entry.avatar || '👑'),
+    };
+
+    if (!map.has(groupKey)) {
+      map.set(groupKey, candidate);
+    } else {
+      const existing = map.get(groupKey)!;
+      // Merge records by keeping highest score, wordsCount, and best word
+      const bestScore = Math.max(existing.score, candidate.score);
+      const bestWords = Math.max(existing.wordsCount, candidate.wordsCount);
+      const useCandidateWord = (candidate.highestWordPoints || 0) > (existing.highestWordPoints || 0);
+
+      map.set(groupKey, {
+        ...existing,
+        id: isCurrent ? currentProfile.playerId : existing.id,
+        isCurrentUser: isCurrent,
+        playerName: isCurrent ? (currentProfile.name || existing.playerName) : existing.playerName,
+        avatar: isCurrent ? (currentProfile.avatar || existing.avatar) : existing.avatar,
+        score: bestScore,
+        wordsCount: bestWords,
+        highestWord: useCandidateWord ? candidate.highestWord : (existing.highestWord || candidate.highestWord),
+        highestWordPoints: Math.max(existing.highestWordPoints || 0, candidate.highestWordPoints || 0),
+        date: existing.date === 'Today' || candidate.date === 'Today' ? 'Today' : (existing.date || candidate.date),
+      });
+    }
+  }
+
+  // Ensure current user is in the list if they have points
+  if (currentProfile.totalPoints > 0) {
+    const userDoc = map.get('__CURRENT_USER__');
+    if (userDoc) {
+      userDoc.score = Math.max(userDoc.score, currentProfile.totalPoints);
+      userDoc.wordsCount = Math.max(userDoc.wordsCount, currentProfile.totalWordsFormed);
+      if ((currentProfile.highestWordPoints || 0) > (userDoc.highestWordPoints || 0)) {
+        userDoc.highestWord = currentProfile.highestWord;
+        userDoc.highestWordPoints = currentProfile.highestWordPoints;
+      }
+    } else {
+      map.set('__CURRENT_USER__', {
+        id: currentProfile.playerId,
+        playerName: currentProfile.name || 'You',
+        avatar: currentProfile.avatar || '👑',
+        score: currentProfile.totalPoints,
+        wordsCount: currentProfile.totalWordsFormed,
+        highestWord: currentProfile.highestWord || 'WORD',
+        highestWordPoints: currentProfile.highestWordPoints || 500,
+        date: 'Today',
+        isCurrentUser: true,
+      });
+    }
+  }
+
+  return Array.from(map.values()).sort((a, b) => b.score - a.score);
+}
+
+/**
  * Fetch live global overall leaderboard from Firestore, falling back seamlessly to local cache.
  */
 export async function fetchLiveGlobalOverall(): Promise<LeaderboardEntry[]> {
@@ -201,27 +292,13 @@ export async function fetchLiveGlobalOverall(): Promise<LeaderboardEntry[]> {
         };
       });
 
-      // If user is not yet in top 50 but has points, append user's entry
-      if (profile.totalPoints > 0 && !liveList.some((e) => e.isCurrentUser)) {
-        liveList.push({
-          id: profile.playerId,
-          playerName: profile.name,
-          avatar: profile.avatar,
-          score: profile.totalPoints,
-          wordsCount: profile.totalWordsFormed,
-          highestWord: profile.highestWord || 'WORD',
-          highestWordPoints: profile.highestWordPoints || 500,
-          date: 'Active',
-          isCurrentUser: true,
-        });
-      }
+      const deduplicated = deduplicateLeaderboardEntries(liveList, profile);
 
-      const sorted = liveList.sort((a, b) => b.score - a.score);
       // Cache locally
       const stored = loadLocalLeaderboards();
-      stored.overall = sorted;
+      stored.overall = deduplicated;
       saveLocalLeaderboards(stored);
-      return sorted;
+      return deduplicated;
     }
   } catch (err) {
     console.warn('Could not load live Firestore leaderboard, using local fallback:', err);
@@ -269,19 +346,13 @@ export async function fetchLiveGlobalCategory(categoryId: number, categoryName?:
         });
 
         // For campaign categories (< 1000), merge with defaults if few scores.
-        // For custom games (>= 1000), strictly show ONLY players who actually played!
         if (!isCustomGame) {
           const defaults = generateDefaultCategoryEntries(categoryId, catName);
-          const merged = [...liveList];
-          defaults.forEach((def) => {
-            if (!merged.some((m) => m.playerName === def.playerName)) {
-              merged.push(def);
-            }
-          });
-          return merged.sort((a, b) => b.score - a.score);
+          const combined = [...liveList, ...defaults];
+          return deduplicateLeaderboardEntries(combined, profile);
         }
 
-        return liveList.sort((a, b) => b.score - a.score);
+        return deduplicateLeaderboardEntries(liveList, profile);
       }
     }
   } catch (err) {
@@ -294,35 +365,12 @@ export async function fetchLiveGlobalCategory(categoryId: number, categoryName?:
 export function getOverallLeaderboard(): LeaderboardEntry[] {
   const data = loadLocalLeaderboards();
   const profile = getUserProfile();
-
-  let list = [...data.overall];
-  const userEntryIndex = list.findIndex((e) => e.isCurrentUser || e.id === profile.playerId);
-
-  if (profile.totalPoints > 0) {
-    const userEntry: LeaderboardEntry = {
-      id: profile.playerId,
-      playerName: profile.name || 'You',
-      avatar: profile.avatar || '👑',
-      score: profile.totalPoints,
-      wordsCount: profile.totalWordsFormed,
-      highestWord: profile.highestWord || 'WORD',
-      highestWordPoints: profile.highestWordPoints || 500,
-      date: 'Active',
-      isCurrentUser: true,
-    };
-
-    if (userEntryIndex >= 0) {
-      list[userEntryIndex] = userEntry;
-    } else {
-      list.push(userEntry);
-    }
-  }
-
-  return list.sort((a, b) => b.score - a.score);
+  return deduplicateLeaderboardEntries(data.overall || [], profile);
 }
 
 export function getCategoryLeaderboard(categoryId: number, categoryName?: string): LeaderboardEntry[] {
   const data = loadLocalLeaderboards();
+  const profile = getUserProfile();
   const isCustomGame = categoryId >= 1000;
   const cat = INITIAL_CATEGORIES.find((c) => c.id === categoryId);
   const catName = categoryName || (cat ? cat.name : (isCustomGame ? 'Custom Game' : `Round ${categoryId}`));
@@ -343,7 +391,7 @@ export function getCategoryLeaderboard(categoryId: number, categoryName?: string
     list = (list || []).filter((e) => !e.id.includes('seed-'));
   }
 
-  return [...list].sort((a, b) => b.score - a.score);
+  return deduplicateLeaderboardEntries(list, profile);
 }
 
 async function syncUserToGlobalFirestore(profile: UserProfile): Promise<void> {

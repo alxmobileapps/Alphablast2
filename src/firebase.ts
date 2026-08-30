@@ -10,7 +10,10 @@ export const firebaseApp =
 // Initialize Firestore with specific database ID if configured
 export const db = initializeFirestore(
   firebaseApp,
-  {},
+  {
+    experimentalAutoDetectLongPolling: true,
+    ignoreUndefinedProperties: true,
+  },
   firebaseConfig.firestoreDatabaseId || '(default)'
 );
 

@@ -9,7 +9,7 @@ import {
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 import { GameProgress, saveGameProgress, getHighestUnlockedCategoryId } from './gameProgress';
-import { getUserProfile, saveUserProfile, UserProfile } from './leaderboard';
+import { getUserProfile, saveUserProfile, setPlayerUniqueId, UserProfile } from './leaderboard';
 
 export interface CloudUserData {
   uid: string;
@@ -213,7 +213,9 @@ export async function syncProgressWithCloudKey(
     console.warn('Could not read existing doc, proceeding to save directly:', readErr);
   }
 
-  // Ensure current local user profile is stored
+  // Ensure current local user profile is stored and linked
+  setPlayerUniqueId(docId);
+  mergedProfile.playerId = docId;
   saveUserProfile(mergedProfile);
 
   const now = Date.now();
@@ -280,6 +282,7 @@ export async function restoreWithCloudKey(
 
   saveGameProgress(merged);
   setLocalSyncKey(cleanKey);
+  setPlayerUniqueId(docId);
 
   // Restore player username and avatar
   const currentProf = getUserProfile();
@@ -288,6 +291,7 @@ export async function restoreWithCloudKey(
 
   const restoredProfile: UserProfile = {
     ...currentProf,
+    playerId: docId,
     name: restoredName,
     avatar: restoredAvatar,
     totalPoints: Math.max(currentProf.totalPoints, data.userProfile?.totalPoints || 0),
@@ -353,6 +357,8 @@ export async function signInWithGoogleAccount(currentLocalProgress: GameProgress
       }
     }
 
+    setPlayerUniqueId(user.uid);
+    mergedProfile.playerId = user.uid;
     saveUserProfile(mergedProfile);
 
     const cloudPayload: CloudUserData = {
