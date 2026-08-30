@@ -115,11 +115,11 @@ export const HomeMenu: React.FC<HomeMenuProps> = ({
       </div>
 
       {/* Center Container: Official AlphaBlast Logo & Main Game Menu Card */}
-      <div className="w-full my-auto flex flex-col items-center z-10 py-1">
-        {/* AlphaBlast Logo - Compact Responsive Sizing */}
-        <div className="flex flex-col items-center mb-1 relative w-full px-1">
+      <div className="w-full my-auto flex flex-col items-center z-10 py-1 sm:py-2">
+        {/* AlphaBlast Logo - Large Prominent Sizing */}
+        <div className="flex flex-col items-center mb-2 sm:mb-3 relative w-full px-2">
           <div className="relative group w-full flex flex-col items-center justify-center">
-            <div className="absolute -inset-1 bg-gradient-to-r from-cyan-500/20 via-amber-400/20 to-sky-500/20 rounded-2xl blur-md opacity-30 group-hover:opacity-60 transition duration-300" />
+            <div className="absolute -inset-2 bg-gradient-to-r from-cyan-500/30 via-amber-400/30 to-sky-500/30 rounded-3xl blur-lg opacity-40 group-hover:opacity-75 transition duration-300 pointer-events-none" />
             <img
               src={alphablastLogoImage}
               onError={(e) => {
@@ -130,15 +130,15 @@ export const HomeMenu: React.FC<HomeMenuProps> = ({
               }}
               alt="AlphaBlast Official Logo"
               referrerPolicy="no-referrer"
-              className="relative w-auto max-h-[58px] sm:max-h-[72px] object-contain drop-shadow-[0_6px_18px_rgba(14,165,233,0.5)] transform transition duration-300 hover:scale-[1.01]"
+              className="relative w-auto max-w-[85%] sm:max-w-[320px] max-h-[105px] sm:max-h-[135px] h-auto object-contain drop-shadow-[0_10px_28px_rgba(14,165,233,0.6)] transform transition duration-300 hover:scale-[1.02]"
             />
             {/* Futuristic Subtitle */}
-            <div className="mt-0.5 flex items-center justify-center gap-1.5 w-full px-4">
-              <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-cyan-400/60 to-cyan-400" />
-              <span className="font-futuristic text-[8px] sm:text-[9px] font-black uppercase tracking-[0.22em] text-cyan-300 text-glow-cyan whitespace-nowrap">
+            <div className="mt-1.5 flex items-center justify-center gap-2 w-full px-4 max-w-xs">
+              <div className="h-[1.5px] flex-1 bg-gradient-to-r from-transparent via-cyan-400/70 to-cyan-400" />
+              <span className="font-futuristic text-[9px] sm:text-[10px] font-black uppercase tracking-[0.25em] text-cyan-300 text-glow-cyan whitespace-nowrap">
                 A WORD PUZZLE ADVENTURE
               </span>
-              <div className="h-[1px] flex-1 bg-gradient-to-l from-transparent via-cyan-400/60 to-cyan-400" />
+              <div className="h-[1.5px] flex-1 bg-gradient-to-l from-transparent via-cyan-400/70 to-cyan-400" />
             </div>
           </div>
         </div>
