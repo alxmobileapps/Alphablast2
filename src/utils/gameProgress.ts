@@ -73,12 +73,22 @@ export function loadGameProgress(): GameProgress {
         }
       });
 
+      // Repair/Retrofit category stars: If a category is marked completed, ensure it has stars credited (minimum 3 stars)
+      const rawStars: Record<number, number> = { ...(parsed.categoryStars || {}) };
+      const parsedHighScores: Record<number, number> = parsed.categoryHighScores || {};
+      completed.forEach((catId) => {
+        if (!rawStars[catId] || rawStars[catId] < 1) {
+          const score = parsedHighScores[catId] || 0;
+          rawStars[catId] = score >= 10000 ? 3 : score >= 5000 ? 2 : 3;
+        }
+      });
+
       const progForCalc: GameProgress = {
         unlockedCategoryIds: Array.from(unlocked),
         completedCategoryIds: Array.from(completed),
         lastPlayedCategoryId: 1,
-        categoryHighScores: parsed.categoryHighScores || {},
-        categoryStars: parsed.categoryStars || {},
+        categoryHighScores: parsedHighScores,
+        categoryStars: rawStars,
         totalRoundsCleared: parsed.totalRoundsCleared || completed.size,
         lastUpdated: parsed.lastUpdated || Date.now(),
         coins: typeof parsed.coins === 'number' ? parsed.coins : 50,
@@ -151,15 +161,38 @@ export function isCategoryCompleted(categoryId: number, progress?: GameProgress)
 }
 
 /**
+ * Calculates the total stars earned across all categories
+ */
+export function getTotalStars(progress?: GameProgress): number {
+  const prog = progress || loadGameProgress();
+  const completed = prog.completedCategoryIds || [];
+  const starsMap = prog.categoryStars || {};
+  let total = 0;
+  completed.forEach((catId) => {
+    total += starsMap[catId] || 3;
+  });
+  // Also count any extra custom category stars recorded
+  Object.keys(starsMap).forEach((key) => {
+    const numKey = Number(key);
+    if (!completed.includes(numKey)) {
+      total += starsMap[numKey] || 0;
+    }
+  });
+  return total;
+}
+
+/**
  * Mark a category as completed upon reaching target words, unlocking the next category
  */
 export function completeCategory(
   categoryId: number,
-  score: number = 0
+  score: number = 0,
+  stars: number = 3
 ): {
   progress: GameProgress;
   newlyUnlockedCategory: Category | null;
   isFirstCompletion: boolean;
+  earnedStars: number;
 } {
   const current = loadGameProgress();
   const completedSet = new Set<number>(current.completedCategoryIds);
@@ -184,11 +217,19 @@ export function completeCategory(
     highScores[categoryId] = score;
   }
 
+  // Update category stars (minimum 1, max 3)
+  const normalizedStars = Math.min(3, Math.max(1, stars || 3));
+  const categoryStars = { ...current.categoryStars };
+  const prevStars = categoryStars[categoryId] || 0;
+  const finalStars = Math.max(prevStars, normalizedStars);
+  categoryStars[categoryId] = finalStars;
+
   const updatedProgress: GameProgress = {
     ...current,
     completedCategoryIds: Array.from(completedSet),
     unlockedCategoryIds: Array.from(unlockedSet),
     categoryHighScores: highScores,
+    categoryStars: categoryStars,
     totalRoundsCleared: completedSet.size,
     lastPlayedCategoryId: newlyUnlockedCategory ? newlyUnlockedCategory.id : categoryId,
   };
@@ -199,6 +240,7 @@ export function completeCategory(
     progress: updatedProgress,
     newlyUnlockedCategory,
     isFirstCompletion,
+    earnedStars: finalStars,
   };
 }
 

@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import confetti from 'canvas-confetti';
-import { Trophy, ArrowRight, RotateCcw, Sparkles, Lock, Unlock, Clock, Home } from 'lucide-react';
+import { Trophy, ArrowRight, RotateCcw, Sparkles, Lock, Unlock, Clock, Home, Star } from 'lucide-react';
 import { Category, WordHistoryItem } from '../types';
 import { playWin } from '../utils/audio';
 import { formatPoints } from '../utils/scoring';
@@ -11,6 +11,7 @@ interface RoundCompleteModalProps {
   history: WordHistoryItem[];
   movesRemaining: number;
   score?: number;
+  earnedStars?: number;
   timeConsumed?: number; // Time consumed in seconds
   newlyUnlockedCategory?: Category | null;
   convertedCoins?: { coloredTiles: number; powerups: number; total: number } | null;
@@ -32,6 +33,7 @@ export const RoundCompleteModal: React.FC<RoundCompleteModalProps> = ({
   history,
   movesRemaining,
   score = 0,
+  earnedStars = 3,
   timeConsumed,
   newlyUnlockedCategory,
   convertedCoins,
@@ -99,6 +101,26 @@ export const RoundCompleteModal: React.FC<RoundCompleteModalProps> = ({
               ) : (
                 <span>{category.name} ({category.targetCount}/{category.targetCount} words)</span>
               )}
+            </div>
+
+            {/* Earned Stars Rating */}
+            <div className="flex items-center justify-center gap-1.5 mt-2 bg-amber-50 border border-amber-300/80 px-3 py-1 rounded-full shadow-inner">
+              {Array.from({ length: 3 }).map((_, i) => {
+                const isEarned = i < earnedStars;
+                return (
+                  <Star
+                    key={i}
+                    className={`w-6 h-6 transition-all transform ${
+                      isEarned
+                        ? 'fill-amber-400 text-amber-500 scale-110 drop-shadow-[0_2px_4px_rgba(245,158,11,0.5)] animate-pulse'
+                        : 'text-gray-300 fill-gray-100'
+                    }`}
+                  />
+                );
+              })}
+              <span className="font-futuristic text-xs font-black text-amber-900 ml-1 tracking-wider">
+                {earnedStars} / 3 STARS
+              </span>
             </div>
           </div>
 

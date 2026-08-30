@@ -13,7 +13,7 @@ import {
   Copy,
 } from 'lucide-react';
 import { INITIAL_CATEGORIES } from '../data/categories';
-import { GameProgress, isCategoryUnlocked, isCategoryCompleted } from '../utils/gameProgress';
+import { GameProgress, isCategoryUnlocked, isCategoryCompleted, getTotalStars } from '../utils/gameProgress';
 import { getUserProfile, saveUserProfile, DEFAULT_AVATARS, UserProfile } from '../utils/leaderboard';
 import { formatPoints } from '../utils/scoring';
 import { haptics } from '../utils/haptics';
@@ -65,10 +65,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
   };
 
   const completedCount = gameProgress.completedCategoryIds.length;
-  const totalStars = Object.values(gameProgress.categoryStars || {}).reduce<number>(
-    (acc, curr) => acc + (typeof curr === 'number' ? curr : Number(curr) || 0),
-    0
-  );
+  const totalStars = getTotalStars(gameProgress);
   const totalScoreAcrossCategories = Object.values(
     gameProgress.categoryHighScores || {}
   ).reduce<number>((acc, curr) => acc + (typeof curr === 'number' ? curr : Number(curr) || 0), 0);

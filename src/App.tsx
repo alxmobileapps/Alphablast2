@@ -948,8 +948,11 @@ export default function App() {
               const elapsedSeconds = Math.max(1, Math.round((Date.now() - roundStartTimeRef.current) / 1000));
               setRoundTimeConsumed(elapsedSeconds);
 
+              // Calculate stars based on remaining moves
+              const earnedStars = movesRemainingRef.current >= 5 ? 3 : movesRemainingRef.current >= 2 ? 2 : 1;
+
               // Save completion and unlock next category on device
-              const completionResult = completeCategory(catId, finalRoundScore);
+              const completionResult = completeCategory(catId, finalRoundScore, earnedStars);
               let latestProgress = completionResult.progress;
 
               // Monetization: Convert leftover colored tiles (1 coin each) and remaining powerups (1 coin each) to coins
@@ -2386,12 +2389,33 @@ export default function App() {
     if (timerSecondsRemaining <= 0) {
       // Timer finished! Round completed!
       haptics.roundComplete();
+      completedCategoriesCountRef.current += 1;
       const elapsedSeconds = currentCategory.timerSeconds || 120;
       setRoundTimeConsumed(elapsedSeconds);
       const finalScore = roundScoreRef.current;
       const totalWords = formedWordsRef.current.size;
       const bestWord = wordHistory[0]?.word || '';
       const bestWordPts = wordHistory[0]?.points || 0;
+
+      // Calculate timer earned stars based on words formed
+      const timerEarnedStars = totalWords >= 15 ? 3 : totalWords >= 8 ? 2 : 1;
+      const completionResult = completeCategory(currentCategory.id, finalScore, timerEarnedStars);
+      let latestProgress = completionResult.progress;
+
+      // Check diamond milestones
+      const diamondCheck = checkAndAwardDiamondMilestones(currentCategory.id, finalScore);
+      if (diamondCheck.awarded) {
+        latestProgress = diamondCheck.progress;
+        setDiamondMilestoneAwarded({
+          count: diamondCheck.diamondsAwarded,
+          milestoneName: diamondCheck.milestoneName,
+        });
+      }
+
+      setGameProgress(latestProgress);
+      if (completionResult.newlyUnlockedCategory) {
+        setNewlyUnlockedCategory(completionResult.newlyUnlockedCategory);
+      }
 
       recordScore({
         categoryId: currentCategory.id,
@@ -2405,7 +2429,7 @@ export default function App() {
       });
 
       // Auto backup progress to cloud every round completion
-      syncProgressToCloud(gameProgress).catch((err) => {
+      syncProgressToCloud(latestProgress).catch((err) => {
         console.warn('Auto cloud backup error in timer mode:', err);
       });
 
@@ -2456,7 +2480,7 @@ export default function App() {
       <div className="flex-1 min-h-0 w-full flex flex-col overflow-hidden">
         {currentScreen === 'menu' ? (
           /* HOME SCREEN: GAME MENU */
-          <div className="flex-1 min-h-0 w-full flex flex-col overflow-y-auto sm:overflow-hidden">
+          <div className="flex-1 min-h-0 w-full flex flex-col overflow-hidden">
             <HomeMenu
               currentCategory={currentCategory}
               gameProgress={gameProgress}
@@ -2503,7 +2527,7 @@ export default function App() {
             />
 
             {/* Main Gameplay Container: Vertically balanced to fit all screen ratios & iPad without overlapping banner ads */}
-            <main className="flex-1 min-h-0 w-full max-w-4xl mx-auto px-2 sm:px-4 py-1 sm:py-1.5 flex flex-col justify-between sm:justify-evenly items-center overflow-y-auto sm:overflow-hidden">
+            <main className="flex-1 min-h-0 w-full max-w-4xl mx-auto px-2 sm:px-4 py-1 sm:py-1.5 flex flex-col justify-between sm:justify-evenly items-center overflow-hidden">
               {/* Main Center Area: Formed Words Bar + Maximized 8x8 Board + Power-Up Bar (Cohesive unit scaled to available height) */}
               <div
                 className={`flex flex-col items-center justify-center gap-1 sm:gap-1.5 my-auto w-full mx-auto shrink-0 ${
@@ -2728,6 +2752,7 @@ export default function App() {
         history={wordHistory}
         movesRemaining={movesRemaining}
         score={roundScore}
+        earnedStars={gameProgress.categoryStars?.[currentCategory.id] || (currentCategory.gameMode === 'timer' ? (wordHistory.length >= 15 ? 3 : wordHistory.length >= 8 ? 2 : 1) : (movesRemaining >= 5 ? 3 : movesRemaining >= 2 ? 2 : 1))}
         timeConsumed={roundTimeConsumed}
         newlyUnlockedCategory={newlyUnlockedCategory}
         convertedCoins={roundEndCoinConversion}
