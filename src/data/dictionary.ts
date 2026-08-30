@@ -20,6 +20,11 @@ const IRREGULAR_NOUN_PAIRS: [string, string][] = [
   ['HALF', 'HALVES'],
   ['LIFE', 'LIVES'],
   ['KNIFE', 'KNIVES'],
+  ['WIFE', 'WIVES'],
+  ['THIEF', 'THIEVES'],
+  ['ELF', 'ELVES'],
+  ['SCARF', 'SCARVES'],
+  ['SHEAF', 'SHEAVES'],
   ['DIE', 'DICE'],
   ['MAN', 'MEN'],
   ['WOMAN', 'WOMEN'],
@@ -27,8 +32,14 @@ const IRREGULAR_NOUN_PAIRS: [string, string][] = [
   ['PERSON', 'PEOPLE'],
   ['CACTUS', 'CACTI'],
   ['FUNGUS', 'FUNGI'],
+  ['NUCLEUS', 'NUCLEI'],
+  ['RADIUS', 'RADII'],
+  ['SYLLABUS', 'SYLLABI'],
   ['LARVA', 'LARVAE'],
   ['PUPA', 'PUPAE'],
+  ['ALUMNUS', 'ALUMNI'],
+  ['CRITERION', 'CRITERIA'],
+  ['PHENOMENON', 'PHENOMENA'],
 ];
 
 const singularToIrregularPlural = new Map<string, string>();
@@ -46,30 +57,130 @@ for (const word of COMMON_WORDS) {
   }
 }
 
-// Helper to index a category's word list cleanly without generating fake synthetic plurals
+const VOWELS = new Set(['A', 'E', 'I', 'O', 'U']);
+
+/**
+ * Generate standard English plural forms for a given root word.
+ */
+export function getPluralForms(word: string): string[] {
+  const upper = word.toUpperCase().trim();
+  if (upper.length < 3) return [];
+
+  const results: string[] = [];
+
+  // Check irregular plurals
+  if (singularToIrregularPlural.has(upper)) {
+    results.push(singularToIrregularPlural.get(upper)!);
+  }
+
+  // Sibilants / Box / Dish / Watch -> +ES
+  if (
+    upper.endsWith('S') ||
+    upper.endsWith('SH') ||
+    upper.endsWith('CH') ||
+    upper.endsWith('X') ||
+    upper.endsWith('Z')
+  ) {
+    results.push(upper + 'ES');
+  }
+
+  // Consonant + Y -> -Y + IES (e.g. BERRY -> BERRIES, PUPPY -> PUPPIES)
+  if (upper.endsWith('Y') && upper.length >= 3) {
+    const prevChar = upper[upper.length - 2];
+    if (!VOWELS.has(prevChar)) {
+      results.push(upper.slice(0, -1) + 'IES');
+    } else {
+      results.push(upper + 'S'); // MONKEY -> MONKEYS, DAY -> DAYS
+    }
+  }
+
+  // -F or -FE -> -VES (e.g. WOLF -> WOLVES, KNIFE -> KNIVES)
+  if (upper.endsWith('FE') && upper.length >= 4) {
+    results.push(upper.slice(0, -2) + 'VES');
+  } else if (upper.endsWith('F') && upper.length >= 3) {
+    results.push(upper.slice(0, -1) + 'VES');
+    results.push(upper + 'S'); // e.g. CHIEF -> CHIEFS
+  }
+
+  // -O preceded by consonant -> +ES and +S (e.g. HERO -> HEROES, TOMATO -> TOMATOES)
+  if (upper.endsWith('O') && upper.length >= 3) {
+    const prevChar = upper[upper.length - 2];
+    if (!VOWELS.has(prevChar)) {
+      results.push(upper + 'ES');
+    }
+    results.push(upper + 'S');
+  }
+
+  // Standard +S for general words (e.g. CAT -> CATS, DOG -> DOGS, APPLE -> APPLES)
+  if (!upper.endsWith('S') && !upper.endsWith('Z') && !upper.endsWith('X') && !upper.endsWith('CH') && !upper.endsWith('SH')) {
+    results.push(upper + 'S');
+  }
+
+  return Array.from(new Set(results.filter((w) => w.length >= 3)));
+}
+
+/**
+ * Generate standard English singular forms for a given plural word.
+ */
+export function getSingularForms(word: string): string[] {
+  const upper = word.toUpperCase().trim();
+  if (upper.length < 3) return [];
+
+  const results: string[] = [];
+
+  // Check irregular plurals to singular
+  if (irregularPluralToSingular.has(upper)) {
+    results.push(irregularPluralToSingular.get(upper)!);
+  }
+
+  // -IES -> -Y (e.g. BERRIES -> BERRY, PUPPIES -> PUPPY)
+  if (upper.endsWith('IES') && upper.length >= 5) {
+    results.push(upper.slice(0, -3) + 'Y');
+  }
+
+  // -VES -> -F or -FE (e.g. WOLVES -> WOLF, KNIVES -> KNIFE, LIVES -> LIFE)
+  if (upper.endsWith('VES') && upper.length >= 5) {
+    results.push(upper.slice(0, -3) + 'F');
+    results.push(upper.slice(0, -3) + 'FE');
+  }
+
+  // -ES -> remove ES (e.g. FOXES -> FOX, PEACHES -> PEACH, HEROES -> HERO) or remove S (BONES -> BONE)
+  if (upper.endsWith('ES') && upper.length >= 4) {
+    results.push(upper.slice(0, -2));
+    results.push(upper.slice(0, -1));
+  }
+
+  // Standard -S -> remove S (e.g. DOGS -> DOG, CATS -> CAT, APPLES -> APPLE)
+  if (upper.endsWith('S') && !upper.endsWith('SS') && upper.length >= 4) {
+    results.push(upper.slice(0, -1));
+  }
+
+  return Array.from(new Set(results.filter((w) => w.length >= 3)));
+}
+
+// Helper to index a category's word list with full singular AND plural recognition
 function indexCategoryWords(catId: number, words: string[]): Set<string> {
   const catSet = new Set<string>();
 
   for (const rawWord of words) {
     const clean = rawWord.toUpperCase().replace(/[\s\-_']/g, '');
     if (clean.length >= 3) {
+      // 1. Index base word
       catSet.add(clean);
       globalWordSet.add(clean);
 
-      // Link irregular plurals/singulars if recognized (e.g. FOOT <-> FEET, TOOTH <-> TEETH)
-      if (singularToIrregularPlural.has(clean)) {
-        const plur = singularToIrregularPlural.get(clean)!;
-        if (plur.length >= 3) {
-          catSet.add(plur);
-          globalWordSet.add(plur);
-        }
+      // 2. Generate and index all plural variations (e.g. DOG -> DOGS, BERRY -> BERRIES, FOX -> FOXES)
+      const plurals = getPluralForms(clean);
+      for (const p of plurals) {
+        catSet.add(p);
+        globalWordSet.add(p);
       }
-      if (irregularPluralToSingular.has(clean)) {
-        const sing = irregularPluralToSingular.get(clean)!;
-        if (sing.length >= 3) {
-          catSet.add(sing);
-          globalWordSet.add(sing);
-        }
+
+      // 3. Generate and index all singular variations (e.g. BERRIES -> BERRY, DOGS -> DOG, WOLVES -> WOLF)
+      const singulars = getSingularForms(clean);
+      for (const s of singulars) {
+        catSet.add(s);
+        globalWordSet.add(s);
       }
     }
   }
@@ -86,7 +197,21 @@ for (const cat of INITIAL_CATEGORIES) {
 export function isValidWord(word: string): boolean {
   if (!word || word.length < 3) return false;
   const upper = word.toUpperCase().trim();
-  return globalWordSet.has(upper);
+  if (globalWordSet.has(upper)) return true;
+
+  // Check singular derivations
+  const singulars = getSingularForms(upper);
+  for (const s of singulars) {
+    if (globalWordSet.has(s)) return true;
+  }
+
+  // Check plural derivations
+  const plurals = getPluralForms(upper);
+  for (const p of plurals) {
+    if (globalWordSet.has(p)) return true;
+  }
+
+  return false;
 }
 
 export function isCategoryWord(word: string, categoryId: number): boolean {
@@ -94,7 +219,29 @@ export function isCategoryWord(word: string, categoryId: number): boolean {
   const upper = word.toUpperCase().trim();
   const catSet = categoryWordSets.get(categoryId);
   if (!catSet) return false;
-  return catSet.has(upper);
+
+  // 1. Direct O(1) set lookup
+  if (catSet.has(upper)) return true;
+
+  // 2. Check if singular form of word belongs to category
+  const singulars = getSingularForms(upper);
+  for (const s of singulars) {
+    if (catSet.has(s)) {
+      catSet.add(upper); // Cache for future fast lookups
+      return true;
+    }
+  }
+
+  // 3. Check if plural form of word belongs to category
+  const plurals = getPluralForms(upper);
+  for (const p of plurals) {
+    if (catSet.has(p)) {
+      catSet.add(upper); // Cache for future fast lookups
+      return true;
+    }
+  }
+
+  return false;
 }
 
 export function registerDynamicWord(word: string, categoryId?: number) {
@@ -102,6 +249,13 @@ export function registerDynamicWord(word: string, categoryId?: number) {
   const clean = word.toUpperCase().replace(/[^A-Z]/g, '');
   if (clean.length >= 3) {
     globalWordSet.add(clean);
+    
+    // Add plurals & singulars
+    const plurals = getPluralForms(clean);
+    const singulars = getSingularForms(clean);
+    for (const p of plurals) globalWordSet.add(p);
+    for (const s of singulars) globalWordSet.add(s);
+
     if (categoryId !== undefined) {
       let catSet = categoryWordSets.get(categoryId);
       if (!catSet) {
@@ -109,6 +263,8 @@ export function registerDynamicWord(word: string, categoryId?: number) {
         categoryWordSets.set(categoryId, catSet);
       }
       catSet.add(clean);
+      for (const p of plurals) catSet.add(p);
+      for (const s of singulars) catSet.add(s);
     }
   }
 }
@@ -130,5 +286,3 @@ export function getCategoryById(categoryId: number): Category {
   }
   return INITIAL_CATEGORIES.find((c) => c.id === categoryId) || INITIAL_CATEGORIES[0];
 }
-
-

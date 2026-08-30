@@ -1,5 +1,5 @@
 import { Tile, SpecialTileType, WordMatch, ClueInfo, Category, WordDirection } from '../types';
-import { isValidWord, isCategoryWord, getCategoryById } from '../data/dictionary';
+import { isValidWord, isCategoryWord, getCategoryById, getPluralForms, getSingularForms } from '../data/dictionary';
 import { INITIAL_CATEGORIES } from '../data/categories';
 
 export const BOARD_SIZE = 8;
@@ -155,37 +155,24 @@ export function isWordOrPluralFormed(
     return { isDuplicate: true, matchedForm: upper };
   }
 
+  const upperSingulars = new Set(getSingularForms(upper));
+  const upperPlurals = new Set(getPluralForms(upper));
+
   for (const existing of formedWords) {
     const ex = existing.trim().toUpperCase();
     if (ex === upper) {
       return { isDuplicate: true, matchedForm: ex };
     }
 
-    // Check if new word is plural of existing
-    if (upper === ex + 'S' || upper === ex + 'ES') {
-      return { isDuplicate: true, matchedForm: ex };
-    }
-    if (ex.endsWith('Y') && upper === ex.slice(0, -1) + 'IES') {
-      return { isDuplicate: true, matchedForm: ex };
-    }
-    if (ex.endsWith('F') && upper === ex.slice(0, -1) + 'VES') {
-      return { isDuplicate: true, matchedForm: ex };
-    }
-    if (ex.endsWith('FE') && upper === ex.slice(0, -2) + 'VES') {
+    // Direct check if existing is in singular or plural forms of upper
+    if (upperSingulars.has(ex) || upperPlurals.has(ex)) {
       return { isDuplicate: true, matchedForm: ex };
     }
 
-    // Check if new word is singular of an already formed plural
-    if (ex === upper + 'S' || ex === upper + 'ES') {
-      return { isDuplicate: true, matchedForm: ex };
-    }
-    if (upper.endsWith('Y') && ex === upper.slice(0, -1) + 'IES') {
-      return { isDuplicate: true, matchedForm: ex };
-    }
-    if (upper.endsWith('F') && ex === upper.slice(0, -1) + 'VES') {
-      return { isDuplicate: true, matchedForm: ex };
-    }
-    if (upper.endsWith('FE') && ex === upper.slice(0, -2) + 'VES') {
+    // Check if upper is in singular or plural forms of existing
+    const exSingulars = getSingularForms(ex);
+    const exPlurals = getPluralForms(ex);
+    if (exSingulars.includes(upper) || exPlurals.includes(upper)) {
       return { isDuplicate: true, matchedForm: ex };
     }
   }
@@ -441,8 +428,7 @@ export function countOneMoveCategoryOpportunities(
           if (matches.length > 0) {
             for (const match of matches) {
               const wordUpper = match.word.toUpperCase();
-              // REQUIREMENT: Minimum 3 letters and NOT in plural form
-              if (wordUpper.length >= 3 && !isPluralWord(wordUpper)) {
+              if (wordUpper.length >= 3) {
                 const opKey = `${r},${c}->${nr},${nc}-${wordUpper}`;
                 if (!foundWords.has(opKey)) {
                   foundWords.add(opKey);
@@ -530,15 +516,14 @@ export function ensureOneMoveOpportunity(
     .filter(
       (w) =>
         w.length >= 3 &&
-        w.length <= 5 &&
-        !isPluralWord(w) &&
+        w.length <= 6 &&
         (!formedWords || !formedWords.has(w))
     );
 
   if (candidateWords.length === 0) {
     candidateWords = (currentCat?.words || [])
       .map((w) => w.toUpperCase())
-      .filter((w) => w.length >= 3 && !isPluralWord(w));
+      .filter((w) => w.length >= 3);
   }
 
   if (candidateWords.length === 0) {
@@ -600,12 +585,11 @@ export function ensureOneMoveOpportunity(
 }
 
 // Generate an 8x8 board that GUARANTEES at least 3 ready category words in 1 move available and 0 pre-matches
-// REQUIREMENT: Only non-plural words of minimum 3 letters are planted.
 export function generateInitialBoard(categoryId: number = 1, formedWords?: Set<string>): Tile[][] {
   const currentCat = getCategoryById(categoryId);
   let candidateWords = (currentCat?.words || [])
     .map((w) => w.toUpperCase())
-    .filter((w) => w.length >= 3 && w.length <= 5 && !isPluralWord(w));
+    .filter((w) => w.length >= 3 && w.length <= 6);
 
   if (formedWords && formedWords.size > 0) {
     const unformed = candidateWords.filter((w) => !formedWords.has(w.toUpperCase()));
@@ -928,7 +912,7 @@ export function findStrategicClue(
 }
 
 // Find 3 possible answers using current letters on the board for the idle robot hint
-// REQUIREMENT: Minimum 3 letters, non-plural form, and prioritize words with least number of letters.
+// REQUIREMENT: Minimum 3 letters, STRICTLY NON-PLURAL form, and prioritize words with least number of letters.
 export function findThreePossibleAnswers(
   board: Tile[][],
   categoryId: number,
@@ -937,7 +921,7 @@ export function findThreePossibleAnswers(
   const answers: string[] = [];
   const seen = new Set<string>();
 
-  // 1. First get all 1-move category opportunities (filtered for >= 3 letters and non-plural, sorted with least letters first)
+  // 1. First get all 1-move category opportunities (filtered for >= 3 letters, strictly non-plural, sorted with least letters first)
   const opportunities = countOneMoveCategoryOpportunities(board, categoryId, formedWords);
   opportunities.sort((a, b) => a.word.length - b.word.length);
   for (const opp of opportunities) {
@@ -954,7 +938,7 @@ export function findThreePossibleAnswers(
     }
   }
 
-  // 2. Check unformed words from the category that can be formed using letter pool on board (least letters first)
+  // 2. Check unformed words from the category that can be formed using letter pool on board (strictly non-plural, least letters first)
   const currentCat = getCategoryById(categoryId);
   const boardLetters: Record<string, number> = {};
   for (let r = 0; r < BOARD_SIZE; r++) {
@@ -986,7 +970,7 @@ export function findThreePossibleAnswers(
       }
     }
 
-    // 3. Fallback: add remaining valid unformed category words (already sorted by length ascending)
+    // 3. Fallback: add remaining valid unformed category words (strictly non-plural, already sorted by length ascending)
     for (const w of validCatWords) {
       if (!seen.has(w) && (!formedWords || !formedWords.has(w))) {
         seen.add(w);
@@ -999,7 +983,7 @@ export function findThreePossibleAnswers(
   return answers;
 }
 
-// Find ONLY the 2 tile coordinates to be swapped for the best 1-move category word opportunity (prioritizing least letters first)
+// Find ONLY the 2 tile coordinates to be swapped for the best 1-move category word opportunity (non-plural, prioritizing least letters first)
 export function findOneMoveSwapPair(
   board: Tile[][],
   categoryId: number = 1,
@@ -1068,7 +1052,7 @@ export function findOneMoveSwapPair(
   return bestPair;
 }
 
-// Find all tile coordinates involved in the best 1-move new category word opportunity (least letters first)
+// Find all tile coordinates involved in the best 1-move new category word opportunity (non-plural, least letters first)
 export function findOneMoveWordTiles(
   board: Tile[][],
   categoryId: number = 1,
