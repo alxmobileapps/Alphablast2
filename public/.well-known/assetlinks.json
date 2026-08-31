@@ -5,32 +5,8 @@
       "namespace": "android_app",
       "package_name": "com.alxmobileapps.alphablast",
       "sha256_cert_fingerprints": [
-        "E6:89:92:37:82:EA:DF:FB:36:C1:55:87:D2:32:5A:85:38:FD:B5:FC:86:98:25:58:15:13:65:A1:8E:58:DB:B2",
         "C9:6C:4D:F9:59:16:AC:FC:91:42:9F:B6:0E:9E:F1:0F:12:9E:1E:EC:DC:7A:8F:55:17:12:32:37:11:55:EC:10",
-        "9B:4C:E6:86:1B:5A:F2:69:B5:E8:29:57:EC:8C:F9:64:18:2D:40:9D:69:D7:9C:CA:0E:17:F1:C9:83:B3:36:9C"
-      ]
-    }
-  },
-  {
-    "relation": ["delegate_permission/common.handle_all_urls"],
-    "target": {
-      "namespace": "android_app",
-      "package_name": "site.alphablast.twa",
-      "sha256_cert_fingerprints": [
         "E6:89:92:37:82:EA:DF:FB:36:C1:55:87:D2:32:5A:85:38:FD:B5:FC:86:98:25:58:15:13:65:A1:8E:58:DB:B2",
-        "C9:6C:4D:F9:59:16:AC:FC:91:42:9F:B6:0E:9E:F1:0F:12:9E:1E:EC:DC:7A:8F:55:17:12:32:37:11:55:EC:10",
-        "9B:4C:E6:86:1B:5A:F2:69:B5:E8:29:57:EC:8C:F9:64:18:2D:40:9D:69:D7:9C:CA:0E:17:F1:C9:83:B3:36:9C"
-      ]
-    }
-  },
-  {
-    "relation": ["delegate_permission/common.handle_all_urls"],
-    "target": {
-      "namespace": "android_app",
-      "package_name": "com.alphablast.app",
-      "sha256_cert_fingerprints": [
-        "E6:89:92:37:82:EA:DF:FB:36:C1:55:87:D2:32:5A:85:38:FD:B5:FC:86:98:25:58:15:13:65:A1:8E:58:DB:B2",
-        "C9:6C:4D:F9:59:16:AC:FC:91:42:9F:B6:0E:9E:F1:0F:12:9E:1E:EC:DC:7A:8F:55:17:12:32:37:11:55:EC:10",
         "9B:4C:E6:86:1B:5A:F2:69:B5:E8:29:57:EC:8C:F9:64:18:2D:40:9D:69:D7:9C:CA:0E:17:F1:C9:83:B3:36:9C"
       ]
     }
