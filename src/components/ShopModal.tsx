@@ -18,6 +18,8 @@ import {
   ShieldCheck,
   Play,
   Volume2,
+  ExternalLink,
+  AlertCircle,
 } from 'lucide-react';
 import { PowerUpInventory, PowerUpType } from '../types';
 import { HammerIcon } from './HammerIcon';
@@ -81,6 +83,9 @@ export const ShopModal: React.FC<ShopModalProps> = ({
   const [videoAdTimeLeft, setVideoAdTimeLeft] = useState<number>(5);
   const [videoAdCompleted, setVideoAdCompleted] = useState<boolean>(false);
 
+  // Web Billing Notice Modal State
+  const [webBillingModal, setWebBillingModal] = useState<boolean>(false);
+
   useEffect(() => {
     let timer: NodeJS.Timeout;
     if (isVideoAdModalOpen && videoAdTimeLeft > 0) {
@@ -117,7 +122,9 @@ export const ShopModal: React.FC<ShopModalProps> = ({
           showNotification('All Ads Removed! +100 Diamonds & Power-ups Set to 2!');
         }
       } else {
-        if (res?.error && res.error !== 'Cancelled') {
+        if (res?.error && (res.error.includes('Android') || res.error.includes('Google Play'))) {
+          setWebBillingModal(true);
+        } else if (res?.error && res.error !== 'Cancelled') {
           showNotification(`Notice: ${res.error}`);
         } else {
           showNotification('Purchase cancelled.');
@@ -221,7 +228,9 @@ export const ShopModal: React.FC<ShopModalProps> = ({
         playWin();
         showNotification(`Purchased ${label}! +${amount} 💎 Diamonds Added!`);
       } else {
-        if (res?.error && res.error !== 'Cancelled') {
+        if (res?.error && (res.error.includes('Android') || res.error.includes('Google Play'))) {
+          setWebBillingModal(true);
+        } else if (res?.error && res.error !== 'Cancelled') {
           showNotification(`Purchase notice: ${res.error}`);
         } else {
           showNotification('Purchase cancelled.');
@@ -830,6 +839,52 @@ export const ShopModal: React.FC<ShopModalProps> = ({
           }}
           onClose={() => setCurrencyPrompt(null)}
         />
+
+        {/* Web Browser Notice Modal (When trying to IAP outside Android app) */}
+        {webBillingModal && (
+          <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md animate-fade-in">
+            <div className="bg-[#0D2258] border-2 border-amber-400/50 rounded-3xl p-5 sm:p-6 max-w-sm w-full shadow-2xl text-center space-y-4 animate-scale-in text-white">
+              <div className="w-14 h-14 bg-amber-400/20 border border-amber-400/40 rounded-2xl flex items-center justify-center mx-auto text-amber-300 text-2xl shadow-inner">
+                <ShoppingBag className="w-7 h-7" />
+              </div>
+
+              <div>
+                <h3 className="text-lg font-black text-white tracking-tight">Google Play Billing Required</h3>
+                <p className="text-xs text-blue-200 mt-1 leading-relaxed">
+                  Real-money purchases (Remove Ads & Diamond Vaults) are processed and protected through <strong className="text-amber-300">Google Play In-App Billing</strong> in the AlphaBlast Android App.
+                </p>
+              </div>
+
+              <div className="bg-[#081844] border border-[#1E3A8A] p-3 rounded-2xl text-left space-y-1">
+                <div className="flex items-center gap-1.5 text-xs font-bold text-amber-200">
+                  <AlertCircle className="w-4 h-4 text-amber-400 shrink-0" />
+                  <span>To buy on this account:</span>
+                </div>
+                <p className="text-[11px] text-blue-300 leading-snug">
+                  Please open or install AlphaBlast from the Google Play Store on your Android phone or tablet. Your purchase will automatically sync across your cloud saves!
+                </p>
+              </div>
+
+              <div className="pt-1 flex flex-col gap-2">
+                <a
+                  href="https://play.google.com/apps/testing/com.alxmobileapps.alphablast"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="w-full py-2.5 bg-gradient-to-r from-amber-400 to-yellow-400 hover:from-amber-300 hover:to-yellow-300 text-amber-950 font-black text-xs sm:text-sm rounded-xl flex items-center justify-center gap-2 shadow-lg active:scale-95 transition-transform"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                  <span>Open Google Play Store</span>
+                </a>
+                <button
+                  onClick={() => setWebBillingModal(false)}
+                  className="w-full py-2 bg-[#0E286C] hover:bg-[#143588] text-blue-200 font-bold text-xs rounded-xl transition-colors border border-[#204090]"
+                >
+                  Got It
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

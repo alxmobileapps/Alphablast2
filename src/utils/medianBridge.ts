@@ -223,12 +223,13 @@ export async function purchaseIAP(
     }
   }
 
-  // 3. Fallback for browser preview testing
-  console.log(`[Google Play Billing Preview] Simulating test purchase for: ${productId}`);
-  callback(true, {
-    status: 'success',
+  // 3. Web Browser Fallback (Google Play Billing is not supported in standard web browsers)
+  // Strictly DO NOT grant goods for free
+  console.log(`[Google Play Billing] Direct web browser purchase attempted for: ${productId}. Real payment requires Google Play Android app.`);
+  callback(false, {
+    status: 'error',
     productId,
-    simulated: true,
+    error: 'Google Play Billing is only available in the AlphaBlast Android App. Please install or open AlphaBlast on your Android device to complete real-money purchases.',
   });
 }
 
@@ -285,15 +286,8 @@ export async function restorePurchases(
     }
   }
 
-  // If items found via Digital Goods API
-  if (restored.length > 0) {
-    onComplete(restored);
-    return;
-  }
-
-  // 3. Fallback for browser preview
-  console.log('[Play Billing Preview] Restore simulated.');
-  onComplete(['com.wordblast.removeads']);
+  // Return real restored products only
+  onComplete(restored);
 }
 
 // Alias for backwards compatibility
