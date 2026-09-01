@@ -133,8 +133,13 @@ export function getSingularForms(word: string): string[] {
     results.push(irregularPluralToSingular.get(upper)!);
   }
 
-  // -IES -> -Y (e.g. BERRIES -> BERRY, PUPPIES -> PUPPY)
+  // -IES -> -Y (e.g. BERRIES -> BERRY, PUPPIES -> PUPPY, FLIES -> FLY)
   if (upper.endsWith('IES') && upper.length >= 5) {
+    results.push(upper.slice(0, -3) + 'Y');
+  }
+
+  // Special 4-letter -IES -> -Y (e.g. FLIES is 5 letters, but just in case, ensure -IES -> -Y)
+  if (upper.endsWith('IES') && upper.length === 4) {
     results.push(upper.slice(0, -3) + 'Y');
   }
 
@@ -144,13 +149,26 @@ export function getSingularForms(word: string): string[] {
     results.push(upper.slice(0, -3) + 'FE');
   }
 
-  // -ES -> remove ES (e.g. FOXES -> FOX, PEACHES -> PEACH, HEROES -> HERO) or remove S (BONES -> BONE)
+  // -ES -> remove ES (e.g. FOXES -> FOX, PEACHES -> PEACH, HEROES -> HERO, BOXES -> BOX, BUSHES -> BUSH)
   if (upper.endsWith('ES') && upper.length >= 4) {
-    results.push(upper.slice(0, -2));
+    const base = upper.slice(0, -2);
+    // Plural -ES is only added to roots ending in S, X, Z, CH, SH, or O (e.g. FOX -> FOXES, TOMATO -> TOMATOES)
+    if (
+      base.endsWith('S') ||
+      base.endsWith('X') ||
+      base.endsWith('Z') ||
+      base.endsWith('CH') ||
+      base.endsWith('SH') ||
+      base.endsWith('O')
+    ) {
+      results.push(base);
+    }
+    // Or for words ending in -E that just take -S (e.g. BONES -> BONE, CAKES -> CAKE)
     results.push(upper.slice(0, -1));
   }
 
   // Standard -S -> remove S (e.g. DOGS -> DOG, CATS -> CAT, APPLES -> APPLE)
+  // Must NOT end in SS, and the remaining root must NOT end in a vowel followed by nothing (e.g. FLIS is not a word)
   if (upper.endsWith('S') && !upper.endsWith('SS') && upper.length >= 4) {
     results.push(upper.slice(0, -1));
   }
@@ -169,18 +187,11 @@ function indexCategoryWords(catId: number, words: string[]): Set<string> {
       catSet.add(clean);
       globalWordSet.add(clean);
 
-      // 2. Generate and index all plural variations (e.g. DOG -> DOGS, BERRY -> BERRIES, FOX -> FOXES)
+      // 2. Generate and index all plural variations (e.g. DOG -> DOGS, BERRY -> BERRIES, FOX -> FOXES, FLY -> FLIES)
       const plurals = getPluralForms(clean);
       for (const p of plurals) {
         catSet.add(p);
         globalWordSet.add(p);
-      }
-
-      // 3. Generate and index all singular variations (e.g. BERRIES -> BERRY, DOGS -> DOG, WOLVES -> WOLF)
-      const singulars = getSingularForms(clean);
-      for (const s of singulars) {
-        catSet.add(s);
-        globalWordSet.add(s);
       }
     }
   }
@@ -197,19 +208,8 @@ for (const cat of INITIAL_CATEGORIES) {
 export function isValidWord(word: string): boolean {
   if (!word || word.length < 3) return false;
   const upper = word.toUpperCase().trim();
+  // Exact match in master dictionary or verified category words
   if (globalWordSet.has(upper)) return true;
-
-  // Check singular derivations
-  const singulars = getSingularForms(upper);
-  for (const s of singulars) {
-    if (globalWordSet.has(s)) return true;
-  }
-
-  // Check plural derivations
-  const plurals = getPluralForms(upper);
-  for (const p of plurals) {
-    if (globalWordSet.has(p)) return true;
-  }
 
   return false;
 }
@@ -220,24 +220,8 @@ export function isCategoryWord(word: string, categoryId: number): boolean {
   const catSet = categoryWordSets.get(categoryId);
   if (!catSet) return false;
 
-  // 1. Direct O(1) set lookup in pre-indexed category dictionary
+  // Exact match in verified category set
   if (catSet.has(upper)) return true;
-
-  // 2. Check if a valid singular form belongs to category
-  const singulars = getSingularForms(upper);
-  for (const s of singulars) {
-    if (catSet.has(s)) {
-      return true;
-    }
-  }
-
-  // 3. Check if a valid plural form belongs to category
-  const plurals = getPluralForms(upper);
-  for (const p of plurals) {
-    if (catSet.has(p)) {
-      return true;
-    }
-  }
 
   return false;
 }
