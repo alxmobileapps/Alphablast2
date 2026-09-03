@@ -351,11 +351,20 @@ export const HomeMenu: React.FC<HomeMenuProps> = ({
         </div>
       </div>
 
-      {/* Footer text with sci-fi accent lines */}
-      <div className="flex items-center justify-center gap-2 text-center text-[8px] sm:text-[9px] text-cyan-300/60 font-futuristic uppercase tracking-[0.2em] z-10 pb-0.5 shrink-0">
-        <div className="h-[1px] w-5 bg-gradient-to-r from-transparent to-cyan-400/40" />
-        <span>ALPHABLAST • WORD PUZZLE</span>
-        <div className="h-[1px] w-5 bg-gradient-to-l from-transparent to-cyan-400/40" />
+      {/* Footer text with sci-fi accent lines & Privacy Policy */}
+      <div className="flex items-center justify-center gap-2 text-center text-[8px] sm:text-[9px] text-cyan-300/70 font-futuristic uppercase tracking-[0.15em] z-10 pb-0.5 shrink-0">
+        <div className="h-[1px] w-4 bg-gradient-to-r from-transparent to-cyan-400/40" />
+        <span>ALPHABLAST</span>
+        <span>•</span>
+        <a
+          href="/privacy.html"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-cyan-300 hover:text-white underline underline-offset-2 transition-colors cursor-pointer"
+        >
+          PRIVACY POLICY
+        </a>
+        <div className="h-[1px] w-4 bg-gradient-to-l from-transparent to-cyan-400/40" />
       </div>
     </div>
   );

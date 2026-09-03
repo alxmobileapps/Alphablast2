@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { X, Volume2, VolumeX, Music, Smartphone, RotateCcw, ShieldAlert, ArrowLeftRight, Lightbulb, Flame } from 'lucide-react';
+import { X, Volume2, VolumeX, Music, Smartphone, RotateCcw, ShieldAlert, ArrowLeftRight, Lightbulb, Flame, Shield } from 'lucide-react';
 import { isSoundEnabled, toggleSound, isMusicEnabled, toggleMusic } from '../utils/audio';
 import { isSwipeControlsEnabled, setSwipeControlsEnabled, isCluesEnabled as isCluesEnabledUtil, setCluesEnabled as setCluesEnabledUtil } from '../utils/settings';
 import { haptics } from '../utils/haptics';
+import { PrivacyModal } from './PrivacyModal';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -35,6 +36,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     isCluesEnabled !== undefined ? isCluesEnabled : isCluesEnabledUtil()
   );
   const [confirmReset, setConfirmReset] = useState<boolean>(false);
+  const [showPrivacy, setShowPrivacy] = useState<boolean>(false);
 
   // Sync state whenever modal opens
   useEffect(() => {
@@ -273,7 +275,28 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               </button>
             </div>
 
-            {/* 6. Reset Data Section */}
+            {/* 6. Privacy Policy & Data */}
+            <div className="bg-[#0C2158] border border-[#1E3A8A] rounded-2xl p-3.5 flex items-center justify-between shadow-inner">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-sky-950/60 border border-sky-500/50 text-sky-400 flex items-center justify-center">
+                  <Shield className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="font-black text-sm text-white">Privacy Policy</div>
+                  <div className="text-[11px] text-cyan-200/70">AdSense, cookies & user data rights</div>
+                </div>
+              </div>
+
+              <button
+                id="settings-privacy-policy-btn"
+                onClick={() => setShowPrivacy(true)}
+                className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 border border-sky-300 text-white font-black text-xs transition-all shadow-md shadow-sky-500/20 cursor-pointer"
+              >
+                View
+              </button>
+            </div>
+
+            {/* 7. Reset Data Section */}
             <div className="bg-[#0C2158] border border-[#1E3A8A] rounded-2xl p-3.5 shadow-inner">
               {confirmReset ? (
                 <div className="space-y-2 text-center animate-fade-in">
@@ -333,6 +356,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Embedded Privacy Policy Modal */}
+      <PrivacyModal
+        isOpen={showPrivacy}
+        onClose={() => setShowPrivacy(false)}
+      />
     </div>
   );
 };
