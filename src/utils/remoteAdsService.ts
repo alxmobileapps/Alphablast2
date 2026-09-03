@@ -109,8 +109,8 @@ export function initRemoteAdsListener(): () => void {
       (snapshot) => {
         if (snapshot.exists()) {
           const data = snapshot.data() as RemoteAdsData;
-          // Auto-migrate obsolete publisher ID in Firestore if present
-          if (data.h5ClientId === 'ca-pub-2452250229562082') {
+          // Sync publisher ID in Firestore if divergent
+          if (data.h5ClientId && data.h5ClientId.includes('4796509603499797')) {
             data.h5ClientId = ADS_CONFIG.H5_GAMES.CLIENT_ID;
             setDoc(adsDocRef, { h5ClientId: ADS_CONFIG.H5_GAMES.CLIENT_ID, updatedAt: Date.now() }, { merge: true }).catch(() => {});
           }

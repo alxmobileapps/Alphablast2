@@ -20,7 +20,7 @@ export const ADS_CONFIG = {
   // Found in your Google AdSense Dashboard (Settings > Account > Account Info)
   H5_GAMES: {
     // Your Google Publisher Client ID (e.g. 'ca-pub-1234567890123456')
-    CLIENT_ID: 'ca-pub-4796509603499797',
+    CLIENT_ID: 'ca-pub-2452250229562082',
     
     // Optional AdSense Channel ID for granular tracking (e.g. '1234567890')
     CHANNEL_ID: '',
