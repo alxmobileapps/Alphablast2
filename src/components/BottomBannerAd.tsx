@@ -133,27 +133,29 @@ export const BottomBannerAd: React.FC<BottomBannerAdProps> = ({
   return (
     <div
       id="bottom-banner-ad-container"
-      className="w-full bg-slate-900 border-t border-slate-700/80 shadow-lg px-2 sm:px-4 pb-[max(0.125rem,env(safe-area-inset-bottom))] z-30 select-none shrink-0 min-h-[50px] max-h-[90px] overflow-hidden flex flex-col justify-center items-center relative"
+      style={{ height: '50px', maxHeight: '50px', minHeight: '50px', overflow: 'hidden' }}
+      className="w-full bg-[#071330] border-t border-slate-700/80 shadow-lg px-2 z-30 select-none shrink-0 h-[50px] max-h-[50px] min-h-[50px] overflow-hidden flex items-center justify-center relative"
     >
-      {/* Real Google AdSense Display Unit: ca-pub-2452250229562082 / slot: 2174440998 */}
-      <div className="w-full max-w-[728px] mx-auto flex justify-center items-center overflow-hidden">
+      {/* Real Google AdSense Display Unit (Standard Mobile Banner: 320x50) */}
+      <div 
+        style={{ width: '320px', height: '50px', maxHeight: '50px', overflow: 'hidden' }}
+        className="w-[320px] h-[50px] max-h-[50px] overflow-hidden flex justify-center items-center mx-auto"
+      >
         <ins
           className="adsbygoogle"
-          style={{ display: 'inline-block', minWidth: '320px', width: '100%', height: '50px' }}
+          style={{ display: 'inline-block', width: '320px', height: '50px', maxHeight: '50px', overflow: 'hidden' }}
           data-ad-client={ADS_CONFIG.H5_GAMES.CLIENT_ID || 'ca-pub-2452250229562082'}
           data-ad-slot="2174440998"
-          data-ad-format="horizontal"
-          data-full-width-responsive="false"
         />
       </div>
 
       {/* Fallback visual banner preview shown when AdSense is filling or loading */}
       <div 
-        className="w-full max-w-5xl mx-auto flex items-center justify-between gap-2 sm:gap-4 h-[46px]"
+        className="absolute inset-0 w-full max-w-5xl mx-auto flex items-center justify-between px-3 h-[50px] bg-[#071330] pointer-events-auto"
         style={{ display: adSenseLoaded ? 'none' : 'flex' }}
       >
         {/* Left Side: AD badge & App Icon + Details */}
-        <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+        <div className="flex items-center gap-2 min-w-0 flex-1">
           {/* Official Google/AdMob Style "Ad" Tag */}
           <div className="shrink-0 flex flex-col items-center">
             <span className="bg-amber-400 text-slate-950 text-[9px] font-black px-1.5 py-0.5 rounded leading-none shadow-xs tracking-wider">
@@ -163,7 +165,7 @@ export const BottomBannerAd: React.FC<BottomBannerAdProps> = ({
 
           {/* App Icon */}
           <div
-            className={`w-7 h-7 sm:w-8 sm:h-8 shrink-0 rounded-xl bg-gradient-to-br ${campaign.iconBg} flex items-center justify-center text-sm sm:text-base shadow-md border border-white/20 transform transition-transform hover:scale-105`}
+            className={`w-7 h-7 shrink-0 rounded-xl bg-gradient-to-br ${campaign.iconBg} flex items-center justify-center text-sm shadow-md border border-white/20`}
           >
             {campaign.iconEmoji}
           </div>
@@ -171,7 +173,7 @@ export const BottomBannerAd: React.FC<BottomBannerAdProps> = ({
           {/* App Text Info */}
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="text-white text-xs sm:text-sm font-bold truncate leading-tight">
+              <span className="text-white text-xs font-bold truncate leading-tight">
                 {campaign.title}
               </span>
               <span className="hidden sm:inline-flex items-center text-[10px] text-amber-300 font-bold bg-amber-950/80 border border-amber-500/40 px-1 rounded">
@@ -179,14 +181,14 @@ export const BottomBannerAd: React.FC<BottomBannerAdProps> = ({
                 {campaign.rating}
               </span>
             </div>
-            <p className="text-[10px] sm:text-xs text-slate-300/80 truncate leading-tight">
+            <p className="text-[10px] text-slate-300/80 truncate leading-tight">
               {campaign.subtitle}
             </p>
           </div>
         </div>
 
         {/* Right Side: CTA Button & Remove Ads Shop shortcut */}
-        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+        <div className="flex items-center gap-1.5 shrink-0">
           <button
             onClick={handleCtaClick}
             className={`px-3 py-1 rounded-lg text-xs font-black uppercase tracking-wider flex items-center gap-1 shadow-md transition-all duration-200 active:scale-95 ${
