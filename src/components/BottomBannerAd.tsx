@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Shield, Star, Play } from 'lucide-react';
 import { setUniversalBannerVisible } from '../utils/universalAds';
 import { haptics } from '../utils/haptics';
+import { ADS_CONFIG } from '../config/adsConfig';
 
 interface BottomBannerAdProps {
   hasRemovedAds?: boolean;
@@ -73,6 +74,8 @@ export const BottomBannerAd: React.FC<BottomBannerAdProps> = ({
 }) => {
   const [currentIdx, setCurrentIdx] = useState(0);
   const [clickedEffect, setClickedEffect] = useState(false);
+  const [adSenseLoaded, setAdSenseLoaded] = useState(false);
+  const adPushedRef = useRef(false);
 
   // Sync native / universal banner visibility
   useEffect(() => {
@@ -86,7 +89,27 @@ export const BottomBannerAd: React.FC<BottomBannerAdProps> = ({
     };
   }, [hasRemovedAds]);
 
-  // Rotate campaigns every 12 seconds
+  // Push Google AdSense ad slot when mounted
+  useEffect(() => {
+    if (hasRemovedAds) return;
+
+    const timer = setTimeout(() => {
+      if (adPushedRef.current) return;
+      try {
+        const win = window as unknown as { adsbygoogle?: unknown[] };
+        win.adsbygoogle = win.adsbygoogle || [];
+        win.adsbygoogle.push({});
+        adPushedRef.current = true;
+        setAdSenseLoaded(true);
+      } catch (e) {
+        console.debug('AdSense ins push error or blocked:', e);
+      }
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [hasRemovedAds]);
+
+  // Rotate fallback campaigns every 12 seconds
   useEffect(() => {
     if (hasRemovedAds) return;
     const interval = setInterval(() => {
@@ -110,9 +133,25 @@ export const BottomBannerAd: React.FC<BottomBannerAdProps> = ({
   return (
     <div
       id="bottom-banner-ad-container"
-      className="w-full bg-slate-900 border-t border-slate-700/80 shadow-lg px-2 sm:px-4 pb-[max(0.125rem,env(safe-area-inset-bottom))] z-30 select-none shrink-0 h-[48px] sm:h-[52px] max-h-[52px] overflow-hidden flex items-center justify-between"
+      className="w-full bg-slate-900 border-t border-slate-700/80 shadow-lg px-2 sm:px-4 pb-[max(0.125rem,env(safe-area-inset-bottom))] z-30 select-none shrink-0 min-h-[50px] max-h-[90px] overflow-hidden flex flex-col justify-center items-center relative"
     >
-      <div className="w-full max-w-5xl mx-auto flex items-center justify-between gap-2 sm:gap-4 h-full">
+      {/* Real Google AdSense Display Unit: ca-pub-2452250229562082 / slot: 2174440998 */}
+      <div className="w-full max-w-[728px] mx-auto flex justify-center items-center overflow-hidden">
+        <ins
+          className="adsbygoogle"
+          style={{ display: 'inline-block', minWidth: '320px', width: '100%', height: '50px' }}
+          data-ad-client={ADS_CONFIG.H5_GAMES.CLIENT_ID || 'ca-pub-2452250229562082'}
+          data-ad-slot="2174440998"
+          data-ad-format="horizontal"
+          data-full-width-responsive="false"
+        />
+      </div>
+
+      {/* Fallback visual banner preview shown when AdSense is filling or loading */}
+      <div 
+        className="w-full max-w-5xl mx-auto flex items-center justify-between gap-2 sm:gap-4 h-[46px]"
+        style={{ display: adSenseLoaded ? 'none' : 'flex' }}
+      >
         {/* Left Side: AD badge & App Icon + Details */}
         <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
           {/* Official Google/AdMob Style "Ad" Tag */}
