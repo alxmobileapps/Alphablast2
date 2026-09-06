@@ -1172,6 +1172,24 @@ body {
   animation: sparkleGleam 2s ease-in-out forwards;
 }
 
+/* AdSense Bottom Banner Safeguards: Strictly cap at 50px & hide unfilled broken frames */
+#bottom-banner-ad-container {
+  height: 50px !important;
+  max-height: 50px !important;
+  min-height: 50px !important;
+  overflow: hidden !important;
+}
+
+#bottom-banner-ad-container iframe,
+#bottom-banner-ad-container ins.adsbygoogle {
+  max-height: 50px !important;
+  overflow: hidden !important;
+}
+
+ins.adsbygoogle[data-ad-status="unfilled"] {
+  display: none !important;
+}
+
 
 
 

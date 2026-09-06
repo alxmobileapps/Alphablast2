@@ -1,5 +1,5 @@
 // AlphaBlast Service Worker for PWABuilder & Offline PWA Support
-const CACHE_NAME = 'alphablast-v2';
+const CACHE_NAME = 'alphablast-v3';
 const STATIC_ASSETS = [
   '/',
   '/index.html',

@@ -76,6 +76,7 @@ export const BottomBannerAd: React.FC<BottomBannerAdProps> = ({
   const [clickedEffect, setClickedEffect] = useState(false);
   const [adSenseLoaded, setAdSenseLoaded] = useState(false);
   const adPushedRef = useRef(false);
+  const insRef = useRef<HTMLModElement>(null);
 
   // Sync native / universal banner visibility
   useEffect(() => {
@@ -89,9 +90,24 @@ export const BottomBannerAd: React.FC<BottomBannerAdProps> = ({
     };
   }, [hasRemovedAds]);
 
-  // Push Google AdSense ad slot when mounted
+  // Push Google AdSense ad slot when mounted and observe if Google actually fills it
   useEffect(() => {
     if (hasRemovedAds) return;
+
+    // Observe data-ad-status attribute changes by Google AdSense
+    const insEl = insRef.current;
+    let observer: MutationObserver | null = null;
+    if (insEl && typeof MutationObserver !== 'undefined') {
+      observer = new MutationObserver(() => {
+        const status = insEl.getAttribute('data-ad-status');
+        if (status === 'filled') {
+          setAdSenseLoaded(true);
+        } else if (status === 'unfilled') {
+          setAdSenseLoaded(false);
+        }
+      });
+      observer.observe(insEl, { attributes: true, attributeFilter: ['data-ad-status'] });
+    }
 
     const timer = setTimeout(() => {
       if (adPushedRef.current) return;
@@ -100,13 +116,15 @@ export const BottomBannerAd: React.FC<BottomBannerAdProps> = ({
         win.adsbygoogle = win.adsbygoogle || [];
         win.adsbygoogle.push({});
         adPushedRef.current = true;
-        setAdSenseLoaded(true);
       } catch (e) {
         console.debug('AdSense ins push error or blocked:', e);
       }
     }, 400);
 
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+      if (observer) observer.disconnect();
+    };
   }, [hasRemovedAds]);
 
   // Rotate fallback campaigns every 12 seconds
@@ -138,10 +156,18 @@ export const BottomBannerAd: React.FC<BottomBannerAdProps> = ({
     >
       {/* Real Google AdSense Display Unit (Standard Mobile Banner: 320x50) */}
       <div 
-        style={{ width: '320px', height: '50px', maxHeight: '50px', overflow: 'hidden' }}
-        className="w-[320px] h-[50px] max-h-[50px] overflow-hidden flex justify-center items-center mx-auto"
+        style={{ 
+          width: '320px', 
+          height: '50px', 
+          maxHeight: '50px', 
+          overflow: 'hidden',
+          display: adSenseLoaded ? 'flex' : 'none',
+          visibility: adSenseLoaded ? 'visible' : 'hidden'
+        }}
+        className="w-[320px] h-[50px] max-h-[50px] overflow-hidden justify-center items-center mx-auto"
       >
         <ins
+          ref={insRef}
           className="adsbygoogle"
           style={{ display: 'inline-block', width: '320px', height: '50px', maxHeight: '50px', overflow: 'hidden' }}
           data-ad-client={ADS_CONFIG.H5_GAMES.CLIENT_ID || 'ca-pub-2452250229562082'}
@@ -149,9 +175,9 @@ export const BottomBannerAd: React.FC<BottomBannerAdProps> = ({
         />
       </div>
 
-      {/* Fallback visual banner preview shown when AdSense is filling or loading */}
+      {/* Fallback visual banner preview shown when AdSense is unfilled, rejected or loading */}
       <div 
-        className="absolute inset-0 w-full max-w-5xl mx-auto flex items-center justify-between px-3 h-[50px] bg-[#071330] pointer-events-auto"
+        className="w-full max-w-5xl mx-auto flex items-center justify-between px-3 h-[50px] bg-[#071330] pointer-events-auto"
         style={{ display: adSenseLoaded ? 'none' : 'flex' }}
       >
         {/* Left Side: AD badge & App Icon + Details */}
