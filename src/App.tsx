@@ -27,6 +27,7 @@ import { PortraitLockOverlay } from './components/PortraitLockOverlay';
 import { isSwipeControlsEnabled, isCluesEnabled as isCluesEnabledUtil } from './utils/settings';
 import { initUniversalAds } from './utils/universalAds';
 import { initRemoteAdsListener } from './utils/remoteAdsService';
+import { initNativeBilling } from './utils/medianBridge';
 import { initOrientationLock } from './utils/orientation';
 import { INITIAL_CATEGORIES } from './data/categories';
 import { calculateWordPoints, calculateSpecialReactionPoints, formatPoints } from './utils/scoring';
@@ -607,6 +608,7 @@ export default function App() {
     initOrientationLock();
     startBackgroundMusic();
     initUniversalAds();
+    initNativeBilling();
     const unsubscribeAds = initRemoteAdsListener();
     return () => {
       unsubscribeAds();

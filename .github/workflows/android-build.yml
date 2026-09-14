@@ -1,0 +1,145 @@
+name: Android Build (APK/AAB)
+
+# Builds the AlphaBlast Android app (Capacitor) into a debug APK on every push/PR,
+# and additionally into a signed release AAB + APK when a signing keystore is
+# configured via repo secrets (see "Signing secrets" below).
+#
+# The android/ native project is NOT committed to the repo — this workflow
+# bootstraps it fresh every run with `npx cap add android` so it always matches
+# whatever Capacitor/plugin versions are in package.json. If you'd rather commit
+# android/ for faster/more reproducible builds, run `npx cap add android` locally
+# once, commit the folder, and remove the "Add Android platform" step below.
+#
+# Signing secrets (all optional — omit them and CI just builds an unsigned/debug APK):
+#   ANDROID_KEYSTORE_BASE64   - `base64 -w0 your-release.keystore` output
+#   ANDROID_KEYSTORE_PASSWORD - keystore password
+#   ANDROID_KEY_ALIAS         - key alias inside the keystore
+#   ANDROID_KEY_PASSWORD      - key password (often same as keystore password)
+#
+# Backend URL (optional): set the CAPACITOR_SERVER_URL repo variable (Settings ->
+# Secrets and variables -> Actions -> Variables) to your live Firebase Hosting URL
+# so the packaged app can reach /api/gemini/* for AI word generation. Without it,
+# the app bundles dist/ as a fully local build and those endpoints won't resolve.
+
+on:
+  push:
+    branches: [main, master, capacitor-android-conversion]
+  pull_request:
+  workflow_dispatch: {}
+
+jobs:
+  build-android:
+    runs-on: ubuntu-latest
+    env:
+      CAPACITOR_SERVER_URL: ${{ vars.CAPACITOR_SERVER_URL }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build web assets
+        run: npm run build:webonly
+
+      - name: Add Android platform (if not already present)
+        run: |
+          if [ ! -d android ]; then
+            npx cap add android
+          fi
+
+      - name: Sync Capacitor -> Android
+        run: npx cap sync android
+
+      - name: Ensure AdMob Application ID is in AndroidManifest.xml
+        run: node scripts/patch-android-manifest.cjs
+
+      - name: Generate Android launcher icon + splash from AlphaBlast artwork
+        continue-on-error: true
+        run: |
+          mkdir -p resources
+          cp public/icon-512.png resources/icon.png
+          cp public/icon-512.png resources/splash.png
+          npx @capacitor/assets generate --android
+
+      - name: Grant execute permission to gradlew
+        run: chmod +x android/gradlew
+
+      - name: Build debug APK
+        working-directory: android
+        run: ./gradlew assembleDebug --no-daemon
+
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: alphablast-debug-apk
+          path: android/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+
+      - name: Check for release signing secrets
+        id: signing_check
+        run: |
+          if [ -n "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" ]; then
+            echo "has_keystore=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_keystore=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build unsigned release AAB + APK
+        if: steps.signing_check.outputs.has_keystore == 'true'
+        working-directory: android
+        run: ./gradlew bundleRelease assembleRelease --no-daemon
+
+      - name: Sign release AAB
+        if: steps.signing_check.outputs.has_keystore == 'true'
+        uses: r0adkll/sign-android-release@v1
+        id: sign_aab
+        with:
+          releaseDirectory: android/app/build/outputs/bundle/release
+          signingKeyBase64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          alias: ${{ secrets.ANDROID_KEY_ALIAS }}
+          keyStorePassword: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          keyPassword: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        env:
+          BUILD_TOOLS_VERSION: "34.0.0"
+
+      - name: Sign release APK
+        if: steps.signing_check.outputs.has_keystore == 'true'
+        uses: r0adkll/sign-android-release@v1
+        id: sign_apk
+        with:
+          releaseDirectory: android/app/build/outputs/apk/release
+          signingKeyBase64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          alias: ${{ secrets.ANDROID_KEY_ALIAS }}
+          keyStorePassword: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          keyPassword: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        env:
+          BUILD_TOOLS_VERSION: "34.0.0"
+
+      - name: Upload signed release AAB (Play Store upload)
+        if: steps.signing_check.outputs.has_keystore == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: alphablast-release-aab-signed
+          path: ${{ steps.sign_aab.outputs.signedReleaseFile }}
+          if-no-files-found: error
+
+      - name: Upload signed release APK
+        if: steps.signing_check.outputs.has_keystore == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: alphablast-release-apk-signed
+          path: ${{ steps.sign_apk.outputs.signedReleaseFile }}
+          if-no-files-found: error

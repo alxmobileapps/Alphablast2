@@ -11,15 +11,28 @@
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
     "generate-icons": "node scripts/generate-icons.js",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "build:webonly": "node scripts/generate-icons.js && vite build",
+    "cap:add:android": "cap add android",
+    "cap:sync": "cap sync android",
+    "cap:open:android": "cap open android",
+    "android:assembleDebug": "cd android && ./gradlew assembleDebug",
+    "android:bundleRelease": "cd android && ./gradlew bundleRelease"
   },
   "dependencies": {
+    "@capacitor-community/admob": "latest",
+    "@capacitor/android": "latest",
+    "@capacitor/app": "latest",
+    "@capacitor/core": "latest",
+    "@capacitor/splash-screen": "latest",
+    "@capacitor/status-bar": "latest",
     "@google/genai": "^2.4.0",
     "@resvg/resvg-js": "^2.6.2",
     "@tailwindcss/vite": "^4.1.14",
     "@types/canvas-confetti": "^1.9.0",
     "@vitejs/plugin-react": "^5.0.4",
     "canvas-confetti": "^1.9.4",
+    "cordova-plugin-purchase": "latest",
     "dotenv": "^17.2.3",
     "express": "^4.21.2",
     "firebase": "^12.17.1",
@@ -30,6 +43,8 @@
     "vite": "^6.2.3"
   },
   "devDependencies": {
+    "@capacitor/assets": "latest",
+    "@capacitor/cli": "latest",
     "@types/express": "^4.17.21",
     "@types/node": "^22.14.0",
     "autoprefixer": "^10.4.21",
