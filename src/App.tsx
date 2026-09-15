@@ -29,6 +29,7 @@ import { initUniversalAds } from './utils/universalAds';
 import { initRemoteAdsListener } from './utils/remoteAdsService';
 import { initNativeBilling } from './utils/medianBridge';
 import { initOrientationLock } from './utils/orientation';
+import { initNativeStatusBar } from './utils/nativeShell';
 import { INITIAL_CATEGORIES } from './data/categories';
 import { calculateWordPoints, calculateSpecialReactionPoints, formatPoints } from './utils/scoring';
 import { recordScore, getUserProfile } from './utils/leaderboard';
@@ -606,6 +607,7 @@ export default function App() {
   // Start relaxing background sound, enforce portrait lock, and initialize universal ads + Firestore remote config sync on mount
   useEffect(() => {
     initOrientationLock();
+    initNativeStatusBar();
     startBackgroundMusic();
     initUniversalAds();
     initNativeBilling();
