@@ -1,9 +1,9 @@
 /**
  * Universal Ads Controller for AlphaBlast
  * Automatically bridges across:
- *  1. Google H5 Game Ads (Google Ad Placement API / PWABuilder / Web)
- *  2. Capacitor Native AdMob (@capacitor-community/admob)
- *  3. Median.co Native AdMob (window.median.admob)
+ *  1. Capacitor Native AdMob (@capacitor-community/admob) — real Android app builds
+ *  2. Google H5 Game Ads (Google Ad Placement API / PWABuilder / Web)
+ *  3. Median.co Native AdMob (window.median.admob) — legacy WebView wrapper builds
  *  4. In-Game Interactive Ad Simulation (Fallback / Testing)
  */
 
@@ -21,12 +21,56 @@ declare global {
 }
 
 /**
- * Initialize Google H5 Game Ads (if script loaded)
+ * True only inside a real Capacitor native shell (the Android app built via `npx cap sync android`),
+ * never inside a plain mobile browser.
+ */
+export function isCapacitorNative(): boolean {
+  return typeof window !== 'undefined' && !!window.Capacitor?.isNativePlatform?.();
+}
+
+let admobModulePromise: Promise<typeof import('@capacitor-community/admob')> | null = null;
+let admobInitialized = false;
+let admobListenersBound = false;
+
+/**
+ * Lazily loads the @capacitor-community/admob plugin.
+ * Dynamic import keeps the plugin out of the web/H5 bundle entirely —
+ * it's only ever fetched when actually running inside the native Android app.
+ */
+function loadAdMob() {
+  if (!admobModulePromise) {
+    admobModulePromise = import('@capacitor-community/admob');
+  }
+  return admobModulePromise;
+}
+
+async function ensureNativeAdMobInitialized(): Promise<void> {
+  if (!isCapacitorNative() || admobInitialized) return;
+  try {
+    const { AdMob } = await loadAdMob();
+    await AdMob.initialize({
+      initializeForTesting: ADS_CONFIG.TEST_MODE,
+      testingDevices: [],
+    });
+    admobInitialized = true;
+    console.log('[UniversalAds] Native AdMob initialized (TEST_MODE=' + ADS_CONFIG.TEST_MODE + ')');
+  } catch (e) {
+    console.warn('[UniversalAds] Native AdMob init failed:', e);
+  }
+}
+
+/**
+ * Initialize Google H5 Game Ads (if script loaded) + Native AdMob (if on Capacitor Android)
  */
 export function initUniversalAds(): void {
   if (typeof window === 'undefined') return;
 
-  // Initialize H5 Game Ads if available
+  // Native AdMob (Capacitor Android app)
+  if (isCapacitorNative()) {
+    void ensureNativeAdMobInitialized();
+  }
+
+  // Initialize H5 Game Ads if available (web / PWA only)
   if (typeof window.adConfig === 'function') {
     try {
       window.adConfig({
@@ -51,9 +95,54 @@ export function showUniversalRewardedAd(options: {
   onError?: (err: string) => void;
   fallbackToInteractiveModal?: () => void;
 }): void {
-  const { name = 'rewarded_bonus', onReward, onDismiss, onError, fallbackToInteractiveModal } = options;
+  const { onReward, onDismiss, onError, fallbackToInteractiveModal } = options;
 
-  // 1. Check Google H5 Game Ads (PWABuilder / Web)
+  // 1. Native AdMob (Capacitor Android app) — highest priority & Play policy compliant
+  if (isCapacitorNative()) {
+    void (async () => {
+      try {
+        const { AdMob, RewardAdPluginEvents } = await loadAdMob();
+        await ensureNativeAdMobInitialized();
+
+        let rewarded = false;
+        const cleanup: Array<() => void> = [];
+
+        const rewardedListener = await AdMob.addListener(RewardAdPluginEvents.Rewarded, () => {
+          rewarded = true;
+          onReward();
+        });
+        cleanup.push(() => rewardedListener.remove());
+
+        const dismissedListener = await AdMob.addListener(RewardAdPluginEvents.Dismissed, () => {
+          cleanup.forEach((fn) => fn());
+          if (!rewarded && onDismiss) onDismiss();
+        });
+        cleanup.push(() => dismissedListener.remove());
+
+        const failedListener = await AdMob.addListener(RewardAdPluginEvents.FailedToLoad, (err: any) => {
+          console.warn('[UniversalAds] Native rewarded failed to load:', err);
+          cleanup.forEach((fn) => fn());
+          if (onError) onError(err?.message || 'Rewarded ad failed to load');
+          else if (fallbackToInteractiveModal) fallbackToInteractiveModal();
+          else onReward();
+        });
+        cleanup.push(() => failedListener.remove());
+
+        await AdMob.prepareRewardVideoAd({ adId: ADS_CONFIG.ADMOB_ANDROID.REWARDED_ID });
+        await AdMob.showRewardVideoAd();
+      } catch (e: any) {
+        console.warn('[UniversalAds] Native rewarded ad error:', e);
+        if (onError) onError(e?.message || String(e));
+        else if (fallbackToInteractiveModal) fallbackToInteractiveModal();
+        else onReward();
+      }
+    })();
+    return;
+  }
+
+  const { name = 'rewarded_bonus' } = options;
+
+  // 2. Check Google H5 Game Ads (PWABuilder / Web)
   if (typeof window !== 'undefined' && typeof window.adBreak === 'function') {
     try {
       let rewarded = false;
@@ -101,7 +190,7 @@ export function showUniversalRewardedAd(options: {
     }
   }
 
-  // 2. Check Median.co Native AdMob
+  // 3. Check Median.co Native AdMob
   const median = window.median || window.gonative;
   if (median?.admob?.rewarded) {
     try {
@@ -124,7 +213,7 @@ export function showUniversalRewardedAd(options: {
     }
   }
 
-  // 3. Fallback to interactive in-game simulation modal
+  // 4. Fallback to interactive in-game simulation modal
   if (fallbackToInteractiveModal) {
     fallbackToInteractiveModal();
   } else {
@@ -135,13 +224,44 @@ export function showUniversalRewardedAd(options: {
 /**
  * Request & Display an Interstitial Ad
  */
-export function showUniversalInterstitialAd(options?: {
-  name?: string;
-  onAdCompleted?: () => void;
-}): void {
+export function showUniversalInterstitialAd(options?: { name?: string; onAdCompleted?: () => void }): void {
+  // 1. Native AdMob (Capacitor Android app)
+  if (isCapacitorNative()) {
+    void (async () => {
+      try {
+        const { AdMob, InterstitialAdPluginEvents } = await loadAdMob();
+        await ensureNativeAdMobInitialized();
+
+        let completed = false;
+        const finish = () => {
+          if (completed) return;
+          completed = true;
+          if (options?.onAdCompleted) options.onAdCompleted();
+        };
+
+        const dismissedListener = await AdMob.addListener(InterstitialAdPluginEvents.Dismissed, () => {
+          dismissedListener.remove();
+          finish();
+        });
+        const failedListener = await AdMob.addListener(InterstitialAdPluginEvents.FailedToLoad, (err: any) => {
+          console.warn('[UniversalAds] Native interstitial failed to load:', err);
+          failedListener.remove();
+          finish();
+        });
+
+        await AdMob.prepareInterstitial({ adId: ADS_CONFIG.ADMOB_ANDROID.INTERSTITIAL_ID });
+        await AdMob.showInterstitial();
+      } catch (e) {
+        console.warn('[UniversalAds] Native interstitial error:', e);
+        if (options?.onAdCompleted) options.onAdCompleted();
+      }
+    })();
+    return;
+  }
+
   const name = options?.name || 'next_level';
 
-  // 1. Check Google H5 Game Ads
+  // 2. Check Google H5 Game Ads
   if (typeof window !== 'undefined' && typeof window.adBreak === 'function') {
     try {
       console.log('[UniversalAds] Invoking Google H5 adBreak for Interstitial Ad:', name);
@@ -165,7 +285,7 @@ export function showUniversalInterstitialAd(options?: {
     }
   }
 
-  // 2. Check Median.co Native AdMob
+  // 3. Check Median.co Native AdMob
   const median = window.median || window.gonative;
   if (median?.admob?.interstitial) {
     try {
@@ -177,7 +297,7 @@ export function showUniversalInterstitialAd(options?: {
     }
   }
 
-  // 3. Complete directly if no native interceptor
+  // 4. Complete directly if no native interceptor
   if (options?.onAdCompleted) {
     options.onAdCompleted();
   }
@@ -187,6 +307,29 @@ export function showUniversalInterstitialAd(options?: {
  * Control Bottom Banner Visibility across platforms
  */
 export function setUniversalBannerVisible(visible: boolean, position: 'top' | 'bottom' = 'bottom'): void {
+  // 1. Native AdMob (Capacitor Android app)
+  if (isCapacitorNative()) {
+    void (async () => {
+      try {
+        const { AdMob, BannerAdPosition, BannerAdSize } = await loadAdMob();
+        await ensureNativeAdMobInitialized();
+        if (visible) {
+          await AdMob.showBanner({
+            adId: ADS_CONFIG.ADMOB_ANDROID.BANNER_ID,
+            adSize: BannerAdSize.ADAPTIVE_BANNER,
+            position: position === 'top' ? BannerAdPosition.TOP_CENTER : BannerAdPosition.BOTTOM_CENTER,
+            isTesting: ADS_CONFIG.TEST_MODE,
+          });
+        } else {
+          await AdMob.hideBanner();
+        }
+      } catch (e) {
+        console.warn('[UniversalAds] Native banner control failed:', e);
+      }
+    })();
+    return;
+  }
+
   const median = window.median || window.gonative;
   if (median?.admob?.banner) {
     try {
