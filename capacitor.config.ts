@@ -20,6 +20,13 @@ const config: CapacitorConfig = {
     AdMob: {
       appId: 'ca-app-pub-2452250229562082~6856794170',
     },
+    StatusBar: {
+      // Belt-and-suspenders: applied at native launch (before JS runs) so there's
+      // no flash of the WebView drawing under the status bar. See also
+      // src/utils/nativeShell.ts, which sets this at runtime too.
+      overlaysWebView: false,
+      backgroundColor: '#071330',
+    },
   },
 };
 
