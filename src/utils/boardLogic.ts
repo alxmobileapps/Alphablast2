@@ -1,6 +1,7 @@
 import { Tile, SpecialTileType, WordMatch, ClueInfo, Category, WordDirection } from '../types';
 import { isValidWord, isCategoryWord, getCategoryById, getPluralForms, getSingularForms } from '../data/dictionary';
 import { INITIAL_CATEGORIES } from '../data/categories';
+import { localizeWord } from './localeService';
 
 export const BOARD_SIZE = 8;
 
@@ -855,11 +856,12 @@ export function findStrategicClue(
                 // REQUIREMENT: Prioritize words with least number of letters in clue
                 if (wordUpper.length < minWordLength) {
                   minWordLength = wordUpper.length;
+                  const localizedDisplay = localizeWord(wordUpper);
                   bestWordClue = {
                     from: { row: r, col: c },
                     to: { row: nr, col: nc },
                     type: 'word',
-                    reason: `Swap to form category word "${wordUpper}"!`
+                    reason: `Swap to form category word "${localizedDisplay}"!`
                   };
                 }
               }
@@ -933,7 +935,9 @@ export function findThreePossibleAnswers(
       (!formedWords || !formedWords.has(w))
     ) {
       seen.add(w);
-      answers.push(w);
+      const loc = localizeWord(w);
+      seen.add(loc);
+      answers.push(loc);
       if (answers.length >= 3) return answers;
     }
   }

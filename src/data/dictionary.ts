@@ -1,6 +1,12 @@
 import { INITIAL_CATEGORIES } from './categories';
 import { COMMON_WORDS } from './commonWords';
 import { Category } from '../types';
+import {
+  getAllWordVariants,
+  localizeWordList,
+  getActiveEnglishVariant,
+  EnglishVariant,
+} from '../utils/localeService';
 
 // Pre-computed normalized sets for fast O(1) lookup
 const globalWordSet = new Set<string>();
@@ -49,11 +55,15 @@ for (const [sing, plur] of IRREGULAR_NOUN_PAIRS) {
   irregularPluralToSingular.set(plur, sing);
 }
 
-// 1. Index Common English words
+// 1. Index Common English words (including dual US and UK spelling variations)
 for (const word of COMMON_WORDS) {
   const upper = word.toUpperCase().trim();
   if (upper.length >= 3) {
     globalWordSet.add(upper);
+    const variants = getAllWordVariants(upper);
+    for (const v of variants) {
+      globalWordSet.add(v);
+    }
   }
 }
 
@@ -176,22 +186,31 @@ export function getSingularForms(word: string): string[] {
   return Array.from(new Set(results.filter((w) => w.length >= 3)));
 }
 
-// Helper to index a category's word list with full singular AND plural recognition
+// Helper to index a category's word list with full singular, plural, and US/UK variant recognition
 function indexCategoryWords(catId: number, words: string[]): Set<string> {
   const catSet = new Set<string>();
 
   for (const rawWord of words) {
     const clean = rawWord.toUpperCase().replace(/[\s\-_']/g, '');
     if (clean.length >= 3) {
-      // 1. Index base word
-      catSet.add(clean);
-      globalWordSet.add(clean);
+      // 1. Index base word and its US/UK spelling variants (e.g. COLOR <-> COLOUR, CENTER <-> CENTRE)
+      const variants = getAllWordVariants(clean);
+      for (const variant of variants) {
+        catSet.add(variant);
+        globalWordSet.add(variant);
 
-      // 2. Generate and index all plural variations (e.g. DOG -> DOGS, BERRY -> BERRIES, FOX -> FOXES, FLY -> FLIES)
-      const plurals = getPluralForms(clean);
-      for (const p of plurals) {
-        catSet.add(p);
-        globalWordSet.add(p);
+        // 2. Generate and index all plural & singular variations for every spelling variant
+        const plurals = getPluralForms(variant);
+        for (const p of plurals) {
+          catSet.add(p);
+          globalWordSet.add(p);
+        }
+
+        const singulars = getSingularForms(variant);
+        for (const s of singulars) {
+          catSet.add(s);
+          globalWordSet.add(s);
+        }
       }
     }
   }
@@ -262,9 +281,20 @@ export function unregisterCustomCategory(categoryId: number) {
   categoryWordSets.delete(categoryId);
 }
 
-export function getCategoryById(categoryId: number): Category {
+export function getCategoryById(categoryId: number, variant?: EnglishVariant): Category {
+  let baseCat: Category;
   if (customCategoryMap.has(categoryId)) {
-    return customCategoryMap.get(categoryId)!;
+    baseCat = customCategoryMap.get(categoryId)!;
+  } else {
+    baseCat = INITIAL_CATEGORIES.find((c) => c.id === categoryId) || INITIAL_CATEGORIES[0];
   }
-  return INITIAL_CATEGORIES.find((c) => c.id === categoryId) || INITIAL_CATEGORIES[0];
+
+  const activeVariant = variant || getActiveEnglishVariant();
+  if (activeVariant === 'uk') {
+    return {
+      ...baseCat,
+      words: localizeWordList(baseCat.words, 'uk'),
+    };
+  }
+  return baseCat;
 }
