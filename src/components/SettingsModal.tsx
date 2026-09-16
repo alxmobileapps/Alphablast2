@@ -1,14 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { X, Volume2, VolumeX, Music, Smartphone, RotateCcw, ShieldAlert, ArrowLeftRight, Lightbulb, Flame, Shield, Globe } from 'lucide-react';
+import { X, Volume2, VolumeX, Music, Smartphone, RotateCcw, ShieldAlert, ArrowLeftRight, Lightbulb, Flame, Shield } from 'lucide-react';
 import { isSoundEnabled, toggleSound, isMusicEnabled, toggleMusic } from '../utils/audio';
 import { isSwipeControlsEnabled, setSwipeControlsEnabled, isCluesEnabled as isCluesEnabledUtil, setCluesEnabled as setCluesEnabledUtil } from '../utils/settings';
-import {
-  getEnglishSettingMode,
-  setEnglishSettingMode,
-  getActiveEnglishVariant,
-  EnglishSettingMode,
-  EnglishVariant,
-} from '../utils/localeService';
 import { haptics } from '../utils/haptics';
 import { PrivacyModal } from './PrivacyModal';
 
@@ -42,8 +35,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [clues, setClues] = useState<boolean>(() =>
     isCluesEnabled !== undefined ? isCluesEnabled : isCluesEnabledUtil()
   );
-  const [englishMode, setEnglishMode] = useState<EnglishSettingMode>(() => getEnglishSettingMode());
-  const [activeVariant, setActiveVariant] = useState<EnglishVariant>(() => getActiveEnglishVariant());
   const [confirmReset, setConfirmReset] = useState<boolean>(false);
   const [showPrivacy, setShowPrivacy] = useState<boolean>(false);
 
@@ -52,8 +43,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     if (isOpen) {
       setSound(isSoundEnabled());
       setMusic(isMusicEnabled());
-      setEnglishMode(getEnglishSettingMode());
-      setActiveVariant(getActiveEnglishVariant());
     }
   }, [isOpen]);
 
@@ -96,13 +85,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     if (onToggleClues) {
       onToggleClues(next);
     }
-    haptics.tap();
-  };
-
-  const handleSelectEnglishMode = (mode: EnglishSettingMode) => {
-    setEnglishSettingMode(mode);
-    setEnglishMode(mode);
-    setActiveVariant(getActiveEnglishVariant());
     haptics.tap();
   };
 
@@ -293,74 +275,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               </button>
             </div>
 
-            {/* 6. English Clues & Dictionary (Location-Aware / US / UK) */}
-            <div className="bg-[#0C2158] border border-[#1E3A8A] rounded-2xl p-3.5 shadow-inner space-y-2.5">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-indigo-950/70 border border-indigo-500/50 text-indigo-300 flex items-center justify-center shrink-0">
-                    <Globe className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <div className="font-black text-sm text-white flex items-center gap-1.5">
-                      <span>English Clues</span>
-                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-cyan-950 text-cyan-300 border border-cyan-500/40 uppercase font-mono font-bold tracking-wider">
-                        {activeVariant.toUpperCase()}
-                      </span>
-                    </div>
-                    <div className="text-[11px] text-cyan-200/70">
-                      {englishMode === 'auto'
-                        ? `Auto-detected location: ${activeVariant.toUpperCase()} English`
-                        : englishMode === 'uk'
-                        ? 'UK English (e.g. COLOUR, METRE)'
-                        : 'US English (e.g. COLOR, METER)'}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Selection Pills */}
-              <div className="grid grid-cols-3 gap-1.5 pt-0.5">
-                <button
-                  id="settings-lang-auto"
-                  type="button"
-                  onClick={() => handleSelectEnglishMode('auto')}
-                  className={`py-1.5 px-2 rounded-xl font-black text-xs transition-all cursor-pointer border text-center ${
-                    englishMode === 'auto'
-                      ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white border-cyan-300 shadow-md shadow-cyan-500/30'
-                      : 'bg-gray-800/90 text-gray-300 border-gray-700 hover:bg-gray-700'
-                  }`}
-                  title="Automatically adapt spelling to your device/network location"
-                >
-                  🌐 Auto
-                </button>
-                <button
-                  id="settings-lang-us"
-                  type="button"
-                  onClick={() => handleSelectEnglishMode('us')}
-                  className={`py-1.5 px-2 rounded-xl font-black text-xs transition-all cursor-pointer border text-center ${
-                    englishMode === 'us'
-                      ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white border-blue-300 shadow-md shadow-blue-500/30'
-                      : 'bg-gray-800/90 text-gray-300 border-gray-700 hover:bg-gray-700'
-                  }`}
-                >
-                  🇺🇸 US
-                </button>
-                <button
-                  id="settings-lang-uk"
-                  type="button"
-                  onClick={() => handleSelectEnglishMode('uk')}
-                  className={`py-1.5 px-2 rounded-xl font-black text-xs transition-all cursor-pointer border text-center ${
-                    englishMode === 'uk'
-                      ? 'bg-gradient-to-r from-violet-600 to-purple-600 text-white border-violet-300 shadow-md shadow-violet-500/30'
-                      : 'bg-gray-800/90 text-gray-300 border-gray-700 hover:bg-gray-700'
-                  }`}
-                >
-                  🇬🇧 UK
-                </button>
-              </div>
-            </div>
-
-            {/* 7. Privacy Policy & Data */}
+            {/* 6. Privacy Policy & Data */}
             <div className="bg-[#0C2158] border border-[#1E3A8A] rounded-2xl p-3.5 flex items-center justify-between shadow-inner">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-sky-950/60 border border-sky-500/50 text-sky-400 flex items-center justify-center">
