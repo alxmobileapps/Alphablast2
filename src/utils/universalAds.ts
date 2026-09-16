@@ -29,19 +29,21 @@ export function isCapacitorNative(): boolean {
 }
 
 /**
- * DIAGNOSTIC ONLY — TEMPORARY. Set to true to isolate whether the native
- * AdMob plugin (@capacitor-community/admob) is behind the ~4.5s white-
- * screen freeze reported after round completion, which did not happen on
- * the old PWABuilder/Median build (that build had ads too, just via the
- * web/JS bridge, never through this native plugin). While this is true,
- * every native-AdMob code path below behaves as if isCapacitorNative()
- * were false: ads fall through to the H5/median/simulation paths (or, on
- * a real device with none of those available, just complete instantly
- * with no ad shown). Flip back to false (or delete this and the
- * `nativeAdsEnabled()` indirection) once we have an answer either way —
- * this must not ship to production as-is.
+ * RESOLVED — this used to be a diagnostic kill-switch while we isolated the
+ * ~4.5s white-screen freeze reported after round completion (a two-round
+ * bisection confirmed it was native AdMob, not native Billing — see the
+ * `diagnostic-disable-ads-billing` / `diagnostic-reenable-billing-only`
+ * branches). Root cause: showUniversalInterstitialAd() would, if the next
+ * interstitial hadn't finished preloading yet, `await AdMob.prepareInterstitial()`
+ * live and then show it — blocking on a real network fetch of the ad
+ * creative before the native ad Activity could paint anything, which is
+ * exactly the multi-second blank/white transition that was reported. The
+ * actual fix is below (showUniversalInterstitialAd now skips the ad
+ * entirely rather than blocking when it isn't preloaded in time, and
+ * preloadInterstitialAd retries on failure instead of giving up silently).
+ * Native ads are back on (`false` here) as part of that fix.
  */
-const DIAGNOSTIC_DISABLE_NATIVE_ADS = true;
+const DIAGNOSTIC_DISABLE_NATIVE_ADS = false;
 
 function nativeAdsEnabled(): boolean {
   return isCapacitorNative() && !DIAGNOSTIC_DISABLE_NATIVE_ADS;
@@ -85,13 +87,29 @@ async function ensureNativeAdMobInitialized(): Promise<void> {
   }
 }
 
+let interstitialRetryTimer: ReturnType<typeof setTimeout> | null = null;
+
 /**
  * Fetches an interstitial ad from AdMob ahead of time and caches it so the
  * next showUniversalInterstitialAd() call can display it immediately. Safe
  * to call repeatedly — it no-ops if one is already prepared or in flight.
+ *
+ * Retries on failure (e.g. a network hiccup during app startup) instead of
+ * giving up silently — previously a single failed preload left
+ * interstitialPrepared stuck at false until the next unrelated call site
+ * happened to trigger it again, which meant the *next* round's interstitial
+ * was likely to hit the not-ready path too. See showUniversalInterstitialAd
+ * for why "not ready" matters: it now skips the ad rather than blocking on
+ * a live fetch, so a stuck-false interstitialPrepared silently loses ad
+ * impressions rather than freezing the app — but retrying here means that
+ * should rarely happen in practice.
  */
 export function preloadInterstitialAd(): void {
   if (!nativeAdsEnabled() || interstitialPrepared || interstitialPreparing) return;
+  if (interstitialRetryTimer) {
+    clearTimeout(interstitialRetryTimer);
+    interstitialRetryTimer = null;
+  }
   interstitialPreparing = true;
   void (async () => {
     try {
@@ -100,7 +118,11 @@ export function preloadInterstitialAd(): void {
       await AdMob.prepareInterstitial({ adId: ADS_CONFIG.ADMOB_ANDROID.INTERSTITIAL_ID });
       interstitialPrepared = true;
     } catch (e) {
-      console.warn('[UniversalAds] Interstitial preload failed:', e);
+      console.warn('[UniversalAds] Interstitial preload failed, will retry in 15s:', e);
+      interstitialRetryTimer = setTimeout(() => {
+        interstitialRetryTimer = null;
+        preloadInterstitialAd();
+      }, 15000);
     } finally {
       interstitialPreparing = false;
     }
@@ -276,6 +298,23 @@ export function showUniversalRewardedAd(options: {
 export function showUniversalInterstitialAd(options?: { name?: string; onAdCompleted?: () => void }): void {
   // 1. Native AdMob (Capacitor Android app)
   if (nativeAdsEnabled()) {
+    if (!interstitialPrepared) {
+      // ROOT CAUSE OF THE ~4.5s WHITE-SCREEN FREEZE: this used to fall
+      // through to `await AdMob.prepareInterstitial()` right here and then
+      // show it — i.e. it blocked on a live network fetch of the ad
+      // creative before the native ad Activity had anything to paint,
+      // which is exactly the multi-second blank/white transition players
+      // reported. A live-fetched interstitial is not worth freezing the
+      // game over, so we skip showing an ad this one time instead of
+      // blocking, and kick off a preload so the *next* round's ad is
+      // ready. The player sees no ad this round, but the game never
+      // freezes waiting for one.
+      console.warn('[UniversalAds] Native interstitial not preloaded in time — skipping this ad instead of blocking on a live fetch.');
+      preloadInterstitialAd();
+      if (options?.onAdCompleted) options.onAdCompleted();
+      return;
+    }
+
     void (async () => {
       try {
         const { AdMob, InterstitialAdPluginEvents } = await loadAdMob();
@@ -302,11 +341,6 @@ export function showUniversalInterstitialAd(options?: { name?: string; onAdCompl
           finish();
         });
 
-        if (!interstitialPrepared) {
-          // Wasn't preloaded in time (e.g. the very first interstitial of the
-          // session) — fall back to loading it on demand, same as before.
-          await AdMob.prepareInterstitial({ adId: ADS_CONFIG.ADMOB_ANDROID.INTERSTITIAL_ID });
-        }
         interstitialPrepared = false;
         await AdMob.showInterstitial();
       } catch (e) {
