@@ -32,6 +32,13 @@ let admobModulePromise: Promise<typeof import('@capacitor-community/admob')> | n
 let admobInitialized = false;
 let admobListenersBound = false;
 
+// Interstitial ads are loaded ahead of time (see preloadInterstitialAd) so that
+// showUniversalInterstitialAd() can display an already-cached ad instantly
+// instead of calling prepareInterstitial() + showInterstitial() back-to-back,
+// which visibly stutters while the ad creative downloads over the network.
+let interstitialPrepared = false;
+let interstitialPreparing = false;
+
 /**
  * Lazily loads the @capacitor-community/admob plugin.
  * Dynamic import keeps the plugin out of the web/H5 bundle entirely —
@@ -60,6 +67,28 @@ async function ensureNativeAdMobInitialized(): Promise<void> {
 }
 
 /**
+ * Fetches an interstitial ad from AdMob ahead of time and caches it so the
+ * next showUniversalInterstitialAd() call can display it immediately. Safe
+ * to call repeatedly — it no-ops if one is already prepared or in flight.
+ */
+export function preloadInterstitialAd(): void {
+  if (!isCapacitorNative() || interstitialPrepared || interstitialPreparing) return;
+  interstitialPreparing = true;
+  void (async () => {
+    try {
+      const { AdMob } = await loadAdMob();
+      await ensureNativeAdMobInitialized();
+      await AdMob.prepareInterstitial({ adId: ADS_CONFIG.ADMOB_ANDROID.INTERSTITIAL_ID });
+      interstitialPrepared = true;
+    } catch (e) {
+      console.warn('[UniversalAds] Interstitial preload failed:', e);
+    } finally {
+      interstitialPreparing = false;
+    }
+  })();
+}
+
+/**
  * Initialize Google H5 Game Ads (if script loaded) + Native AdMob (if on Capacitor Android)
  */
 export function initUniversalAds(): void {
@@ -68,6 +97,7 @@ export function initUniversalAds(): void {
   // Native AdMob (Capacitor Android app)
   if (isCapacitorNative()) {
     void ensureNativeAdMobInitialized();
+    preloadInterstitialAd();
   }
 
   // Initialize H5 Game Ads if available (web / PWA only)
@@ -236,6 +266,9 @@ export function showUniversalInterstitialAd(options?: { name?: string; onAdCompl
         const finish = () => {
           if (completed) return;
           completed = true;
+          // Start fetching the *next* interstitial right away so it's ready
+          // ahead of time for the round after this one.
+          preloadInterstitialAd();
           if (options?.onAdCompleted) options.onAdCompleted();
         };
 
@@ -246,10 +279,16 @@ export function showUniversalInterstitialAd(options?: { name?: string; onAdCompl
         const failedListener = await AdMob.addListener(InterstitialAdPluginEvents.FailedToLoad, (err: any) => {
           console.warn('[UniversalAds] Native interstitial failed to load:', err);
           failedListener.remove();
+          interstitialPrepared = false;
           finish();
         });
 
-        await AdMob.prepareInterstitial({ adId: ADS_CONFIG.ADMOB_ANDROID.INTERSTITIAL_ID });
+        if (!interstitialPrepared) {
+          // Wasn't preloaded in time (e.g. the very first interstitial of the
+          // session) — fall back to loading it on demand, same as before.
+          await AdMob.prepareInterstitial({ adId: ADS_CONFIG.ADMOB_ANDROID.INTERSTITIAL_ID });
+        }
+        interstitialPrepared = false;
         await AdMob.showInterstitial();
       } catch (e) {
         console.warn('[UniversalAds] Native interstitial error:', e);
