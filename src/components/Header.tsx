@@ -26,7 +26,7 @@ const getCategoryNameFontSize = (name: string) => {
   return 'text-lg sm:text-2xl tracking-wide';
 };
 
-export const Header: React.FC<HeaderProps> = ({
+const HeaderImpl: React.FC<HeaderProps> = ({
   category,
   categoryProgress,
   movesRemaining,
@@ -189,5 +189,26 @@ export const Header: React.FC<HeaderProps> = ({
   );
 };
 
+/**
+ * Same reasoning as GameBoard's memo (see that file): Header doesn't need
+ * the once-a-second timer-mode tick either, but was still re-rendering
+ * every second along with everything else in App.tsx. Custom comparator
+ * because onOpenCategories/onOpenHome/onOpenShop are passed as inline
+ * arrow functions in App.tsx (new reference every render) — a plain
+ * React.memo would never actually skip a render because of that. Safe to
+ * ignore their identity here: none of them close over any game state,
+ * they just call a plain setState (open a modal / switch screens).
+ */
+function headerPropsAreEqual(prev: HeaderProps, next: HeaderProps): boolean {
+  return (
+    prev.category === next.category &&
+    prev.categoryProgress === next.categoryProgress &&
+    prev.movesRemaining === next.movesRemaining &&
+    prev.movesGainedBonus === next.movesGainedBonus &&
+    prev.score === next.score &&
+    prev.coins === next.coins &&
+    prev.diamonds === next.diamonds
+  );
+}
 
-
+export const Header = React.memo(HeaderImpl, headerPropsAreEqual);

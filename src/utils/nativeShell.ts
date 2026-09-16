@@ -1,12 +1,16 @@
 /**
  * Native Android shell setup (Capacitor only).
  *
- * By default, recent Capacitor/Android builds render the WebView edge-to-edge —
- * i.e. behind the system status bar — which is why the top of the game
- * (player badge, coin/diamond counters) was overlapping with the phone's
- * clock/battery/signal icons. This turns that off and gives the status bar a
- * background that matches AlphaBlast's dark theme instead of the default
- * transparent/white one.
+ * The app now runs in true immersive fullscreen: MainActivity.java (see
+ * scripts/patch-android-mainactivity.cjs) hides both the status bar and the
+ * navigation bar natively at Activity creation, so the game gets the whole
+ * screen instead of just avoiding an overlap with it. That native call is
+ * the one that actually matters and already runs before any JS loads.
+ *
+ * This just asks the @capacitor/status-bar plugin to hide the status bar
+ * too, as a belt-and-suspenders JS-side call — harmless if the native side
+ * already did it, and a fallback in case a given Android/WebView
+ * combination ever ignores the native immersive call.
  */
 export async function initNativeStatusBar(): Promise<void> {
   if (typeof window === 'undefined' || !(window as any).Capacitor?.isNativePlatform?.()) {
@@ -14,18 +18,9 @@ export async function initNativeStatusBar(): Promise<void> {
   }
 
   try {
-    const { StatusBar, Style } = await import('@capacitor/status-bar');
-
-    // Stop the WebView from drawing underneath the status bar.
-    await StatusBar.setOverlaysWebView({ overlay: false });
-
-    // Match the app's dark navy theme (see index.html theme-color / TileColor).
-    await StatusBar.setBackgroundColor({ color: '#071330' });
-
-    // Light (white) status bar icons read best on our dark background.
-    // Flip to Style.Dark if icons ever look invisible on a lighter screen.
-    await StatusBar.setStyle({ style: Style.Light });
+    const { StatusBar } = await import('@capacitor/status-bar');
+    await StatusBar.hide();
   } catch (e) {
-    console.warn('[NativeShell] StatusBar setup failed:', e);
+    console.warn('[NativeShell] StatusBar hide failed:', e);
   }
 }

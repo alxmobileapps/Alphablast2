@@ -72,6 +72,9 @@ jobs:
       - name: Ensure AdMob Application ID is in AndroidManifest.xml
         run: node scripts/patch-android-manifest.cjs
 
+      - name: Enable true immersive fullscreen (hide status bar + nav bar)
+        run: node scripts/patch-android-mainactivity.cjs
+
       - name: Generate Android launcher icon + splash from AlphaBlast artwork
         # Uses npx (real Node), not bunx: @capacitor/assets shells out to `sharp`,
         # which needs a platform-specific native binary — safer under plain Node
