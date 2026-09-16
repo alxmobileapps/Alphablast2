@@ -2479,7 +2479,19 @@ export default function App() {
   };
 
   return (
-    <div className="h-[100dvh] max-h-[100dvh] w-full bg-[#071330] text-white flex flex-col font-sans selection:bg-[#0EA5E9] selection:text-white overflow-hidden">
+    <div
+      className="h-[100dvh] max-h-[100dvh] w-full bg-[#071330] text-white flex flex-col font-sans selection:bg-[#0EA5E9] selection:text-white overflow-hidden pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]"
+    >
+      {/*
+        Android (Capacitor) note: on Android 15 / SDK 35, the OS enforces
+        edge-to-edge rendering and effectively ignores the native
+        StatusBar plugin's attempt to reserve space (see
+        src/utils/nativeShell.ts). This CSS safe-area padding is the
+        actual fix — it pushes the whole app below the status bar (and
+        above the gesture/nav bar) using the WebView's own inset values,
+        which works regardless of what the native side does. On web /
+        iOS these env() values are simply 0, so this is a no-op there.
+      */}
       {/* Active Screen Area (Menu or Game Board) */}
       <div className="flex-1 min-h-0 w-full flex flex-col overflow-hidden">
         {currentScreen === 'menu' ? (

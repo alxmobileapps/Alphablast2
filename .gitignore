@@ -9,7 +9,7 @@ coverage/
 
 # Capacitor / Android (native project is bootstrapped fresh by CI, not committed)
 android/
-resources/
+/assets/
 *.keystore
 *.jks
 android/keystore.properties
