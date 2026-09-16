@@ -41,6 +41,21 @@ function isCapacitorNativeBilling(): boolean {
   return typeof window !== 'undefined' && !!window.Capacitor?.isNativePlatform?.();
 }
 
+// TEMPORARY DIAGNOSTIC FLAG — see the matching flag in universalAds.ts for
+// the full rationale. Set to true, this makes the app behave as if native
+// Google Play Billing (cdv-purchase) were unavailable, falling through to
+// the PWABuilder/Median/web-fallback paths below — exactly like the old
+// working PWABuilder build. This is to isolate whether the native billing
+// code path (as opposed to the native AdMob code path, gated separately)
+// is contributing to the ~4.5s white-screen freeze after round completion.
+// MUST be set back to false (or removed) before shipping to production —
+// leaving it true ships a build where real-money purchases don't work.
+const DIAGNOSTIC_DISABLE_NATIVE_BILLING = true;
+
+function nativeBillingEnabled(): boolean {
+  return isCapacitorNativeBilling() && !DIAGNOSTIC_DISABLE_NATIVE_BILLING;
+}
+
 /**
  * Initializes the cdv-purchase store once (registers products + wires event handlers).
  * Safe to call multiple times — subsequent calls reuse the same initialization promise.
@@ -120,7 +135,7 @@ function ensureNativeBillingReady(): Promise<void> {
 
 /** Kick off native billing initialization as early as possible (call once on app mount). */
 export function initNativeBilling(): void {
-  if (isCapacitorNativeBilling()) {
+  if (nativeBillingEnabled()) {
     void ensureNativeBillingReady();
   }
 }
@@ -299,7 +314,7 @@ export async function purchaseIAP(
   callback: (success: boolean, result?: IapPurchaseResult) => void
 ): Promise<void> {
   // 0. Capacitor Native Google Play Billing (real Android app build)
-  if (isCapacitorNativeBilling()) {
+  if (nativeBillingEnabled()) {
     await purchaseNative(productId, callback);
     return;
   }
@@ -417,7 +432,7 @@ export async function restorePurchases(
   onError?: (err: string) => void
 ): Promise<void> {
   // 0. Capacitor Native Google Play Billing (real Android app build)
-  if (isCapacitorNativeBilling()) {
+  if (nativeBillingEnabled()) {
     await restoreNative(onComplete, onError);
     return;
   }

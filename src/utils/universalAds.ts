@@ -28,6 +28,25 @@ export function isCapacitorNative(): boolean {
   return typeof window !== 'undefined' && !!window.Capacitor?.isNativePlatform?.();
 }
 
+/**
+ * DIAGNOSTIC ONLY — TEMPORARY. Set to true to isolate whether the native
+ * AdMob plugin (@capacitor-community/admob) is behind the ~4.5s white-
+ * screen freeze reported after round completion, which did not happen on
+ * the old PWABuilder/Median build (that build had ads too, just via the
+ * web/JS bridge, never through this native plugin). While this is true,
+ * every native-AdMob code path below behaves as if isCapacitorNative()
+ * were false: ads fall through to the H5/median/simulation paths (or, on
+ * a real device with none of those available, just complete instantly
+ * with no ad shown). Flip back to false (or delete this and the
+ * `nativeAdsEnabled()` indirection) once we have an answer either way —
+ * this must not ship to production as-is.
+ */
+const DIAGNOSTIC_DISABLE_NATIVE_ADS = true;
+
+function nativeAdsEnabled(): boolean {
+  return isCapacitorNative() && !DIAGNOSTIC_DISABLE_NATIVE_ADS;
+}
+
 let admobModulePromise: Promise<typeof import('@capacitor-community/admob')> | null = null;
 let admobInitialized = false;
 let admobListenersBound = false;
@@ -52,7 +71,7 @@ function loadAdMob() {
 }
 
 async function ensureNativeAdMobInitialized(): Promise<void> {
-  if (!isCapacitorNative() || admobInitialized) return;
+  if (!nativeAdsEnabled() || admobInitialized) return;
   try {
     const { AdMob } = await loadAdMob();
     await AdMob.initialize({
@@ -72,7 +91,7 @@ async function ensureNativeAdMobInitialized(): Promise<void> {
  * to call repeatedly — it no-ops if one is already prepared or in flight.
  */
 export function preloadInterstitialAd(): void {
-  if (!isCapacitorNative() || interstitialPrepared || interstitialPreparing) return;
+  if (!nativeAdsEnabled() || interstitialPrepared || interstitialPreparing) return;
   interstitialPreparing = true;
   void (async () => {
     try {
@@ -95,7 +114,7 @@ export function initUniversalAds(): void {
   if (typeof window === 'undefined') return;
 
   // Native AdMob (Capacitor Android app)
-  if (isCapacitorNative()) {
+  if (nativeAdsEnabled()) {
     void ensureNativeAdMobInitialized();
     preloadInterstitialAd();
   }
@@ -128,7 +147,7 @@ export function showUniversalRewardedAd(options: {
   const { onReward, onDismiss, onError, fallbackToInteractiveModal } = options;
 
   // 1. Native AdMob (Capacitor Android app) — highest priority & Play policy compliant
-  if (isCapacitorNative()) {
+  if (nativeAdsEnabled()) {
     void (async () => {
       try {
         const { AdMob, RewardAdPluginEvents } = await loadAdMob();
@@ -256,7 +275,7 @@ export function showUniversalRewardedAd(options: {
  */
 export function showUniversalInterstitialAd(options?: { name?: string; onAdCompleted?: () => void }): void {
   // 1. Native AdMob (Capacitor Android app)
-  if (isCapacitorNative()) {
+  if (nativeAdsEnabled()) {
     void (async () => {
       try {
         const { AdMob, InterstitialAdPluginEvents } = await loadAdMob();
@@ -347,7 +366,7 @@ export function showUniversalInterstitialAd(options?: { name?: string; onAdCompl
  */
 export function setUniversalBannerVisible(visible: boolean, position: 'top' | 'bottom' = 'bottom'): void {
   // 1. Native AdMob (Capacitor Android app)
-  if (isCapacitorNative()) {
+  if (nativeAdsEnabled()) {
     void (async () => {
       try {
         const { AdMob, BannerAdPosition, BannerAdSize } = await loadAdMob();
