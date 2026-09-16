@@ -21,9 +21,10 @@ const config: CapacitorConfig = {
       appId: 'ca-app-pub-2452250229562082~6856794170',
     },
     StatusBar: {
-      // Belt-and-suspenders: applied at native launch (before JS runs) so there's
-      // no flash of the WebView drawing under the status bar. See also
-      // src/utils/nativeShell.ts, which sets this at runtime too.
+      // These two only matter if the status bar is ever visible; the real
+      // fullscreen behavior (hiding both the status bar AND the nav bar) is
+      // set up natively in MainActivity.java — see
+      // scripts/patch-android-mainactivity.cjs and src/utils/nativeShell.ts.
       overlaysWebView: false,
       backgroundColor: '#071330',
     },
