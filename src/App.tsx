@@ -31,7 +31,6 @@ import { initNativeBilling } from './utils/medianBridge';
 import { initOrientationLock } from './utils/orientation';
 import { initNativeStatusBar } from './utils/nativeShell';
 import { INITIAL_CATEGORIES } from './data/categories';
-import { getActiveEnglishVariant, localizeWordList, EnglishVariant } from './utils/localeService';
 import { calculateWordPoints, calculateSpecialReactionPoints, formatPoints } from './utils/scoring';
 import { recordScore, getUserProfile } from './utils/leaderboard';
 import { syncProgressToCloud } from './utils/authService';
@@ -125,34 +124,9 @@ export default function App() {
   const [customCategories, setCustomCategories] = useState<Category[]>([]);
   const [selectedCustomCategory, setSelectedCustomCategory] = useState<Category | null>(null);
   const [isCreateCategoryOpen, setIsCreateCategoryOpen] = useState<boolean>(false);
-  const [englishVariant, setEnglishVariant] = useState<EnglishVariant>(() => getActiveEnglishVariant());
 
-  // Listen for manual or auto English variant changes
-  useEffect(() => {
-    const handleLocaleChange = (e: Event) => {
-      const customEvent = e as CustomEvent<{ variant: EnglishVariant }>;
-      if (customEvent?.detail?.variant) {
-        setEnglishVariant(customEvent.detail.variant);
-      } else {
-        setEnglishVariant(getActiveEnglishVariant());
-      }
-    };
-    window.addEventListener('alphablast_locale_changed', handleLocaleChange);
-    return () => window.removeEventListener('alphablast_locale_changed', handleLocaleChange);
-  }, []);
-
-  const rawCategory: Category =
+  const currentCategory: Category =
     selectedCustomCategory || INITIAL_CATEGORIES[categoryIndex] || INITIAL_CATEGORIES[0];
-
-  const currentCategory: Category = useMemo(() => {
-    if (englishVariant === 'uk') {
-      return {
-        ...rawCategory,
-        words: localizeWordList(rawCategory.words, 'uk'),
-      };
-    }
-    return rawCategory;
-  }, [rawCategory, englishVariant]);
 
   // Subscribe to real-time 1-hour community categories from Firestore
   useEffect(() => {
