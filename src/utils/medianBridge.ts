@@ -50,7 +50,17 @@ function isCapacitorNativeBilling(): boolean {
 // is contributing to the ~4.5s white-screen freeze after round completion.
 // MUST be set back to false (or removed) before shipping to production —
 // leaving it true ships a build where real-money purchases don't work.
-const DIAGNOSTIC_DISABLE_NATIVE_BILLING = true;
+//
+// ROUND 2 of the diagnostic: the previous test (both native AdMob AND
+// native Billing disabled) confirmed the freeze disappears. This flag is
+// now flipped back to false (billing re-enabled) while
+// DIAGNOSTIC_DISABLE_NATIVE_ADS in universalAds.ts stays true, to check
+// whether native Billing alone was ever part of the problem, or whether
+// native AdMob was the sole cause all along (the working theory, since the
+// freeze happens right after round completion — exactly when an
+// interstitial ad would try to show — while native Billing only runs on
+// user-initiated Shop actions, never automatically after a round).
+const DIAGNOSTIC_DISABLE_NATIVE_BILLING = false;
 
 function nativeBillingEnabled(): boolean {
   return isCapacitorNativeBilling() && !DIAGNOSTIC_DISABLE_NATIVE_BILLING;
