@@ -79,9 +79,9 @@ jobs:
         # silent failure here previously left the generic default Capacitor
         # icon in place instead of AlphaBlast's actual artwork.
         run: |
-          mkdir -p resources
-          cp public/icon-512.png resources/icon.png
-          cp public/icon-512.png resources/splash.png
+          mkdir -p assets
+          cp public/icon-512.png assets/icon.png
+          cp public/icon-512.png assets/splash.png
           npx @capacitor/assets generate --android --iconBackgroundColor '#071330' --splashBackgroundColor '#071330'
 
       - name: Grant execute permission to gradlew
