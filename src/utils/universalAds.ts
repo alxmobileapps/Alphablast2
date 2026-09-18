@@ -50,16 +50,18 @@ function nativeAdsEnabled(): boolean {
 }
 
 /**
- * TEMPORARY STOPGAP — the interstitial-freeze fix above turned out to only
- * cover the "ad not preloaded yet" case; the freeze is still reported when
- * a real interstitial actually gets shown (its own native Activity
- * transition). Rather than ship a broken interstitial while that gets
- * properly diagnosed with real device logs, only the interstitial is
- * disabled here — native banner ads and native Billing stay on as normal
- * (both already confirmed not to cause the freeze). Remove this flag once
- * the interstitial itself is fixed for real.
+ * TEMPORARY STOPGAP, currently OFF for this diagnostic build — see
+ * ADS_CONFIG.TEST_MODE in adsConfig.ts, flipped to true alongside this, to
+ * test whether the freeze still happens with Google's guaranteed-instant
+ * TEST ad creative instead of a real (mediation/network-dependent) ad. The
+ * interstitial-freeze fix above only covered the "ad not preloaded yet"
+ * case; the freeze is still reported when a real interstitial actually
+ * gets shown (its own native Activity transition), and reverting the AI
+ * Studio locale feature did not fix it either. Set this back to `true`
+ * (disabling the interstitial again) if this diagnostic doesn't resolve
+ * anything and you need a stable build again in the meantime.
  */
-const STOPGAP_DISABLE_NATIVE_INTERSTITIAL_ONLY = true;
+const STOPGAP_DISABLE_NATIVE_INTERSTITIAL_ONLY = false;
 
 function nativeInterstitialEnabled(): boolean {
   return nativeAdsEnabled() && !STOPGAP_DISABLE_NATIVE_INTERSTITIAL_ONLY;
