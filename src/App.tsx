@@ -2892,10 +2892,7 @@ export default function App() {
       />
 
       {/* Bottom Banner Ad across the screen */}
-      <BottomBannerAd
-        hasRemovedAds={gameProgress.hasRemovedAds}
-        onOpenShop={() => handleOpenShop('powerups')}
-      />
+      <BottomBannerAd hasRemovedAds={gameProgress.hasRemovedAds} />
 
       {currentScreen === 'game' && (
         <ReadyPrompt

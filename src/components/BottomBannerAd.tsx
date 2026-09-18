@@ -1,84 +1,32 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Shield, Star, Play } from 'lucide-react';
+import React, { useEffect } from 'react';
 import { setUniversalBannerVisible } from '../utils/universalAds';
-import { haptics } from '../utils/haptics';
-import { ADS_CONFIG } from '../config/adsConfig';
 
 interface BottomBannerAdProps {
   hasRemovedAds?: boolean;
-  onOpenShop?: () => void;
 }
 
-interface BannerCampaign {
-  id: string;
-  title: string;
-  subtitle: string;
-  iconEmoji: string;
-  iconBg: string;
-  badgeText: string;
-  rating: string;
-  ctaText: string;
-  category: string;
-}
-
-const CAMPAIGNS: BannerCampaign[] = [
-  {
-    id: 'c1',
-    title: 'Royal Kingdom RPG',
-    subtitle: 'Solve puzzles & rule the realm!',
-    iconEmoji: '👑',
-    iconBg: 'from-amber-400 to-yellow-600',
-    badgeText: '#1 Top Free',
-    rating: '4.9 ★',
-    ctaText: 'PLAY NOW',
-    category: 'Puzzle',
-  },
-  {
-    id: 'c2',
-    title: 'Word Galaxy 3D',
-    subtitle: '10,000+ mind-bending levels!',
-    iconEmoji: '🚀',
-    iconBg: 'from-cyan-400 to-blue-600',
-    badgeText: 'Trending',
-    rating: '4.8 ★',
-    ctaText: 'INSTALL',
-    category: 'Word',
-  },
-  {
-    id: 'c3',
-    title: 'Gem Blitz Arena',
-    subtitle: 'Explosive combos & live battles!',
-    iconEmoji: '💎',
-    iconBg: 'from-purple-400 to-indigo-600',
-    badgeText: 'Editor Choice',
-    rating: '4.9 ★',
-    ctaText: 'GET APP',
-    category: 'Casual',
-  },
-  {
-    id: 'c4',
-    title: 'Dragon Quest Legends',
-    subtitle: 'Hatch legendary dragons & fight!',
-    iconEmoji: '🐉',
-    iconBg: 'from-emerald-400 to-teal-700',
-    badgeText: 'Top Rated',
-    rating: '4.7 ★',
-    ctaText: 'PLAY FREE',
-    category: 'Adventure',
-  },
-];
-
-export const BottomBannerAd: React.FC<BottomBannerAdProps> = ({
-  hasRemovedAds = false,
-  onOpenShop,
-}) => {
-  const [currentIdx, setCurrentIdx] = useState(0);
-  const [clickedEffect, setClickedEffect] = useState(false);
-  const [adSenseLoaded, setAdSenseLoaded] = useState(false);
-  const adPushedRef = useRef(false);
-  const insRef = useRef<HTMLModElement>(null);
-
-  // Sync native / universal banner visibility
+/**
+ * Bottom banner ad slot.
+ *
+ * This used to ALSO render two things that had nothing to do with the real
+ * native AdMob banner:
+ *  1. A Google AdSense <ins> unit — AdSense refuses to serve ads inside a
+ *     native WebView (Google policy), so `data-ad-status` never became
+ *     "filled" here and this never actually worked in the Android app.
+ *  2. A permanent hardcoded fallback UI (rotating "Royal Kingdom RPG" /
+ *     "Word Galaxy 3D" / etc. cards) shown whenever that AdSense unit
+ *     wasn't filled — which, per #1, was always, on every device, in every
+ *     build. That fake UI is what was actually being seen at the bottom of
+ *     the screen this whole time, regardless of whether the real native
+ *     AdMob banner succeeded or failed.
+ *
+ * Both are removed. This component now only tells the real native AdMob
+ * banner to show/hide (see setUniversalBannerVisible in universalAds.ts).
+ * The native banner is an Android view drawn outside the WebView — it is
+ * not HTML, so there is nothing to render here for it. If it fails to
+ * fill, nothing shows at the bottom — no fake content standing in for it.
+ */
+export const BottomBannerAd: React.FC<BottomBannerAdProps> = ({ hasRemovedAds = false }) => {
   useEffect(() => {
     if (!hasRemovedAds) {
       setUniversalBannerVisible(true, 'bottom');
@@ -90,157 +38,5 @@ export const BottomBannerAd: React.FC<BottomBannerAdProps> = ({
     };
   }, [hasRemovedAds]);
 
-  // Push Google AdSense ad slot when mounted and observe if Google actually fills it
-  useEffect(() => {
-    if (hasRemovedAds) return;
-
-    // Observe data-ad-status attribute changes by Google AdSense
-    const insEl = insRef.current;
-    let observer: MutationObserver | null = null;
-    if (insEl && typeof MutationObserver !== 'undefined') {
-      observer = new MutationObserver(() => {
-        const status = insEl.getAttribute('data-ad-status');
-        if (status === 'filled') {
-          setAdSenseLoaded(true);
-        } else if (status === 'unfilled') {
-          setAdSenseLoaded(false);
-        }
-      });
-      observer.observe(insEl, { attributes: true, attributeFilter: ['data-ad-status'] });
-    }
-
-    const timer = setTimeout(() => {
-      if (adPushedRef.current) return;
-      try {
-        const win = window as unknown as { adsbygoogle?: unknown[] };
-        win.adsbygoogle = win.adsbygoogle || [];
-        win.adsbygoogle.push({});
-        adPushedRef.current = true;
-      } catch (e) {
-        console.debug('AdSense ins push error or blocked:', e);
-      }
-    }, 400);
-
-    return () => {
-      clearTimeout(timer);
-      if (observer) observer.disconnect();
-    };
-  }, [hasRemovedAds]);
-
-  // Rotate fallback campaigns every 12 seconds
-  useEffect(() => {
-    if (hasRemovedAds) return;
-    const interval = setInterval(() => {
-      setCurrentIdx((prev) => (prev + 1) % CAMPAIGNS.length);
-    }, 12000);
-    return () => clearInterval(interval);
-  }, [hasRemovedAds]);
-
-  if (hasRemovedAds) {
-    return null;
-  }
-
-  const campaign = CAMPAIGNS[currentIdx];
-
-  const handleCtaClick = () => {
-    haptics.tap();
-    setClickedEffect(true);
-    setTimeout(() => setClickedEffect(false), 800);
-  };
-
-  return (
-    <div
-      id="bottom-banner-ad-container"
-      style={{ height: '50px', maxHeight: '50px', minHeight: '50px', overflow: 'hidden' }}
-      className="w-full bg-[#071330] border-t border-slate-700/80 shadow-lg px-2 z-30 select-none shrink-0 h-[50px] max-h-[50px] min-h-[50px] overflow-hidden flex items-center justify-center relative"
-    >
-      {/* Real Google AdSense Display Unit (Standard Mobile Banner: 320x50) */}
-      <div 
-        style={{ 
-          width: '320px', 
-          height: '50px', 
-          maxHeight: '50px', 
-          overflow: 'hidden',
-          display: adSenseLoaded ? 'flex' : 'none',
-          visibility: adSenseLoaded ? 'visible' : 'hidden'
-        }}
-        className="w-[320px] h-[50px] max-h-[50px] overflow-hidden justify-center items-center mx-auto"
-      >
-        <ins
-          ref={insRef}
-          className="adsbygoogle"
-          style={{ display: 'inline-block', width: '320px', height: '50px', maxHeight: '50px', overflow: 'hidden' }}
-          data-ad-client={ADS_CONFIG.H5_GAMES.CLIENT_ID || 'ca-pub-2452250229562082'}
-          data-ad-slot="2174440998"
-        />
-      </div>
-
-      {/* Fallback visual banner preview shown when AdSense is unfilled, rejected or loading */}
-      <div 
-        className="w-full max-w-5xl mx-auto flex items-center justify-between px-3 h-[50px] bg-[#071330] pointer-events-auto"
-        style={{ display: adSenseLoaded ? 'none' : 'flex' }}
-      >
-        {/* Left Side: AD badge & App Icon + Details */}
-        <div className="flex items-center gap-2 min-w-0 flex-1">
-          {/* Official Google/AdMob Style "Ad" Tag */}
-          <div className="shrink-0 flex flex-col items-center">
-            <span className="bg-amber-400 text-slate-950 text-[9px] font-black px-1.5 py-0.5 rounded leading-none shadow-xs tracking-wider">
-              AD
-            </span>
-          </div>
-
-          {/* App Icon */}
-          <div
-            className={`w-7 h-7 shrink-0 rounded-xl bg-gradient-to-br ${campaign.iconBg} flex items-center justify-center text-sm shadow-md border border-white/20`}
-          >
-            {campaign.iconEmoji}
-          </div>
-
-          {/* App Text Info */}
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="text-white text-xs font-bold truncate leading-tight">
-                {campaign.title}
-              </span>
-              <span className="hidden sm:inline-flex items-center text-[10px] text-amber-300 font-bold bg-amber-950/80 border border-amber-500/40 px-1 rounded">
-                <Star className="w-2.5 h-2.5 fill-amber-400 text-amber-400 mr-0.5 inline" />
-                {campaign.rating}
-              </span>
-            </div>
-            <p className="text-[10px] text-slate-300/80 truncate leading-tight">
-              {campaign.subtitle}
-            </p>
-          </div>
-        </div>
-
-        {/* Right Side: CTA Button & Remove Ads Shop shortcut */}
-        <div className="flex items-center gap-1.5 shrink-0">
-          <button
-            onClick={handleCtaClick}
-            className={`px-3 py-1 rounded-lg text-xs font-black uppercase tracking-wider flex items-center gap-1 shadow-md transition-all duration-200 active:scale-95 ${
-              clickedEffect
-                ? 'bg-emerald-500 text-white scale-105'
-                : 'bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white'
-            }`}
-          >
-            <Play className="w-3 h-3 fill-current" />
-            <span className="truncate">{campaign.ctaText}</span>
-          </button>
-
-          {onOpenShop && (
-            <button
-              onClick={() => {
-                haptics.tap();
-                onOpenShop();
-              }}
-              title="Remove Ads"
-              className="p-1 text-slate-400 hover:text-cyan-400 rounded-md transition-colors"
-            >
-              <Shield className="w-3.5 h-3.5" />
-            </button>
-          )}
-        </div>
-      </div>
-    </div>
-  );
+  return null;
 };
