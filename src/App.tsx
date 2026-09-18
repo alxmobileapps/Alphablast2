@@ -319,6 +319,10 @@ export default function App() {
   const [isGameOverOpen, setIsGameOverOpen] = useState<boolean>(false);
   const [isLeaderboardOpen, setIsLeaderboardOpen] = useState<boolean>(false);
   const [isReadyPromptOpen, setIsReadyPromptOpen] = useState<boolean>(true);
+  // True once the new round's board has actually finished generating (see
+  // playCategoryRound below) — the "Ready?" prompt uses this to keep the
+  // GO! button disabled until there's really a board to play on.
+  const [isBoardReady, setIsBoardReady] = useState<boolean>(true);
   const [isRollingTiles, setIsRollingTiles] = useState<boolean>(false);
   const [isInterstitialOpen, setIsInterstitialOpen] = useState<boolean>(false);
   const [pendingTargetCategory, setPendingTargetCategory] = useState<Category | null>(null);
@@ -697,15 +701,37 @@ export default function App() {
       setIsGameOverOpen(false);
       setIsAdModalOpen(false);
       setIsPowerUpAdOpen(false);
-      const freshBoard = generateInitialBoard(targetCat.id);
-      setBoard(freshBoard);
-      highlightOneMoveOpportunity(freshBoard, targetCat.id);
       setCurrentScreen('game');
 
       if (targetCat.gameMode === 'timer') {
         const initSeconds = targetCat.timerSeconds || 120;
         setTimerSecondsRemaining(initSeconds);
       }
+
+      // generateInitialBoard() retries board layouts (up to 25 attempts,
+      // each scanning the whole board for word opportunities) until it
+      // finds one that guarantees enough playable moves. That search is
+      // CPU-heavy, and running it synchronously right here — in the same
+      // tick as all the state updates above — used to block the main
+      // thread for several seconds before React ever got a chance to
+      // paint anything. That's the reported round-transition white-screen
+      // freeze: nothing was actually frozen, the browser just never got a
+      // chance to draw a frame until this finished.
+      //
+      // Deferring it with a double requestAnimationFrame doesn't make the
+      // search itself faster, but it lets the browser paint the "Ready?"
+      // prompt FIRST — the player sees that immediately instead of a
+      // blank screen, and ReadyPrompt keeps its GO! button disabled
+      // (isBoardReady) until the real board underneath is actually ready.
+      setIsBoardReady(false);
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          const freshBoard = generateInitialBoard(targetCat.id);
+          setBoard(freshBoard);
+          highlightOneMoveOpportunity(freshBoard, targetCat.id);
+          setIsBoardReady(true);
+        });
+      });
     },
     [highlightOneMoveOpportunity]
   );
@@ -2893,6 +2919,7 @@ export default function App() {
         <ReadyPrompt
           isOpen={isReadyPromptOpen}
           category={currentCategory}
+          isBoardReady={isBoardReady}
           onStart={handleStartGameRound}
           onHome={() => {
             setIsReadyPromptOpen(false);
