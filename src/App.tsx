@@ -2879,16 +2879,11 @@ export default function App() {
         onOpenShop={handleOpenShop}
       />
 
-      {/* Interstitial Ad: Shown every 2 categories before opening the 3rd */}
+      {/* Interstitial Ad: Shown every 2 categories before opening the 3rd — headless, no UI of its own */}
       <InterstitialAdModal
         isOpen={isInterstitialOpen}
-        targetCategoryName={pendingTargetCategory?.name}
         hasRemovedAds={gameProgress.hasRemovedAds}
         onAdCompleted={handleInterstitialAdCompleted}
-        onOpenShop={() => {
-          setIsInterstitialOpen(false);
-          handleOpenShop('powerups');
-        }}
       />
 
       {/* Bottom Banner Ad across the screen */}
