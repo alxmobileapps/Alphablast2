@@ -11,8 +11,14 @@
  */
 
 export const ADS_CONFIG = {
-  // Global switch: Set to false for live production builds
-  TEST_MODE: false,
+  // DIAGNOSTIC (temporary): flipped to true to test whether the interstitial
+  // white-screen freeze still happens with Google's guaranteed-instant-fill
+  // TEST ad creative (no real mediation/network bidding latency at all). If
+  // it still freezes here, the cause is the native Activity transition
+  // itself, not real-ad fill speed. Must be set back to false before
+  // shipping to production — test ads generate no real revenue and violate
+  // AdMob policy if left on in a live release.
+  TEST_MODE: true,
 
   // --------------------------------------------------------------------------
   // 1. GOOGLE H5 GAME ADS (Ad Placement API / AdSense for PWABuilder & Web)
