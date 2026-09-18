@@ -50,16 +50,18 @@ function nativeAdsEnabled(): boolean {
 }
 
 /**
- * TEMPORARY STOPGAP, currently OFF for this diagnostic build — see
- * ADS_CONFIG.TEST_MODE in adsConfig.ts, flipped to true alongside this, to
- * test whether the freeze still happens with Google's guaranteed-instant
- * TEST ad creative instead of a real (mediation/network-dependent) ad. The
- * interstitial-freeze fix above only covered the "ad not preloaded yet"
- * case; the freeze is still reported when a real interstitial actually
- * gets shown (its own native Activity transition), and reverting the AI
- * Studio locale feature did not fix it either. Set this back to `true`
- * (disabling the interstitial again) if this diagnostic doesn't resolve
- * anything and you need a stable build again in the meantime.
+ * All native ad flags are left ON (enabled) for this build. Every previous
+ * bisection toggled native banner/interstitial/rewarded on and off without
+ * ever fixing the round-completion freeze on its own — but every one of
+ * those builds ALSO left InterstitialAdModal's full-screen
+ * `backdrop-blur-md` + two `blur-3xl` glow effects active, since that
+ * modal opens purely from the completed-round counter in App.tsx and was
+ * never gated by any of these ad flags. That blur (expensive to composite
+ * on Android, and running on every single round transition) was never
+ * actually isolated as its own candidate — see InterstitialAdModal.tsx and
+ * BottomBannerAd.tsx for the current diagnostic, which removes it (and the
+ * fake ad creatives) instead of touching these flags. Set this back to
+ * `true` if a stable/ads-off build is needed again in the meantime.
  */
 const STOPGAP_DISABLE_NATIVE_INTERSTITIAL_ONLY = false;
 
