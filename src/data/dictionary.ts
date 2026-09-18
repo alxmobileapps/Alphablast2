@@ -2,6 +2,63 @@ import { INITIAL_CATEGORIES } from './categories';
 import { COMMON_WORDS } from './commonWords';
 import { Category } from '../types';
 
+/**
+ * US <-> UK spelling variants. Both spellings are accepted as valid words
+ * everywhere a word is checked (general dictionary AND category words) —
+ * this only affects word VALIDATION, not what's displayed in clues/category
+ * lists (those still show whatever spelling the category data was authored
+ * with). Purely additive, one-time indexing at module load below, next to
+ * the existing plural-form indexing — no per-render or per-move cost, and
+ * no changes anywhere outside this file.
+ */
+const US_UK_SPELLING_VARIANTS: Record<string, string> = {
+  COLOR: 'COLOUR', COLORS: 'COLOURS', COLORED: 'COLOURED', COLORFUL: 'COLOURFUL',
+  FAVOR: 'FAVOUR', FAVORS: 'FAVOURS', FAVORITE: 'FAVOURITE', FAVORITES: 'FAVOURITES',
+  FLAVOR: 'FLAVOUR', FLAVORS: 'FLAVOURS', FLAVORED: 'FLAVOURED',
+  HONOR: 'HONOUR', HONORS: 'HONOURS', HONORED: 'HONOURED', HONORABLE: 'HONOURABLE',
+  ARMOR: 'ARMOUR', ARMORS: 'ARMOURS', ARMORED: 'ARMOURED',
+  HUMOR: 'HUMOUR', RUMOR: 'RUMOUR', RUMORS: 'RUMOURS',
+  HARBOR: 'HARBOUR', HARBORS: 'HARBOURS',
+  NEIGHBOR: 'NEIGHBOUR', NEIGHBORS: 'NEIGHBOURS', NEIGHBORHOOD: 'NEIGHBOURHOOD',
+  ODOR: 'ODOUR', ODORS: 'ODOURS', VIGOR: 'VIGOUR', VALOR: 'VALOUR', LABOR: 'LABOUR', LABORS: 'LABOURS',
+  BEHAVIOR: 'BEHAVIOUR', BEHAVIORS: 'BEHAVIOURS', SAVIOR: 'SAVIOUR', TUMOR: 'TUMOUR', TUMORS: 'TUMOURS',
+  CENTER: 'CENTRE', CENTERS: 'CENTRES', CENTERED: 'CENTRED',
+  THEATER: 'THEATRE', THEATERS: 'THEATRES', METER: 'METRE', METERS: 'METRES',
+  KILOMETER: 'KILOMETRE', KILOMETERS: 'KILOMETRES', MILLIMETER: 'MILLIMETRE', MILLIMETERS: 'MILLIMETRES',
+  CENTIMETER: 'CENTIMETRE', CENTIMETERS: 'CENTIMETRES', DIAMETER: 'DIAMETRE', FIBER: 'FIBRE', FIBERS: 'FIBRES',
+  LITER: 'LITRE', LITERS: 'LITRES',
+  ORGANIZE: 'ORGANISE', ORGANIZES: 'ORGANISES', ORGANIZED: 'ORGANISED', ORGANIZING: 'ORGANISING',
+  ORGANIZATION: 'ORGANISATION', RECOGNIZE: 'RECOGNISE', RECOGNIZED: 'RECOGNISED',
+  REALIZE: 'REALISE', REALIZED: 'REALISED', APOLOGIZE: 'APOLOGISE', CRITICIZE: 'CRITICISE',
+  MEMORIZE: 'MEMORISE', PRIORITIZE: 'PRIORITISE', EMPHASIZE: 'EMPHASISE',
+  MAXIMIZE: 'MAXIMISE', MINIMIZE: 'MINIMISE', OPTIMIZE: 'OPTIMISE', UTILIZE: 'UTILISE',
+  ANALYZE: 'ANALYSE', ANALYZED: 'ANALYSED', PARALYZE: 'PARALYSE',
+  DEFENSE: 'DEFENCE', DEFENSES: 'DEFENCES', OFFENSE: 'OFFENCE', OFFENSES: 'OFFENCES',
+  LICENSE: 'LICENCE', PRETENSE: 'PRETENCE',
+  TRAVELING: 'TRAVELLING', TRAVELER: 'TRAVELLER', TRAVELERS: 'TRAVELLERS',
+  CANCELED: 'CANCELLED', CANCELING: 'CANCELLING', MODELING: 'MODELLING', JEWELRY: 'JEWELLERY',
+  TIRE: 'TYRE', TIRES: 'TYRES', DONUT: 'DOUGHNUT', DONUTS: 'DOUGHNUTS',
+  ALUMINUM: 'ALUMINIUM', SULFUR: 'SULPHUR', MOLD: 'MOULD', MOLDY: 'MOULDY',
+  MUSTACHE: 'MOUSTACHE', PAJAMA: 'PYJAMA', PAJAMAS: 'PYJAMAS', PLOW: 'PLOUGH', PLOWS: 'PLOUGHS',
+  COZY: 'COSY', PROGRAM: 'PROGRAMME', PROGRAMS: 'PROGRAMMES', CHECK: 'CHEQUE', CHECKS: 'CHEQUES',
+  GRAY: 'GREY', GRAYS: 'GREYS', MATH: 'MATHS', MOM: 'MUM', MOMS: 'MUMS', MOMMY: 'MUMMY',
+};
+
+const UK_US_SPELLING_VARIANTS: Record<string, string> = {};
+for (const [us, uk] of Object.entries(US_UK_SPELLING_VARIANTS)) {
+  UK_US_SPELLING_VARIANTS[uk] = us;
+}
+
+/** Returns every recognized US/UK spelling of a word (including itself). */
+function getSpellingVariants(word: string): string[] {
+  const variants = [word];
+  const uk = US_UK_SPELLING_VARIANTS[word];
+  if (uk) variants.push(uk);
+  const us = UK_US_SPELLING_VARIANTS[word];
+  if (us) variants.push(us);
+  return variants;
+}
+
 // Pre-computed normalized sets for fast O(1) lookup
 const globalWordSet = new Set<string>();
 const categoryWordSets = new Map<number, Set<string>>();
@@ -49,11 +106,13 @@ for (const [sing, plur] of IRREGULAR_NOUN_PAIRS) {
   irregularPluralToSingular.set(plur, sing);
 }
 
-// 1. Index Common English words
+// 1. Index Common English words (both US and UK spellings accepted)
 for (const word of COMMON_WORDS) {
   const upper = word.toUpperCase().trim();
   if (upper.length >= 3) {
-    globalWordSet.add(upper);
+    for (const variant of getSpellingVariants(upper)) {
+      globalWordSet.add(variant);
+    }
   }
 }
 
@@ -176,22 +235,26 @@ export function getSingularForms(word: string): string[] {
   return Array.from(new Set(results.filter((w) => w.length >= 3)));
 }
 
-// Helper to index a category's word list with full singular AND plural recognition
+// Helper to index a category's word list with full singular, plural, AND
+// US/UK spelling variant recognition
 function indexCategoryWords(catId: number, words: string[]): Set<string> {
   const catSet = new Set<string>();
 
   for (const rawWord of words) {
     const clean = rawWord.toUpperCase().replace(/[\s\-_']/g, '');
     if (clean.length >= 3) {
-      // 1. Index base word
-      catSet.add(clean);
-      globalWordSet.add(clean);
+      // 1. Index base word and its US/UK spelling variant(s), e.g. COLOR <-> COLOUR
+      for (const spellingVariant of getSpellingVariants(clean)) {
+        catSet.add(spellingVariant);
+        globalWordSet.add(spellingVariant);
 
-      // 2. Generate and index all plural variations (e.g. DOG -> DOGS, BERRY -> BERRIES, FOX -> FOXES, FLY -> FLIES)
-      const plurals = getPluralForms(clean);
-      for (const p of plurals) {
-        catSet.add(p);
-        globalWordSet.add(p);
+        // 2. Generate and index all plural variations for each spelling
+        // variant (e.g. DOG -> DOGS, BERRY -> BERRIES, FOX -> FOXES, FLY -> FLIES)
+        const plurals = getPluralForms(spellingVariant);
+        for (const p of plurals) {
+          catSet.add(p);
+          globalWordSet.add(p);
+        }
       }
     }
   }

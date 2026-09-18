@@ -49,6 +49,22 @@ function nativeAdsEnabled(): boolean {
   return isCapacitorNative() && !DIAGNOSTIC_DISABLE_NATIVE_ADS;
 }
 
+/**
+ * TEMPORARY STOPGAP — the interstitial-freeze fix above turned out to only
+ * cover the "ad not preloaded yet" case; the freeze is still reported when
+ * a real interstitial actually gets shown (its own native Activity
+ * transition). Rather than ship a broken interstitial while that gets
+ * properly diagnosed with real device logs, only the interstitial is
+ * disabled here — native banner ads and native Billing stay on as normal
+ * (both already confirmed not to cause the freeze). Remove this flag once
+ * the interstitial itself is fixed for real.
+ */
+const STOPGAP_DISABLE_NATIVE_INTERSTITIAL_ONLY = true;
+
+function nativeInterstitialEnabled(): boolean {
+  return nativeAdsEnabled() && !STOPGAP_DISABLE_NATIVE_INTERSTITIAL_ONLY;
+}
+
 let admobModulePromise: Promise<typeof import('@capacitor-community/admob')> | null = null;
 let admobInitialized = false;
 let admobListenersBound = false;
@@ -105,7 +121,7 @@ let interstitialRetryTimer: ReturnType<typeof setTimeout> | null = null;
  * should rarely happen in practice.
  */
 export function preloadInterstitialAd(): void {
-  if (!nativeAdsEnabled() || interstitialPrepared || interstitialPreparing) return;
+  if (!nativeInterstitialEnabled() || interstitialPrepared || interstitialPreparing) return;
   if (interstitialRetryTimer) {
     clearTimeout(interstitialRetryTimer);
     interstitialRetryTimer = null;
@@ -297,7 +313,7 @@ export function showUniversalRewardedAd(options: {
  */
 export function showUniversalInterstitialAd(options?: { name?: string; onAdCompleted?: () => void }): void {
   // 1. Native AdMob (Capacitor Android app)
-  if (nativeAdsEnabled()) {
+  if (nativeInterstitialEnabled()) {
     if (!interstitialPrepared) {
       // ROOT CAUSE OF THE ~4.5s WHITE-SCREEN FREEZE: this used to fall
       // through to `await AdMob.prepareInterstitial()` right here and then
