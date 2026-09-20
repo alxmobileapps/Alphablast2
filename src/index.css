@@ -71,25 +71,22 @@ body {
   }
 }
 
+/* Same treatment as the other tile effects above: transform carries the
+ * pulse, one static box-shadow at the end instead of animating it (and
+ * the animated filter) every frame across the whole 0.3s. */
 @keyframes mergePulse {
   0% {
     transform: scale(0.6);
-    box-shadow: 0 0 0 0 rgba(56, 189, 248, 0.9);
-    filter: brightness(1.7);
   }
   40% {
     transform: scale(1.22);
-    box-shadow: 0 0 24px 6px rgba(56, 189, 248, 0.85), 0 0 0 4px rgba(255, 255, 255, 0.95);
-    filter: brightness(1.35);
   }
   75% {
     transform: scale(0.97);
-    box-shadow: 0 0 14px 3px rgba(56, 189, 248, 0.5), 0 0 0 2px rgba(255, 255, 255, 0.7);
   }
   100% {
     transform: scale(1);
     box-shadow: 0 0 8px 1px rgba(56, 189, 248, 0.3);
-    filter: brightness(1);
   }
 }
 
@@ -131,23 +128,19 @@ body {
   0% {
     transform: scale(0.2) rotate(0deg);
     opacity: 0;
-    filter: brightness(2.5);
   }
   35% {
     transform: scale(1.15) rotate(45deg);
     opacity: 1;
     box-shadow: 0 0 50px 15px rgba(251, 191, 36, 0.95), 0 0 100px 30px rgba(245, 158, 11, 0.7);
-    filter: brightness(2);
   }
   70% {
     transform: scale(1.05) rotate(90deg);
     opacity: 0.95;
-    box-shadow: 0 0 35px 10px rgba(251, 191, 36, 0.8);
   }
   100% {
     transform: scale(1.3) rotate(140deg);
     opacity: 0;
-    filter: brightness(1.2);
   }
 }
 
@@ -163,100 +156,108 @@ body {
   }
 }
 
+/* Every letter of a formed word "pops" with this at once (up to 8 tiles
+ * for a long word) — dropped the animated filter, kept a static box-shadow
+ * only at the peak frame instead of animating it throughout. */
 @keyframes letterPopOut {
   0% {
     transform: scale(1);
     opacity: 1;
-    filter: brightness(1);
   }
   45% {
     transform: scale(1.32);
     opacity: 1;
-    filter: brightness(1.6);
     box-shadow: 0 0 24px 6px rgba(52, 211, 153, 0.95);
   }
   100% {
     transform: scale(0.05);
     opacity: 0;
-    filter: brightness(2.2);
   }
 }
 
+/* Electrified tile jitter — this can apply to EVERY tile matching a letter
+ * at once (the "Electric Discharge" card power-up electrifies every tile
+ * with the target letter simultaneously), and it looped its filter
+ * (brightness + drop-shadow, changing every keyframe step) infinitely the
+ * whole time. Kept the jitter transform (compositor-only); the tile
+ * already gets a strong static glow from its own (non-animated) Tailwind
+ * box-shadow class, so nothing looks flat without the animated filter. */
 @keyframes electricShock {
   0%, 100% {
     transform: translate(0, 0) scale(1.06);
-    filter: brightness(2) drop-shadow(0 0 16px rgba(34, 211, 238, 1));
   }
   20% {
     transform: translate(-3px, 2px) scale(1.1);
-    filter: brightness(2.6) drop-shadow(0 0 24px rgba(56, 189, 248, 1));
   }
   40% {
     transform: translate(3px, -2px) scale(1.05);
-    filter: brightness(1.8) drop-shadow(0 0 14px rgba(34, 211, 238, 0.9));
   }
   60% {
     transform: translate(-2px, -3px) scale(1.12);
-    filter: brightness(2.8) drop-shadow(0 0 30px rgba(125, 211, 252, 1));
   }
   80% {
     transform: translate(2px, 3px) scale(1.08);
-    filter: brightness(2.2) drop-shadow(0 0 20px rgba(34, 211, 238, 1));
   }
 }
 
+/* Plays on every tile the "Electric Discharge" card knocks off at once
+ * (every tile sharing the target letter) — dropped the animated filter,
+ * the scale/rotate/translate tumble carries the "knocked off" effect. */
 @keyframes electricKnockOff {
   0% {
     transform: scale(1.1) rotate(0deg) translate(0, 0);
     opacity: 1;
-    filter: brightness(2.5) drop-shadow(0 0 30px rgba(34, 211, 238, 1));
   }
   30% {
     transform: scale(1.45) rotate(var(--knock-rot, 35deg)) translate(var(--knock-x, 14px), var(--knock-y, -18px));
     opacity: 1;
-    filter: brightness(3.5) drop-shadow(0 0 45px rgba(103, 232, 249, 1));
   }
   100% {
     transform: scale(0.02) rotate(var(--knock-rot, 95deg)) translate(var(--knock-x, 32px), var(--knock-y, -55px));
     opacity: 0;
-    filter: brightness(5);
   }
 }
 
+/* Wraps the whole lightning-bolt SVG for the "Electric Discharge" card
+ * effect — that SVG can contain a bolt <g> PER target tile (every tile
+ * sharing a letter), and this filter used to change its drop-shadow blur
+ * radius on every keyframe step, infinitely, for as long as the effect is
+ * shown. An animated blur radius forces a full re-raster of everything
+ * under it each frame; the opacity flicker alone (compositor-only) still
+ * reads as "electric" without that cost. */
 @keyframes lightningFlicker {
   0%, 100% {
     opacity: 0.95;
-    filter: drop-shadow(0 0 12px rgba(34, 211, 238, 1));
   }
   25% {
     opacity: 0.4;
-    filter: drop-shadow(0 0 6px rgba(56, 189, 248, 0.7));
   }
   50% {
     opacity: 1;
-    filter: drop-shadow(0 0 20px rgba(255, 255, 255, 1)) drop-shadow(0 0 35px rgba(34, 211, 238, 1));
   }
   75% {
     opacity: 0.6;
-    filter: drop-shadow(0 0 10px rgba(34, 211, 238, 0.8));
   }
 }
 
+/* One of these rings can be on screen PER target tile for the electric
+ * effects (a whole row/column, or every tile sharing a letter). Dropped
+ * the animated box-shadow (3 layers, changing spread/blur every step, on
+ * every ring at once) — the scale + fade already reads as an expanding
+ * pulse ring on its own; the ring's own border/background (set where this
+ * class is used) still gives it a visible outline. */
 @keyframes electricPulseRing {
   0% {
     transform: scale(0.6);
     opacity: 1;
-    box-shadow: 0 0 0 0 rgba(34, 211, 238, 0.9), inset 0 0 15px rgba(255, 255, 255, 0.9);
   }
   50% {
     transform: scale(1.35);
     opacity: 0.8;
-    box-shadow: 0 0 25px 8px rgba(56, 189, 248, 0.8), inset 0 0 25px rgba(34, 211, 238, 0.9);
   }
   100% {
     transform: scale(1.9);
     opacity: 0;
-    box-shadow: 0 0 40px 14px rgba(34, 211, 238, 0);
   }
 }
 
@@ -352,26 +353,23 @@ body {
   will-change: stroke-dashoffset;
 }
 
+/* Same "every matching tile at once" scale as electricKnockOff above. */
 @keyframes electricVaporize {
   0% {
     transform: scale(1);
     opacity: 1;
-    filter: brightness(2) drop-shadow(0 0 12px rgba(34, 211, 238, 1));
   }
   30% {
     transform: scale(1.22);
     opacity: 1;
-    filter: brightness(4.5) drop-shadow(0 0 28px rgba(103, 232, 249, 1));
   }
   70% {
     transform: scale(0.65) rotate(12deg);
     opacity: 0.7;
-    filter: brightness(3.5);
   }
   100% {
     transform: scale(0.02) rotate(35deg);
     opacity: 0;
-    filter: brightness(5);
   }
 }
 
@@ -379,16 +377,17 @@ body {
   animation: electricVaporize 0.26s cubic-bezier(0.2, 0.9, 0.3, 1) forwards;
 }
 
+/* 2.6s — dropped the animated blur radius (0%→4px→0px→2px), which forces a
+ * fresh re-raster every frame for its whole run. Scale + translateY + fade
+ * already carries the entrance/exit on their own. */
 @keyframes storyTellerLively {
   0% {
     opacity: 0;
     transform: scale(0.7) translateY(12px);
-    filter: blur(4px);
   }
   15% {
     opacity: 1;
     transform: scale(1.08) translateY(-4px);
-    filter: blur(0px);
   }
   30% {
     transform: scale(0.98) translateY(1px);
@@ -402,12 +401,10 @@ body {
   82% {
     opacity: 1;
     transform: scale(1) translateY(0);
-    filter: blur(0px);
   }
   100% {
     opacity: 0;
     transform: scale(0.85) translateY(-14px);
-    filter: blur(2px);
   }
 }
 
@@ -553,26 +550,35 @@ body {
 .animate-shard-4 { animation: shardFly4 0.45s cubic-bezier(0.2, 0.8, 0.3, 1) 0.18s forwards; will-change: transform, opacity; }
 
 /* 3D Tile Rolling In Reveal Animation */
+/* THIS ONE MATTERS A LOT TOO: fires on all 64 tiles at once, every single
+ * time the player taps GO! on the Ready screen (handleStartGameRound in
+ * App.tsx sets isRollingTiles true for every tile, staggered only by a
+ * small per-row/col delay) — i.e. at the exact round-transition moment
+ * every freeze report has pointed to. It used to animate filter
+ * (brightness AND an actually-changing blur radius, 2px -> 0px) on every
+ * one of those 64 tiles. An animated blur radius is one of the most
+ * expensive things to animate (full re-raster every frame, and it can't
+ * be skipped/cached since the radius itself is changing) — with 64 tiles
+ * doing it at once, staggered across ~0.35s, that's a large and sustained
+ * chunk of paint work landing right when the board is supposed to become
+ * playable. The 3D perspective/rotateX/scale/translateY tumble is
+ * compositor-only and carries the "tiles rolling in" effect by itself. */
 @keyframes tileRollIn {
   0% {
     transform: perspective(600px) rotateX(180deg) scale(0.65) translateY(-24px);
     opacity: 0.1;
-    filter: brightness(0.4) blur(2px);
   }
   50% {
     transform: perspective(600px) rotateX(70deg) scale(1.12) translateY(3px);
     opacity: 0.9;
-    filter: brightness(1.5) blur(0px);
   }
   75% {
     transform: perspective(600px) rotateX(-15deg) scale(1.04) translateY(-2px);
     opacity: 1;
-    filter: brightness(1.2);
   }
   100% {
     transform: perspective(600px) rotateX(0deg) scale(1) translateY(0);
     opacity: 1;
-    filter: brightness(1);
   }
 }
 
@@ -582,7 +588,22 @@ body {
   backface-visibility: visible;
 }
 
-/* Fiery Wipeout: Board letters & tiles turn Intense Blood Red within 1.0 second */
+/* Fiery Wipeout: Board letters & tiles turn Intense Blood Red within 1.0 second
+ *
+ * THIS ONE MATTERS A LOT: App.tsx sets isBurning: true on EVERY tile on the
+ * board at once (all 64, unfiltered) for a full second during the Fire
+ * Wipeout sequence, and every one of them plays both this animation and
+ * letterBloodRedKeyframes below. That used to animate box-shadow (2-3
+ * stacked layers, up to 50px blur) AND filter (2 drop-shadows + brightness)
+ * on all 64 tiles simultaneously, for a full second — 128+ elements all
+ * needing a fresh off-screen repaint every frame at once. This is very
+ * likely the single biggest contributor found so far to the "long word"
+ * lag reports (bigger than the flame graphics or the announcement box
+ * already fixed, which were only 6-7 elements, not 64). Now this only
+ * changes background/border-color (a repaint, but a cheap solid-fill one,
+ * not a blurred shadow) and transform (compositor-only); the letters below
+ * only change color + transform, no filter.
+ */
 @keyframes tileBloodRedKeyframes {
   0% {
     transform: scale(1);
@@ -591,14 +612,12 @@ body {
     background: linear-gradient(180deg, #ef4444 0%, #b91c1c 50%, #7f1d1d 100%) !important;
     border-color: #dc2626 !important;
     border-bottom-color: #580c0c !important;
-    box-shadow: 0 0 18px rgba(220, 38, 38, 0.9), inset 0 0 10px rgba(254, 202, 202, 0.5) !important;
     transform: scale(1.03);
   }
   60% {
     background: linear-gradient(180deg, #dc2626 0%, #990000 50%, #5a0000 100%) !important;
     border-color: #b91c1c !important;
     border-bottom-color: #450a0a !important;
-    box-shadow: 0 0 28px rgba(220, 38, 38, 1), inset 0 0 14px rgba(255, 120, 120, 0.6) !important;
     transform: scale(1.05);
   }
   100% {
@@ -616,17 +635,15 @@ body {
   }
   30% {
     color: #ffffff !important;
-    filter: drop-shadow(0 0 8px #ff0000) drop-shadow(0 0 14px #990000) brightness(1.6) !important;
     transform: scale(1.08);
   }
   60% {
     color: #ffffff !important;
-    filter: drop-shadow(0 0 12px #ff0000) drop-shadow(0 0 22px #7f0000) brightness(2.0) !important;
     transform: scale(1.14);
   }
   100% {
     color: #ffffff !important;
-    filter: drop-shadow(0 0 16px #ff0000) drop-shadow(0 0 30px #5a0000) brightness(2.4) !important;
+    filter: drop-shadow(0 0 16px #ff0000) !important;
     transform: scale(1.2);
   }
 }
@@ -727,22 +744,24 @@ body {
   animation: emberFloatKeyframes 0.4s ease-out forwards;
 }
 
-/* 3D Simultaneous Tile Flip Animation */
+/* 3D Simultaneous Tile Flip Animation — same "all 64 tiles at once" trigger
+ * as the blood-red glow above (this is the very next phase of the same
+ * Fire Wipeout sequence, right after it). Dropped the animated filter
+ * (brightness + drop-shadow, changing every frame on all 64 tiles at once)
+ * — the 3D rotateY/scale transform is compositor-only and carries the
+ * "flip" effect on its own without it. */
 @keyframes tile3DFlipKeyframes {
   0% {
     transform: perspective(600px) rotateY(-90deg) scale(0.85);
     opacity: 0.1;
-    filter: brightness(2.2) drop-shadow(0 0 18px rgba(249, 115, 22, 1));
   }
   50% {
     transform: perspective(600px) rotateY(15deg) scale(1.1);
     opacity: 0.95;
-    filter: brightness(1.4) drop-shadow(0 0 25px rgba(251, 191, 36, 0.95));
   }
   100% {
     transform: perspective(600px) rotateY(0deg) scale(1);
     opacity: 1;
-    filter: brightness(1);
   }
 }
 
@@ -911,15 +930,12 @@ body {
 @keyframes scoreGlowKeyframes {
   0% {
     transform: scale(1);
-    filter: drop-shadow(0 0 0px rgba(251, 191, 36, 0));
   }
   30% {
     transform: scale(1.18);
-    filter: drop-shadow(0 0 14px rgba(251, 191, 36, 0.95)) drop-shadow(0 0 24px rgba(245, 158, 11, 0.8));
   }
   100% {
     transform: scale(1);
-    filter: drop-shadow(0 0 0px rgba(251, 191, 36, 0));
   }
 }
 
@@ -927,18 +943,19 @@ body {
   animation: scoreGlowKeyframes 0.75s ease-out;
 }
 
+/* Runs infinitely for as long as a clue/hint is on screen — could be a
+ * long time if the player doesn't act on it. Dropped the animated
+ * box-shadow; opacity/scale/color already give a clear blink. */
 @keyframes clueWordBlink {
   0%, 100% {
     opacity: 1;
     transform: scale(1);
-    box-shadow: 0 0 16px rgba(34, 211, 238, 0.9), inset 0 0 10px rgba(34, 211, 238, 0.5);
     border-color: #22d3ee;
     color: #ffffff;
   }
   50% {
     opacity: 0.35;
     transform: scale(0.97);
-    box-shadow: 0 0 4px rgba(34, 211, 238, 0.2);
     border-color: rgba(34, 211, 238, 0.4);
     color: #67e8f9;
   }
@@ -967,13 +984,18 @@ body {
   animation: cluePillPop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
 }
 
+/* Also infinite/indefinite-duration. Kept a static mid-strength box-shadow
+ * (set once, not animated) instead of animating between two box-shadow
+ * values forever; border-color alone still pulses. */
+.animate-clue-glow {
+  box-shadow: 0 0 12px 2px rgba(250, 204, 21, 0.55), 0 2px 8px rgba(0, 0, 0, 0.45), inset 0 0 8px 1px rgba(250, 204, 21, 0.2);
+}
+
 @keyframes clueGlowPulseKeyframes {
   0%, 100% {
-    box-shadow: 0 0 8px 1px rgba(250, 204, 21, 0.35), 0 2px 6px rgba(0, 0, 0, 0.4), inset 0 0 6px 1px rgba(250, 204, 21, 0.15);
     border-color: rgba(250, 204, 21, 0.45);
   }
   50% {
-    box-shadow: 0 0 16px 3px rgba(250, 204, 21, 0.75), 0 2px 10px rgba(0, 0, 0, 0.5), inset 0 0 10px 2px rgba(250, 204, 21, 0.25);
     border-color: rgba(253, 224, 71, 0.95);
   }
 }
@@ -982,14 +1004,14 @@ body {
   animation: clueGlowPulseKeyframes 1.6s ease-in-out infinite;
 }
 
+/* Infinite for as long as a clue is shown. Transform alone (scale + a
+ * little rotate) still reads as a twinkle without an animated filter. */
 @keyframes clueSparkleTwinkle {
   0%, 100% {
     transform: scale(1) rotate(0deg);
-    filter: drop-shadow(0 0 3px rgba(250, 204, 21, 0.9));
   }
   50% {
     transform: scale(1.25) rotate(15deg);
-    filter: drop-shadow(0 0 6px rgba(255, 255, 255, 1)) drop-shadow(0 0 10px rgba(250, 204, 21, 1));
   }
 }
 
@@ -997,34 +1019,30 @@ body {
   animation: clueSparkleTwinkle 1.2s ease-in-out infinite;
 }
 
+/* 3 full seconds of animated box-shadow + filter on this one button — the
+ * element itself already gets a static glow from its own Tailwind
+ * shadow-[...] class where this is used (PowerUpBar.tsx), so dropping the
+ * per-frame-animated version here just removes 3 seconds of repaint work
+ * for a highlight that was already visible anyway. Kept transform +
+ * border-color (cheap) for the "zoom in" pulse. */
 @keyframes lifelineZoomInShine {
   0% {
     transform: scale(1);
-    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6);
-    filter: brightness(1);
   }
   20% {
     transform: scale(1.05);
-    box-shadow: 0 0 35px 8px rgba(250, 204, 21, 0.95), 0 0 60px 15px rgba(56, 189, 248, 0.8);
-    filter: brightness(1.25);
     border-color: #FDE047;
   }
   50% {
     transform: scale(1.04);
-    box-shadow: 0 0 45px 12px rgba(250, 204, 21, 1), 0 0 80px 20px rgba(56, 189, 248, 0.9);
-    filter: brightness(1.3);
     border-color: #FEF08A;
   }
   80% {
     transform: scale(1.05);
-    box-shadow: 0 0 35px 8px rgba(250, 204, 21, 0.95), 0 0 60px 15px rgba(56, 189, 248, 0.8);
-    filter: brightness(1.25);
     border-color: #FDE047;
   }
   100% {
     transform: scale(1);
-    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6);
-    filter: brightness(1);
   }
 }
 

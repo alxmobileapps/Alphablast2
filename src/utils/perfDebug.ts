@@ -20,7 +20,7 @@ export interface PerfEntry {
   atMs: number;
 }
 
-const MAX_ENTRIES = 14;
+const MAX_ENTRIES = 30;
 const entries: PerfEntry[] = [];
 let lastMark = performance.now();
 const listeners = new Set<() => void>();
