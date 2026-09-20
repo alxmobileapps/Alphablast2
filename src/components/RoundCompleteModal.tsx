@@ -6,6 +6,35 @@ import { playWin } from '../utils/audio';
 import { formatPoints } from '../utils/scoring';
 import { perfMark } from '../utils/perfDebug';
 
+/**
+ * DIAGNOSTIC CONTEXT for the animationIterationCount overrides below:
+ *
+ * A video showed this exact modal render correctly (perfMark log fully
+ * legible, right content, right score), then the ENTIRE screen go blank
+ * white for ~10s while the app was just sitting idle on this modal (no
+ * game logic running, nothing for the player to wait on), then the SAME
+ * modal — same score, same log entries, nothing lost — reappear exactly
+ * as it was. Crucially, none of main.tsx's lifecycle listeners
+ * (visibilitychange/pagehide/freeze/resume) fired, and its rAF heartbeat
+ * never logged a gap either — meaning the WebView was never backgrounded
+ * or reloaded, AND the browser's own render loop never actually stalled.
+ * JS was fine the whole time; the screen just didn't get painted.
+ *
+ * That points at the ANDROID WEBVIEW COMPOSITOR, not JS — and the one
+ * thing still running the entire time this modal sits open and idle
+ * (which a rAF-based JS stall check can't see, since CSS animations run
+ * on their own compositor thread) is these three infinite CSS
+ * animations: the trophy's animate-bounce and the earned stars' /
+ * diamond banner's animate-pulse. Tailwind's animate-bounce/animate-pulse
+ * repeat forever for as long as the modal is mounted, which on this
+ * screen can be however long the player takes to look at it and decide
+ * to tap Next Round. Capping them to a handful of repeats (then holding
+ * the final frame) keeps the celebratory effect on open but removes the
+ * sustained concurrent-animation compositing load for the rest of the
+ * time the modal sits idle — the first concrete, testable lever this
+ * investigation has found for a freeze that isn't a JS-level bug at all.
+ */
+
 interface RoundCompleteModalProps {
   isOpen: boolean;
   category: Category;
@@ -130,7 +159,10 @@ export const RoundCompleteModal: React.FC<RoundCompleteModalProps> = ({
         <div className="overflow-y-auto custom-scrollbar p-4 sm:p-5 flex-1 space-y-2.5">
           {/* Trophy Header */}
           <div className="flex flex-col items-center">
-            <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-tr from-[#F59E0B] via-[#FBBF24] to-[#FDE047] border-2 border-amber-200 flex items-center justify-center text-amber-950 shadow-md animate-bounce mb-1.5">
+            <div
+              className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-tr from-[#F59E0B] via-[#FBBF24] to-[#FDE047] border-2 border-amber-200 flex items-center justify-center text-amber-950 shadow-md animate-bounce mb-1.5"
+              style={{ animationIterationCount: 4 }}
+            >
               <Trophy className="w-6 h-6 sm:w-7 sm:h-7" />
             </div>
 
@@ -158,6 +190,7 @@ export const RoundCompleteModal: React.FC<RoundCompleteModalProps> = ({
                         ? 'fill-amber-400 text-amber-500 scale-110 drop-shadow-[0_2px_4px_rgba(245,158,11,0.5)] animate-pulse'
                         : 'text-gray-300 fill-gray-100'
                     }`}
+                    style={isEarned ? { animationIterationCount: 3 } : undefined}
                   />
                 );
               })}
@@ -216,7 +249,10 @@ export const RoundCompleteModal: React.FC<RoundCompleteModalProps> = ({
 
           {/* Score Diamond Milestone Celebration Banner if achieved */}
           {(diamondMilestoneAwarded || diamond10kAwarded) && (
-            <div className="bg-gradient-to-r from-cyan-50 via-blue-50 to-indigo-50 border border-cyan-300 rounded-xl p-2 sm:p-2.5 text-cyan-900 flex items-center justify-between shadow-xs animate-pulse">
+            <div
+              className="bg-gradient-to-r from-cyan-50 via-blue-50 to-indigo-50 border border-cyan-300 rounded-xl p-2 sm:p-2.5 text-cyan-900 flex items-center justify-between shadow-xs animate-pulse"
+              style={{ animationIterationCount: 3 }}
+            >
               <div className="flex items-center gap-2 text-left">
                 <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-cyan-400 to-blue-500 text-white flex items-center justify-center text-sm font-black shadow-xs shrink-0">
                   💎
