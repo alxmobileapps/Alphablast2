@@ -31,13 +31,13 @@ export const PerfDebugOverlay: React.FC = () => {
         zIndex: 999999,
         background: 'rgba(0,0,0,0.8)',
         color: '#7CFC7C',
-        fontSize: 9,
-        lineHeight: '12px',
+        fontSize: 10,
+        lineHeight: '13px',
         fontFamily: 'monospace',
-        padding: '4px 6px',
+        padding: '5px 7px',
         borderRadius: 6,
-        maxWidth: 190,
-        maxHeight: 150,
+        maxWidth: 230,
+        maxHeight: 170,
         pointerEvents: 'none',
         whiteSpace: 'nowrap',
         overflow: 'hidden',
@@ -53,7 +53,13 @@ export const PerfDebugOverlay: React.FC = () => {
             textOverflow: 'ellipsis',
           }}
         >
-          {e.label}: {e.deltaMs.toFixed(0)}ms
+          {/* ms FIRST, not last: whiteSpace:nowrap + overflow:hidden clips
+              from the right, so a long label used to eat the "NNNms" that
+              was the whole point of this overlay — every screenshot/video
+              so far has had the actual timing numbers cut off. Putting the
+              number at the front guarantees it's always visible even when
+              the label itself gets truncated. */}
+          {e.deltaMs.toFixed(0)}ms — {e.label}
         </div>
       ))}
     </div>
