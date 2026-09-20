@@ -852,7 +852,12 @@ const GameBoardImpl: React.FC<GameBoardProps> = ({
 
                       return (
                         <g key={`bolt-${idx}`}>
-                          {/* Outer Cyan Plasma Glow */}
+                          {/* Outer Cyan Plasma Glow — no blur filter: this
+                              <g> repeats once per target tile (every tile
+                              sharing a letter), so N targets meant N
+                              separate blur layers to composite at once. The
+                              3 stacked stroke widths/colors below already
+                              read as a glowing bolt without it. */}
                           <path
                             d={boltPath1}
                             fill="none"
@@ -860,7 +865,6 @@ const GameBoardImpl: React.FC<GameBoardProps> = ({
                             strokeWidth="3.5"
                             strokeLinecap="round"
                             opacity="0.85"
-                            className="filter blur-[1.5px]"
                           />
                           {/* Inner Electric Blue Arc */}
                           <path
