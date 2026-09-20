@@ -97,9 +97,14 @@ export const ReadyPrompt: React.FC<ReadyPromptProps> = ({
           id="ready-prompt-card"
           className="bg-[#071330] rounded-2xl sm:rounded-[20px] p-6 sm:p-7 border border-[#0F2864] shadow-[inset_0_3px_12px_rgba(0,0,0,0.8)] relative overflow-hidden text-center"
         >
-          {/* Subtle Ambient Electric Glows */}
-          <div className="absolute -top-12 -right-12 w-32 h-32 bg-cyan-400/15 rounded-full blur-2xl pointer-events-none" />
-          <div className="absolute -bottom-12 -left-12 w-32 h-32 bg-blue-600/20 rounded-full blur-2xl pointer-events-none" />
+          {/* Subtle Ambient Electric Glows — REMOVED the two blur-2xl divs that
+              used to sit here. filter: blur() forces the browser to render
+              the element off-screen first and composite it in, and these
+              mounted at the exact same moment as the (now-fixed, see
+              index.css) box-shadow-animating category pill below — right at
+              the round-transition freeze. They were purely decorative, so
+              removing them is a free way to cut first-paint work at the one
+              moment this screen has repeatedly frozen. */}
 
           {/* Category Preview Pill with 2-second Zoom In + Shining Emphasis */}
           <div className="relative inline-flex items-center justify-center gap-2.5 px-4 sm:px-5 py-2 sm:py-2.5 rounded-full bg-[#0C2158] border-2 border-sky-400/80 mb-4 shadow-inner overflow-hidden animate-category-zoom-shine select-none max-w-full">
