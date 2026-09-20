@@ -64,13 +64,23 @@ export const ReadyPrompt: React.FC<ReadyPromptProps> = ({
     }
   };
 
+  // NO backdrop-blur here on purpose. A screen recording of the actual
+  // freeze showed every JS step finishing in ~100ms (see the perfMark
+  // log), yet the screen stayed blank white for several more seconds
+  // afterward while a real native ad banner kept rendering fine
+  // underneath — i.e. the WebView itself stalled painting, independent of
+  // any JS work. This backdrop used to switch to `backdrop-blur-[2px]`
+  // once the board was ready, which lines up exactly with when the stall
+  // was observed: Android WebView's backdrop-filter support is known to
+  // cause multi-second paint stalls or blank rendering on some
+  // devices/GPU drivers. A plain translucent background (no blur filter
+  // at all) avoids that risk entirely.
+  const backdropClassName = `fixed inset-0 z-50 flex items-center justify-center p-4 select-none animate-fade-in transition-colors duration-300 ${
+    isBoardReady ? 'bg-[#071330]/70' : 'bg-[#071330]/95'
+  }`;
+
   return (
-    <div
-      id="ready-prompt-backdrop"
-      className={`fixed inset-0 z-50 flex items-center justify-center p-4 select-none animate-fade-in transition-colors duration-300 ${
-        isBoardReady ? 'bg-[#071330]/20 backdrop-blur-[2px]' : 'bg-[#071330]/95'
-      }`}
-    >
+    <div id="ready-prompt-backdrop" className={backdropClassName}>
       {/* Outer Sky Blue Frame Matching the Game Board Container */}
       <div
         id="ready-prompt-outer-frame"
