@@ -1,9 +1,10 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useLayoutEffect } from 'react';
 import confetti from 'canvas-confetti';
 import { Trophy, ArrowRight, RotateCcw, Sparkles, Lock, Unlock, Clock, Home, Star } from 'lucide-react';
 import { Category, WordHistoryItem } from '../types';
 import { playWin } from '../utils/audio';
 import { formatPoints } from '../utils/scoring';
+import { perfMark } from '../utils/perfDebug';
 
 interface RoundCompleteModalProps {
   isOpen: boolean;
@@ -48,9 +49,31 @@ export const RoundCompleteModal: React.FC<RoundCompleteModalProps> = ({
   onOpenShop,
   hasNextRound,
 }) => {
+  // DIAGNOSTIC: useLayoutEffect fires synchronously right after React
+  // commits this component's DOM, BEFORE the browser paints it — unlike
+  // useEffect below, which only runs AFTER the browser has painted. A video
+  // showed a 7+ second blank-white gap starting the instant this modal was
+  // supposed to open, with the perf overlay itself frozen mid-buffer (no
+  // new marks at all for the whole gap) — meaning either React never
+  // committed this tree, or it committed fine but the BROWSER never got
+  // around to painting it (a rendering-pipeline stall, not a JS one).
+  // Comparing this mark's timing against the ones in the effect below
+  // tells us which: if this fires promptly but the effect below is still
+  // delayed by seconds, the DOM committed fine and the stall is in actual
+  // paint/rasterization (most likely this card's large static box-shadow +
+  // several gradient-background panels all appearing in one big first
+  // paint) — not something further JS instrumentation can localize further.
+  useLayoutEffect(() => {
+    if (isOpen) {
+      perfMark('RoundCompleteModal: useLayoutEffect fired (DOM committed, pre-paint)');
+    }
+  }, [isOpen]);
+
   useEffect(() => {
     if (isOpen) {
+      perfMark('RoundCompleteModal: useEffect fired (after browser paint)');
       playWin();
+      perfMark('RoundCompleteModal: playWin() returned');
       // Defer confetti to AFTER this modal has actually painted, instead of
       // firing it synchronously in the same commit that mounts the modal.
       // canvas-confetti draws every one of its particles on every frame via
@@ -65,7 +88,9 @@ export const RoundCompleteModal: React.FC<RoundCompleteModalProps> = ({
       // fix) means the worst case is "confetti starts a frame late", not
       // "the modal is invisible while confetti's canvas redraws pile up".
       requestAnimationFrame(() => {
+        perfMark('RoundCompleteModal: 1st rAF fired');
         requestAnimationFrame(() => {
+          perfMark('RoundCompleteModal: 2nd rAF fired, calling confetti()');
           try {
             confetti({
               particleCount: 120,
@@ -75,6 +100,7 @@ export const RoundCompleteModal: React.FC<RoundCompleteModalProps> = ({
           } catch {
             // Confetti fallback
           }
+          perfMark('RoundCompleteModal: confetti() returned');
         });
       });
     }
