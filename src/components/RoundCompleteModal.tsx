@@ -51,15 +51,32 @@ export const RoundCompleteModal: React.FC<RoundCompleteModalProps> = ({
   useEffect(() => {
     if (isOpen) {
       playWin();
-      try {
-        confetti({
-          particleCount: 120,
-          spread: 80,
-          origin: { y: 0.6 },
+      // Defer confetti to AFTER this modal has actually painted, instead of
+      // firing it synchronously in the same commit that mounts the modal.
+      // canvas-confetti draws every one of its particles on every frame via
+      // requestAnimationFrame, on the same main thread the WebView uses to
+      // paint/composite everything else. A screen recording of the freeze
+      // showed a 7+ second blank white gap starting at the exact moment a
+      // round-completing event fires (right before this modal would show),
+      // with the app's own JS otherwise idle — i.e. something was
+      // saturating the render pipeline right as this modal tried to mount.
+      // Letting the browser paint the card FIRST (two rAFs — same pattern
+      // already used to defer board generation for the round-transition
+      // fix) means the worst case is "confetti starts a frame late", not
+      // "the modal is invisible while confetti's canvas redraws pile up".
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          try {
+            confetti({
+              particleCount: 120,
+              spread: 80,
+              origin: { y: 0.6 },
+            });
+          } catch {
+            // Confetti fallback
+          }
         });
-      } catch {
-        // Confetti fallback
-      }
+      });
     }
   }, [isOpen]);
 

@@ -392,13 +392,22 @@ export default function App() {
           milestoneName: diamondCheck.milestoneName,
         });
         playWin();
-        try {
-          confetti({
-            particleCount: 100,
-            spread: 70,
-            origin: { y: 0.4 },
+        // Deferred a frame for the same reason as RoundCompleteModal's
+        // confetti call — see the comment there. Firing this synchronously
+        // mid-round (this runs while the board/banner are also updating)
+        // is the same "canvas redraws competing with everything else the
+        // WebView needs to paint right now" risk.
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            try {
+              confetti({
+                particleCount: 100,
+                spread: 70,
+                origin: { y: 0.4 },
+              });
+            } catch {}
           });
-        } catch {}
+        });
         triggerBanner(
           `💎 Round Reward: +${diamondCheck.diamondsAwarded} Diamond${diamondCheck.diamondsAwarded > 1 ? 's' : ''}!`,
           'special',
