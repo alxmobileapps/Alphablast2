@@ -801,16 +801,22 @@ body {
   }
 }
 
+/* Used to also animate filter: blur()/brightness() from 0% to 40% — an
+ * animated blur radius forces a fresh off-screen re-raster on every frame
+ * (unlike a static filter, or transform/opacity, which the compositor can
+ * handle on its own). This box mounts at the same moment as 6 continuously
+ * animated flame graphics (see FireFlameGraphic.tsx) for the "Fire
+ * Wipeout" long-word effect, so trimming this to transform + opacity only
+ * removes one more per-frame repaint source from that same 2-second burst.
+ */
 @keyframes fireTextPopInKeyframes {
   0% {
     transform: scale(0.35) translateY(24px);
     opacity: 0;
-    filter: blur(10px) brightness(3.5);
   }
   40% {
     transform: scale(1.22) translateY(-6px);
     opacity: 1;
-    filter: blur(0px) brightness(2.2);
   }
   70% {
     transform: scale(0.95) translateY(2px);
