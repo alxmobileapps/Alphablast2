@@ -27,13 +27,25 @@ export const FireFlameGraphic: React.FC<FireFlameGraphicProps> = ({
 
   return (
     <div className={`relative flex items-center justify-center select-none pointer-events-none ${currentSize} ${className}`}>
-      {/* Outer ambient heat glow */}
-      <div className="absolute inset-0 bg-radial from-orange-500/80 via-red-600/40 to-transparent blur-md rounded-full animate-pulse pointer-events-none" />
+      {/* Outer ambient heat glow — NO blur filter here anymore, and the SVG
+          below no longer carries a drop-shadow filter either. The "Fire
+          Wipeout" effect mounts SIX of these at once, each with 4 child
+          paths that loop an infinite 0.18-0.28s transform animation
+          (animate-flame-lick) for the full 2s the effect is shown. A
+          filter (blur or drop-shadow) on an element whose content keeps
+          changing shape underneath it can't be cached — the browser has to
+          re-rasterize the filter every single frame, and with 6 instances x
+          multiple animated filtered layers running continuously for 2
+          seconds, that's exactly the kind of sustained paint load that
+          matches reports of lag + a white flash + lingering flicker right
+          when this "long word" effect fires. The gradient fills already
+          make the flame read as glowing without an extra filter layer. */}
+      <div className="absolute inset-0 bg-radial from-orange-500/60 via-red-600/25 to-transparent rounded-full animate-pulse pointer-events-none" />
 
       {/* Realistic multi-tiered stylized vector flame graphic */}
       <svg
         viewBox="0 0 100 130"
-        className="w-full h-full filter drop-shadow-[0_0_10px_rgba(249,115,22,0.95)] drop-shadow-[0_0_20px_rgba(239,68,68,0.8)] overflow-visible pointer-events-none"
+        className="w-full h-full overflow-visible pointer-events-none"
       >
         <defs>
           <linearGradient id={outerGradId} x1="0%" y1="100%" x2="0%" y2="0%">
