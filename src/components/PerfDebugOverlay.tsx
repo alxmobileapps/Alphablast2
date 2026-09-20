@@ -15,6 +15,13 @@ export const PerfDebugOverlay: React.FC = () => {
   const entries = getPerfEntries();
   if (entries.length === 0) return null;
 
+  // Show newest-first, and cap the box's on-screen height so it stays a
+  // small corner readout even though the underlying buffer (perfDebug.ts)
+  // keeps up to 30 entries. Because newest is on top, anything clipped by
+  // the height cap is always the OLDEST/least-relevant entry, never the
+  // freshest mark that a screenshot/video is trying to capture.
+  const newestFirst = [...entries].reverse();
+
   return (
     <div
       style={{
@@ -24,18 +31,19 @@ export const PerfDebugOverlay: React.FC = () => {
         zIndex: 999999,
         background: 'rgba(0,0,0,0.8)',
         color: '#7CFC7C',
-        fontSize: 10,
-        lineHeight: '13px',
+        fontSize: 9,
+        lineHeight: '12px',
         fontFamily: 'monospace',
-        padding: '5px 7px',
+        padding: '4px 6px',
         borderRadius: 6,
-        maxWidth: 230,
+        maxWidth: 190,
+        maxHeight: 150,
         pointerEvents: 'none',
         whiteSpace: 'nowrap',
         overflow: 'hidden',
       }}
     >
-      {entries.map((e, i) => (
+      {newestFirst.map((e, i) => (
         <div
           key={i}
           style={{
