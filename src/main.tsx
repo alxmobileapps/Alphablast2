@@ -46,6 +46,83 @@ window.addEventListener('unhandledrejection', (event) => {
   }
 });
 
+/**
+ * DIAGNOSTIC: log every WebView visibility/lifecycle transition.
+ *
+ * The crash catcher above found nothing in the video that showed the
+ * clearest freeze yet: from ~11s to ~21s almost the entire app UI (board,
+ * header, this very perf overlay) went blank white, while the native
+ * bottom banner ad kept showing and rotating the whole time. That banner
+ * is a SEPARATE native Android view drawn outside this WebView (see
+ * BottomBannerAd.tsx) — it staying up the entire time proves the freeze
+ * is confined to THIS WebView's own content, not the whole app/Activity
+ * restarting.
+ *
+ * That still leaves two very different explanations that look identical
+ * in a video, but are NOT identical in code:
+ *  1. The JS/React app is still alive underneath (main thread stalled,
+ *     or just not getting a chance to paint) — resolveBoard's own marks
+ *     would still be mid-flight, and this exact rolling perfMark buffer
+ *     (an in-memory JS array) would survive untouched.
+ *  2. The WebView itself got backgrounded, reloaded, or otherwise torn
+ *     down and recreated by Android (e.g. under memory pressure) — which
+ *     would silently wipe this whole JS context, including this buffer,
+ *     with no error to catch, since nothing "threw" — the page just
+ *     started over.
+ *
+ * These events are the direct, standard way to tell those apart:
+ * visibilitychange / pagehide / pageshow fire on ordinary tab/Activity
+ * backgrounding; freeze / resume are the Page Lifecycle API Chromium
+ * (and Android WebView) uses specifically for a backgrounded page being
+ * frozen or discarded. If none of these fire during a future freeze,
+ * that rules out backgrounding/reload as the cause and points back at a
+ * pure main-thread stall.
+ */
+function logLifecycleEvent(name: string) {
+  try {
+    perfMark(`LIFECYCLE: ${name} (visibilityState=${document.visibilityState})`);
+  } catch {
+    // never let the diagnostic itself throw
+  }
+}
+
+document.addEventListener('visibilitychange', () => logLifecycleEvent('visibilitychange'));
+window.addEventListener('pagehide', (e) => logLifecycleEvent(`pagehide (persisted=${e.persisted})`));
+window.addEventListener('pageshow', (e) => logLifecycleEvent(`pageshow (persisted=${e.persisted})`));
+document.addEventListener('freeze', () => logLifecycleEvent('freeze'));
+document.addEventListener('resume', () => logLifecycleEvent('resume'));
+window.addEventListener('blur', () => logLifecycleEvent('window blur'));
+window.addEventListener('focus', () => logLifecycleEvent('window focus'));
+
+/**
+ * DIAGNOSTIC: requestAnimationFrame heartbeat.
+ *
+ * Complements the lifecycle listeners above. If NONE of those fire during
+ * a future freeze, that rules out the page being backgrounded/reloaded —
+ * but it still doesn't say whether the render loop itself stalled (the
+ * browser stopped being able to paint at all) or whether frames kept
+ * ticking normally while some other layer (e.g. resolveBoard's own
+ * synchronous work) just didn't produce a visible update. rAF only runs
+ * when the browser is actually about to paint a frame, so a gap here is
+ * direct evidence of a real rendering-pipeline stall, not just "JS was
+ * busy". Only logs when a gap is actually large, so this can't itself
+ * flood the small rolling perfMark buffer on a normal 60fps device.
+ */
+let lastRafTime = performance.now();
+function rafHeartbeat(now: number) {
+  const gap = now - lastRafTime;
+  if (gap > 500) {
+    try {
+      perfMark(`RAF HEARTBEAT GAP: ${gap.toFixed(0)}ms between animation frames`);
+    } catch {
+      // never let the diagnostic itself throw
+    }
+  }
+  lastRafTime = now;
+  requestAnimationFrame(rafHeartbeat);
+}
+requestAnimationFrame(rafHeartbeat);
+
 interface CrashBoundaryState {
   error: Error | null;
 }

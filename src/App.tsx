@@ -22,7 +22,6 @@ import { HomeMenu } from './components/HomeMenu';
 import { ProfileModal } from './components/ProfileModal';
 import { SettingsModal } from './components/SettingsModal';
 import { BottomBannerAd } from './components/BottomBannerAd';
-import { InterstitialAdModal } from './components/InterstitialAdModal';
 import { PerfDebugOverlay } from './components/PerfDebugOverlay';
 import { perfMark, perfResetBaseline } from './utils/perfDebug';
 import { PortraitLockOverlay } from './components/PortraitLockOverlay';
@@ -326,9 +325,6 @@ export default function App() {
   // GO! button disabled until there's really a board to play on.
   const [isBoardReady, setIsBoardReady] = useState<boolean>(true);
   const [isRollingTiles, setIsRollingTiles] = useState<boolean>(false);
-  const [isInterstitialOpen, setIsInterstitialOpen] = useState<boolean>(false);
-  const [pendingTargetCategory, setPendingTargetCategory] = useState<Category | null>(null);
-  const completedCategoriesCountRef = useRef<number>(0);
 
   // Lifeline Inactivity Prompt & Shine Animation State
   const [isLifelinePromptActive, setIsLifelinePromptActive] = useState<boolean>(false);
@@ -753,38 +749,18 @@ export default function App() {
     [highlightOneMoveOpportunity]
   );
 
+  // Interstitial ads removed (see universalAds.ts's
+  // STOPGAP_DISABLE_NATIVE_INTERSTITIAL_ONLY, also flipped off there) —
+  // this used to gate every-other-round transitions behind a headless
+  // native AdMob interstitial (InterstitialAdModal). Now it always goes
+  // straight into the next round.
   const requestOpenCategory = useCallback(
     (targetCat: Category) => {
       perfMark('requestOpenCategory start');
-      // If user has removed ads, proceed directly
-      const currentProgress = loadGameProgress();
-      if (currentProgress.hasRemovedAds) {
-        playCategoryRound(targetCat);
-        return;
-      }
-
-      // Interstitial ads every round (after at least 1 completed round)
-      if (completedCategoriesCountRef.current > 0) {
-        setPendingTargetCategory(targetCat);
-        setIsInterstitialOpen(true);
-        perfMark('interstitial opened (headless)');
-        return;
-      }
-
       playCategoryRound(targetCat);
     },
     [playCategoryRound]
   );
-
-  const handleInterstitialAdCompleted = useCallback(() => {
-    perfMark('handleInterstitialAdCompleted start');
-    setIsInterstitialOpen(false);
-    completedCategoriesCountRef.current = 0; // Reset counter for next round
-    if (pendingTargetCategory) {
-      playCategoryRound(pendingTargetCategory);
-      setPendingTargetCategory(null);
-    }
-  }, [pendingTargetCategory, playCategoryRound]);
 
   const startRound = useCallback(
     (catIndex: number) => {
@@ -995,7 +971,6 @@ export default function App() {
             if (cat && cat.gameMode !== 'timer' && categoryProgressRef.current >= cat.targetCount) {
               perfMark('ROUND COMPLETE: last target word matched');
               haptics.roundComplete();
-              completedCategoriesCountRef.current += 1;
 
               const finalRoundScore = roundScoreRef.current;
               const elapsedSeconds = Math.max(1, Math.round((Date.now() - roundStartTimeRef.current) / 1000));
@@ -2469,7 +2444,6 @@ export default function App() {
     if (timerSecondsRemaining <= 0) {
       // Timer finished! Round completed!
       haptics.roundComplete();
-      completedCategoriesCountRef.current += 1;
       const elapsedSeconds = currentCategory.timerSeconds || 120;
       setRoundTimeConsumed(elapsedSeconds);
       const finalScore = roundScoreRef.current;
@@ -2949,13 +2923,6 @@ export default function App() {
         editingCategory={editingCustomCategory}
         onCategoryUpdated={handleCustomCategoryUpdated}
         onOpenShop={handleOpenShop}
-      />
-
-      {/* Interstitial Ad: Shown every 2 categories before opening the 3rd — headless, no UI of its own */}
-      <InterstitialAdModal
-        isOpen={isInterstitialOpen}
-        hasRemovedAds={gameProgress.hasRemovedAds}
-        onAdCompleted={handleInterstitialAdCompleted}
       />
 
       {/* Bottom Banner Ad across the screen */}

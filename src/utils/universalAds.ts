@@ -51,20 +51,17 @@ function nativeAdsEnabled(): boolean {
 }
 
 /**
- * All native ad flags are left ON (enabled) for this build. Every previous
- * bisection toggled native banner/interstitial/rewarded on and off without
- * ever fixing the round-completion freeze on its own — but every one of
- * those builds ALSO left InterstitialAdModal's full-screen
- * `backdrop-blur-md` + two `blur-3xl` glow effects active, since that
- * modal opens purely from the completed-round counter in App.tsx and was
- * never gated by any of these ad flags. That blur (expensive to composite
- * on Android, and running on every single round transition) was never
- * actually isolated as its own candidate — see InterstitialAdModal.tsx and
- * BottomBannerAd.tsx for the current diagnostic, which removes it (and the
- * fake ad creatives) instead of touching these flags. Set this back to
- * `true` if a stable/ads-off build is needed again in the meantime.
+ * Interstitial ads removed by request. App.tsx no longer opens
+ * InterstitialAdModal (that component and its round-transition gating in
+ * requestOpenCategory were deleted) — every round transition now goes
+ * straight into the next round. This flag is the belt-and-suspenders
+ * half of that: it also stops preloadInterstitialAd() from fetching an
+ * interstitial ad creative in the background on app start (via
+ * initUniversalAds) and after every round, since nothing shows it
+ * anymore anyway. Banner ads (BottomBannerAd / setUniversalBannerVisible)
+ * are untouched — this only affects interstitials.
  */
-const STOPGAP_DISABLE_NATIVE_INTERSTITIAL_ONLY = false;
+const STOPGAP_DISABLE_NATIVE_INTERSTITIAL_ONLY = true;
 
 function nativeInterstitialEnabled(): boolean {
   return nativeAdsEnabled() && !STOPGAP_DISABLE_NATIVE_INTERSTITIAL_ONLY;
