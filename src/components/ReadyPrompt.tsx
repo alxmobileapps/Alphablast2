@@ -8,6 +8,14 @@ interface ReadyPromptProps {
   category: Category;
   onStart: () => void;
   onHome?: () => void;
+  /**
+   * False while the round's board is still being generated in the
+   * background (see playCategoryRound in App.tsx). Defaults to true so
+   * nothing else calling ReadyPrompt has to change. Keeps GO! disabled so
+   * the player can't dismiss this prompt before there's an actual board
+   * underneath it.
+   */
+  isBoardReady?: boolean;
 }
 
 export const ReadyPrompt: React.FC<ReadyPromptProps> = ({
@@ -15,6 +23,7 @@ export const ReadyPrompt: React.FC<ReadyPromptProps> = ({
   category,
   onStart,
   onHome,
+  isBoardReady = true,
 }) => {
   // Listen for Enter / Space key to quick-start
   useEffect(() => {
@@ -29,11 +38,13 @@ export const ReadyPrompt: React.FC<ReadyPromptProps> = ({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, isBoardReady]);
 
   if (!isOpen) return null;
 
   const handleGo = () => {
+    if (!isBoardReady) return;
     try {
       playPowerUp();
     } catch {
@@ -56,7 +67,9 @@ export const ReadyPrompt: React.FC<ReadyPromptProps> = ({
   return (
     <div
       id="ready-prompt-backdrop"
-      className="fixed inset-0 z-50 bg-[#071330]/20 backdrop-blur-[2px] flex items-center justify-center p-4 select-none animate-fade-in"
+      className={`fixed inset-0 z-50 flex items-center justify-center p-4 select-none animate-fade-in transition-colors duration-300 ${
+        isBoardReady ? 'bg-[#071330]/20 backdrop-blur-[2px]' : 'bg-[#071330]/95'
+      }`}
     >
       {/* Outer Sky Blue Frame Matching the Game Board Container */}
       <div
@@ -120,10 +133,25 @@ export const ReadyPrompt: React.FC<ReadyPromptProps> = ({
               id="ready-prompt-go-button"
               onClick={handleGo}
               autoFocus
-              className="flex-1 py-3.5 sm:py-4 px-4 sm:px-6 rounded-2xl bg-gradient-to-b from-[#38BDF8] via-[#0EA5E9] to-[#0284C7] hover:from-[#7DD3FC] hover:to-[#0EA5E9] border-t-2 border-l border-white/80 border-r border-[#075985] border-b-[5px] border-b-[#034C70] active:border-b-[2px] active:translate-y-[3px] text-white font-black text-2xl sm:text-3xl tracking-wider shadow-[0_8px_25px_rgba(2,132,199,0.6)] transition-all duration-150 flex items-center justify-center gap-3 cursor-pointer group"
+              disabled={!isBoardReady}
+              aria-disabled={!isBoardReady}
+              className={`flex-1 py-3.5 sm:py-4 px-4 sm:px-6 rounded-2xl bg-gradient-to-b from-[#38BDF8] via-[#0EA5E9] to-[#0284C7] border-t-2 border-l border-white/80 border-r border-[#075985] border-b-[5px] border-b-[#034C70] text-white font-black text-2xl sm:text-3xl tracking-wider shadow-[0_8px_25px_rgba(2,132,199,0.6)] transition-all duration-150 flex items-center justify-center gap-3 ${
+                isBoardReady
+                  ? 'hover:from-[#7DD3FC] hover:to-[#0EA5E9] active:border-b-[2px] active:translate-y-[3px] cursor-pointer group'
+                  : 'opacity-60 cursor-not-allowed'
+              }`}
             >
-              <Play className="w-6 h-6 sm:w-7 sm:h-7 fill-white text-white transition-transform group-hover:scale-110 drop-shadow-[0_2px_4px_rgba(0,0,0,0.4)]" />
-              <span className="drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]">GO!</span>
+              {isBoardReady ? (
+                <>
+                  <Play className="w-6 h-6 sm:w-7 sm:h-7 fill-white text-white transition-transform group-hover:scale-110 drop-shadow-[0_2px_4px_rgba(0,0,0,0.4)]" />
+                  <span className="drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]">GO!</span>
+                </>
+              ) : (
+                <>
+                  <div className="w-6 h-6 rounded-full border-[3px] border-white/90 border-t-transparent animate-spin" />
+                  <span className="text-lg sm:text-xl drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]">Preparing...</span>
+                </>
+              )}
             </button>
           </div>
         </div>

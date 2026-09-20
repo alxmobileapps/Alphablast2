@@ -23,6 +23,8 @@ import { ProfileModal } from './components/ProfileModal';
 import { SettingsModal } from './components/SettingsModal';
 import { BottomBannerAd } from './components/BottomBannerAd';
 import { InterstitialAdModal } from './components/InterstitialAdModal';
+import { PerfDebugOverlay } from './components/PerfDebugOverlay';
+import { perfMark, perfResetBaseline } from './utils/perfDebug';
 import { PortraitLockOverlay } from './components/PortraitLockOverlay';
 import { isSwipeControlsEnabled, isCluesEnabled as isCluesEnabledUtil } from './utils/settings';
 import { initUniversalAds } from './utils/universalAds';
@@ -319,6 +321,10 @@ export default function App() {
   const [isGameOverOpen, setIsGameOverOpen] = useState<boolean>(false);
   const [isLeaderboardOpen, setIsLeaderboardOpen] = useState<boolean>(false);
   const [isReadyPromptOpen, setIsReadyPromptOpen] = useState<boolean>(true);
+  // True once the new round's board has actually finished generating (see
+  // playCategoryRound below) — the "Ready?" prompt uses this to keep the
+  // GO! button disabled until there's really a board to play on.
+  const [isBoardReady, setIsBoardReady] = useState<boolean>(true);
   const [isRollingTiles, setIsRollingTiles] = useState<boolean>(false);
   const [isInterstitialOpen, setIsInterstitialOpen] = useState<boolean>(false);
   const [pendingTargetCategory, setPendingTargetCategory] = useState<Category | null>(null);
@@ -648,6 +654,7 @@ export default function App() {
   // Start/Reset a round for any category (Campaign or Custom 1-Hour Community)
   const playCategoryRound = useCallback(
     (targetCat: Category) => {
+      perfMark('playCategoryRound start');
       if (targetCat.isCustom) {
         setSelectedCustomCategory(targetCat);
         recordCategoryPlay(targetCat.firestoreDocId);
@@ -697,21 +704,49 @@ export default function App() {
       setIsGameOverOpen(false);
       setIsAdModalOpen(false);
       setIsPowerUpAdOpen(false);
-      const freshBoard = generateInitialBoard(targetCat.id);
-      setBoard(freshBoard);
-      highlightOneMoveOpportunity(freshBoard, targetCat.id);
       setCurrentScreen('game');
 
       if (targetCat.gameMode === 'timer') {
         const initSeconds = targetCat.timerSeconds || 120;
         setTimerSecondsRemaining(initSeconds);
       }
+      perfMark('fast resets done, scheduling rAF');
+
+      // generateInitialBoard() retries board layouts (up to 25 attempts,
+      // each scanning the whole board for word opportunities) until it
+      // finds one that guarantees enough playable moves. That search is
+      // CPU-heavy, and running it synchronously right here — in the same
+      // tick as all the state updates above — used to block the main
+      // thread for several seconds before React ever got a chance to
+      // paint anything. That's the reported round-transition white-screen
+      // freeze: nothing was actually frozen, the browser just never got a
+      // chance to draw a frame until this finished.
+      //
+      // Deferring it with a double requestAnimationFrame doesn't make the
+      // search itself faster, but it lets the browser paint the "Ready?"
+      // prompt FIRST — the player sees that immediately instead of a
+      // blank screen, and ReadyPrompt keeps its GO! button disabled
+      // (isBoardReady) until the real board underneath is actually ready.
+      setIsBoardReady(false);
+      requestAnimationFrame(() => {
+        perfMark('1st rAF fired');
+        requestAnimationFrame(() => {
+          perfMark('2nd rAF fired, calling generateInitialBoard');
+          const freshBoard = generateInitialBoard(targetCat.id);
+          perfMark('generateInitialBoard returned');
+          setBoard(freshBoard);
+          highlightOneMoveOpportunity(freshBoard, targetCat.id);
+          perfMark('highlightOneMoveOpportunity done, board ready');
+          setIsBoardReady(true);
+        });
+      });
     },
     [highlightOneMoveOpportunity]
   );
 
   const requestOpenCategory = useCallback(
     (targetCat: Category) => {
+      perfMark('requestOpenCategory start');
       // If user has removed ads, proceed directly
       const currentProgress = loadGameProgress();
       if (currentProgress.hasRemovedAds) {
@@ -723,6 +758,7 @@ export default function App() {
       if (completedCategoriesCountRef.current > 0) {
         setPendingTargetCategory(targetCat);
         setIsInterstitialOpen(true);
+        perfMark('interstitial opened (headless)');
         return;
       }
 
@@ -732,6 +768,7 @@ export default function App() {
   );
 
   const handleInterstitialAdCompleted = useCallback(() => {
+    perfMark('handleInterstitialAdCompleted start');
     setIsInterstitialOpen(false);
     completedCategoriesCountRef.current = 0; // Reset counter for next round
     if (pendingTargetCategory) {
@@ -2321,6 +2358,8 @@ export default function App() {
 
   // Move to Next Category
   const handleNextRound = () => {
+    perfResetBaseline();
+    perfMark('Continue tapped (handleNextRound)');
     if (selectedCustomCategory) {
       // Return to campaign round
       setSelectedCustomCategory(null);
@@ -2492,6 +2531,12 @@ export default function App() {
     <div
       className="h-[100dvh] max-h-[100dvh] w-full bg-[#071330] text-white flex flex-col font-sans selection:bg-[#0EA5E9] selection:text-white overflow-hidden pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]"
     >
+      {/* TEMPORARY diagnostic overlay — see utils/perfDebug.ts. Shows a
+          live timing breakdown of the round-transition steps directly on
+          screen, so a screenshot after a freeze is enough to see which
+          step took long, with no USB debugging / DevTools needed. */}
+      <PerfDebugOverlay />
+
       {/*
         Android (Capacitor) note: on Android 15 / SDK 35, the OS enforces
         edge-to-edge rendering and effectively ignores the native
@@ -2893,6 +2938,7 @@ export default function App() {
         <ReadyPrompt
           isOpen={isReadyPromptOpen}
           category={currentCategory}
+          isBoardReady={isBoardReady}
           onStart={handleStartGameRound}
           onHome={() => {
             setIsReadyPromptOpen(false);

@@ -8,6 +8,7 @@
  */
 
 import { ADS_CONFIG, isH5GamesSdkAvailable } from '../config/adsConfig';
+import { perfMark } from './perfDebug';
 
 declare global {
   interface Window {
@@ -316,6 +317,7 @@ export function showUniversalRewardedAd(options: {
  * Request & Display an Interstitial Ad
  */
 export function showUniversalInterstitialAd(options?: { name?: string; onAdCompleted?: () => void }): void {
+  perfMark('showUniversalInterstitialAd entered');
   // 1. Native AdMob (Capacitor Android app)
   if (nativeInterstitialEnabled()) {
     if (!interstitialPrepared) {
@@ -330,15 +332,19 @@ export function showUniversalInterstitialAd(options?: { name?: string; onAdCompl
       // ready. The player sees no ad this round, but the game never
       // freezes waiting for one.
       console.warn('[UniversalAds] Native interstitial not preloaded in time — skipping this ad instead of blocking on a live fetch.');
+      perfMark('interstitial not preloaded, skip path');
       preloadInterstitialAd();
       if (options?.onAdCompleted) options.onAdCompleted();
+      perfMark('skip path onAdCompleted() returned');
       return;
     }
 
+    perfMark('interstitial WAS preloaded, entering native show async flow');
     void (async () => {
       try {
         const { AdMob, InterstitialAdPluginEvents } = await loadAdMob();
         await ensureNativeAdMobInitialized();
+        perfMark('AdMob module loaded + initialized, adding listeners');
 
         let completed = false;
         const finish = () => {
@@ -410,9 +416,11 @@ export function showUniversalInterstitialAd(options?: { name?: string; onAdCompl
   }
 
   // 4. Complete directly if no native interceptor
+  perfMark('no ad interceptor at all, completing directly');
   if (options?.onAdCompleted) {
     options.onAdCompleted();
   }
+  perfMark('direct-complete onAdCompleted() returned');
 }
 
 /**
