@@ -1093,38 +1093,41 @@ body {
   }
 }
 
-/* Category Emphasis (Zoom-in + Shining for 2 seconds) */
+/* Category Emphasis (Zoom-in + Shining for 2 seconds)
+ *
+ * IMPORTANT: this used to also animate box-shadow (3 stacked shadow layers,
+ * one with a 55px blur radius) and filter: brightness() on every frame for
+ * 2 full seconds. Animating box-shadow is NOT a compositor-only operation —
+ * unlike transform/opacity, the browser has to repaint the element's raster
+ * on every single frame, and with multiple large-blur shadow layers that
+ * repaint is expensive. A screen recording of the actual round-transition
+ * freeze showed the app's own JS finishing the round setup in well under
+ * 100ms (see perfMark log), yet the screen stayed blank for several more
+ * seconds afterward — exactly the mount moment of this animation (it fires
+ * every time a new round's "Ready?" prompt appears). That gap is consistent
+ * with the WebView's main thread being saturated repainting this shadow/
+ * filter animation instead of presenting the already-ready UI. Now this
+ * only animates transform + opacity (cheap, GPU-compositable, never
+ * triggers a repaint), and the glow is a plain static box-shadow set once
+ * below instead of animated every frame.
+ */
 @keyframes categoryZoomShine {
   0% {
     transform: scale(0.85);
     opacity: 0.2;
-    box-shadow: 0 0 0 0 rgba(56, 189, 248, 0);
-    filter: brightness(0.9);
   }
   20% {
     transform: scale(1.22);
     opacity: 1;
-    box-shadow: 0 0 30px 8px rgba(56, 189, 248, 0.95), 0 0 55px 16px rgba(251, 191, 36, 0.7), inset 0 0 20px rgba(255, 255, 255, 0.8);
-    border-color: #38BDF8;
-    filter: brightness(1.4);
   }
   45% {
     transform: scale(1.15);
-    box-shadow: 0 0 35px 10px rgba(56, 189, 248, 0.9), 0 0 60px 20px rgba(251, 191, 36, 0.65), inset 0 0 25px rgba(255, 255, 255, 0.7);
-    border-color: #FDE047;
-    filter: brightness(1.35);
   }
   75% {
     transform: scale(1.06);
-    box-shadow: 0 0 20px 5px rgba(56, 189, 248, 0.6), 0 0 30px 8px rgba(251, 191, 36, 0.35), inset 0 0 12px rgba(255, 255, 255, 0.4);
-    border-color: #7DD3FC;
-    filter: brightness(1.15);
   }
   100% {
     transform: scale(1);
-    box-shadow: 0 0 10px 2px rgba(56, 189, 248, 0.25), inset 0 2px 4px rgba(0, 0, 0, 0.6);
-    border-color: #1E3A8A;
-    filter: brightness(1);
   }
 }
 
@@ -1161,7 +1164,11 @@ body {
 
 .animate-category-zoom-shine {
   animation: categoryZoomShine 2s cubic-bezier(0.22, 1, 0.36, 1) forwards;
-  will-change: transform, box-shadow, filter;
+  will-change: transform, opacity;
+  /* Static glow (computed once, never repainted per-frame) instead of the
+     old per-frame-animated box-shadow — see the comment on the keyframes
+     above for why. */
+  box-shadow: 0 0 20px 5px rgba(56, 189, 248, 0.6), 0 0 30px 8px rgba(251, 191, 36, 0.35), inset 0 0 12px rgba(255, 255, 255, 0.4);
 }
 
 .animate-shine-beam {
