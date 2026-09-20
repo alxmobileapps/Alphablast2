@@ -803,6 +803,7 @@ export default function App() {
 
       while (foundMatches && loopCount < 8) {
         loopCount++;
+        perfMark(`resolveBoard loop #${loopCount}: board scan starting`);
         // REQUIREMENT: A word can only be formed once! (Including its plural / root forms)
         const { matches, duplicates } = findCategoryWordsWithDuplicateCheck(
           activeBoard,
@@ -810,6 +811,7 @@ export default function App() {
           formedWordsRef.current
         );
         const threeIdenticals = findThreeIdenticalLetters(activeBoard);
+        perfMark(`resolveBoard loop #${loopCount}: board scan done (${matches.length} matches)`);
 
         // Alert player if a previously formed word or its plural is formed:
         // Small alert positioned on the word itself (3 seconds) & highlight word for 1 second (1000ms)
@@ -991,6 +993,7 @@ export default function App() {
             categoryProgressRef.current += 1;
             setCategoryProgress(categoryProgressRef.current);
             if (cat && cat.gameMode !== 'timer' && categoryProgressRef.current >= cat.targetCount) {
+              perfMark('ROUND COMPLETE: last target word matched');
               haptics.roundComplete();
               completedCategoriesCountRef.current += 1;
 
@@ -1004,6 +1007,7 @@ export default function App() {
               // Save completion and unlock next category on device
               const completionResult = completeCategory(catId, finalRoundScore, earnedStars);
               let latestProgress = completionResult.progress;
+              perfMark('completeCategory() returned');
 
               // Monetization: Convert leftover colored tiles (1 coin each) and remaining powerups (1 coin each) to coins
               const leftoverColoredTiles = activeBoard
@@ -1023,6 +1027,7 @@ export default function App() {
                 powerups: leftoverPowerups,
                 total: conversion.coinsAdded,
               });
+              perfMark('convertRoundEndAssetsToCoins() returned');
 
               // Monetization: Award +1 diamond at 15,000 PTS, +2 diamonds at 20,000 PTS (Total 2)
               const diamondCheck = checkAndAwardDiamondMilestones(catId, finalRoundScore);
@@ -1033,18 +1038,25 @@ export default function App() {
                   milestoneName: diamondCheck.milestoneName,
                 });
               }
+              perfMark('checkAndAwardDiamondMilestones() returned');
 
               setGameProgress(latestProgress);
               if (completionResult.newlyUnlockedCategory) {
                 setNewlyUnlockedCategory(completionResult.newlyUnlockedCategory);
               }
+              perfMark('setGameProgress + setNewlyUnlockedCategory called');
 
               // Auto backup progress to cloud every round completion
               syncProgressToCloud(latestProgress).catch((err) => {
                 console.warn('Auto cloud backup error:', err);
               });
+              perfMark('syncProgressToCloud() fired (async, not awaited)');
 
-              setTimeout(() => setIsRoundCompleteOpen(true), 700);
+              setTimeout(() => {
+                perfMark('700ms setTimeout FIRED, opening RoundCompleteModal');
+                setIsRoundCompleteOpen(true);
+              }, 700);
+              perfMark('700ms setTimeout for RoundCompleteModal scheduled');
             }
           }
 
@@ -1169,6 +1181,7 @@ export default function App() {
             clearedPositions.add(`${t.row},${t.col}`);
           }
         }
+        perfMark(`resolveBoard loop #${loopCount}: for-of matches loop finished`);
 
         // Calculate points for extra tiles that disappeared from special tiles reactions (beams/shining)
         const wordTilesSet = new Set<string>();
@@ -1299,6 +1312,7 @@ export default function App() {
         await new Promise((res) => setTimeout(res, 200));
 
         // Apply Gravity & Refill (Letters from above fall down smoothly)
+        perfMark(`resolveBoard loop #${loopCount}: applyGravityAndRefill starting`);
         const { newBoard, fallenCount } = applyGravityAndRefill(
           activeBoard,
           clearedPositions,
@@ -1308,14 +1322,18 @@ export default function App() {
         );
         activeBoard = newBoard;
         setBoard(activeBoard);
+        perfMark(`resolveBoard loop #${loopCount}: applyGravityAndRefill + setBoard done`);
 
         // REQUIREMENT: Highlight for one second the one-move new word when letters are replaced (color tiles in light green)
         if (fallenCount > 0) {
           highlightOneMoveOpportunity(activeBoard, catId);
+          perfMark(`resolveBoard loop #${loopCount}: highlightOneMoveOpportunity done`);
         }
 
         await new Promise((res) => setTimeout(res, 350));
+        perfMark(`resolveBoard loop #${loopCount}: end of iteration (about to recheck foundMatches)`);
       }
+      perfMark('resolveBoard: while loop exited, returning board');
 
       return activeBoard;
     },
