@@ -17,7 +17,22 @@ html, body, #root {
 
 body {
   margin: 0;
-  background-color: #E8EDF2;
+  /* Was #E8EDF2 (a light near-white gray) — but the app's actual UI is
+   * always the dark navy #071330 (same color already used for the
+   * StatusBar background, the generated app icon/splash, and the app's
+   * own root container in App.tsx: className="... bg-[#071330] ..."). The
+   * native Android WebView paints THIS color first, before React mounts,
+   * and again for a single frame any time the WebView's own compositor
+   * has to re-raster the page and briefly has nothing else drawn yet (a
+   * GPU-driver hiccup, a window-inset relayout, a resume-from-background
+   * repaint, etc.) — every one of those moments would show this light
+   * gray flashing through underneath, which looks exactly like the
+   * "white screen" caught on video throughout this investigation. Nothing
+   * else in the app references #E8EDF2, so matching it to the real theme
+   * color has no visual downside and turns any future repaint gap into an
+   * unnoticeable dark hold instead of a jarring white flash.
+   */
+  background-color: #071330;
   color: #2D3748;
   font-family: 'Nunito', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
   user-select: none;
@@ -282,12 +297,41 @@ body {
   }
 }
 
+/*
+ * ============================================================================
+ * FIX: bound every remaining `infinite`-duration CSS animation below.
+ * ============================================================================
+ * Same root cause and same fix shape as RoundCompleteModal's animate-bounce/
+ * animate-pulse cap above (see that file): a video capture (frames12,
+ * Screen_Recording_20260920_174822_AlphaBlast.mp4) caught a ~29-second
+ * white-screen stall while a "Laser Card" electricity effect was actively
+ * animating on screen (animate-lightning + animate-electric-pulse, plus
+ * several simultaneously-running animate-edge-light rects on nearby special
+ * tiles) — with none of main.tsx's lifecycle/rAF-heartbeat diagnostics
+ * firing, meaning it wasn't a plain backgrounding/reload event that time.
+ * The user's own read of the recording: every one of the game's continuous
+ * "special effect" animations keeps its own `infinite` CSS animation ticking
+ * on the Android WebView's compositor thread for as long as its element
+ * stays mounted, and several of these can be mounted and animating at once
+ * (multiple special tiles' edge lights, an active explosion overlay, a clue
+ * hint, a lifeline prompt, etc.) — many concurrent infinite compositor
+ * animations is exactly the kind of sustained background work that can
+ * compound with (or get stuck across) a WebView resume/repaint. Every one of
+ * these below is switched from `infinite` to a large-but-finite iteration
+ * count with `forwards` fill-mode, so it holds its last frame instead of
+ * either running forever or snapping back — animations tied to a short,
+ * specific effect (electric shock, lightning, fire) get just enough repeats
+ * to comfortably outlast that effect; animations tied to a longer-lived UI
+ * state (a selected tile, a shining power-up button, a special tile's edge
+ * light) get enough repeats to comfortably outlast realistic real-world use
+ * of that state, so ordinary play is unaffected either way.
+ */
 .animate-selected-pop {
-  animation: selectedPopOut 0.22s cubic-bezier(0.34, 1.56, 0.64, 1) forwards, selectedFloat 1.8s ease-in-out 0.22s infinite;
+  animation: selectedPopOut 0.22s cubic-bezier(0.34, 1.56, 0.64, 1) forwards, selectedFloat 1.8s ease-in-out 0.22s 50 forwards;
 }
 
 .animate-spin-slow {
-  animation: spinSlow 6s linear infinite;
+  animation: spinSlow 6s linear 20 forwards;
 }
 
 .animate-tile-drop {
@@ -311,7 +355,7 @@ body {
 }
 
 .animate-star-orbit {
-  animation: starOrbit 2s ease-in-out infinite;
+  animation: starOrbit 2s ease-in-out 30 forwards;
 }
 
 .animate-letter-pop {
@@ -319,7 +363,7 @@ body {
 }
 
 .animate-electric-shock {
-  animation: electricShock 0.22s ease-in-out infinite;
+  animation: electricShock 0.22s ease-in-out 20 forwards;
 }
 
 .animate-electric-knockoff {
@@ -327,11 +371,11 @@ body {
 }
 
 .animate-lightning {
-  animation: lightningFlicker 0.15s ease-in-out infinite;
+  animation: lightningFlicker 0.15s ease-in-out 20 forwards;
 }
 
 .animate-electric-pulse {
-  animation: electricPulseRing 0.6s ease-out infinite;
+  animation: electricPulseRing 0.6s ease-out 8 forwards;
 }
 
 @keyframes runEdgeLight {
@@ -344,12 +388,12 @@ body {
 }
 
 .animate-edge-light {
-  animation: runEdgeLight 2s linear infinite;
+  animation: runEdgeLight 2s linear 90 forwards;
   will-change: stroke-dashoffset;
 }
 
 .animate-edge-light-fast {
-  animation: runEdgeLight 1.3s linear infinite;
+  animation: runEdgeLight 1.3s linear 140 forwards;
   will-change: stroke-dashoffset;
 }
 
@@ -736,7 +780,7 @@ body {
 }
 
 .animate-flame-lick {
-  animation: flameLickKeyframes 0.28s ease-in-out infinite;
+  animation: flameLickKeyframes 0.28s ease-in-out 10 forwards;
   transform-origin: bottom center;
 }
 
@@ -852,7 +896,7 @@ body {
 }
 
 .animate-fire-text-glow {
-  animation: fireTextFlickerKeyframes 0.55s ease-in-out infinite;
+  animation: fireTextFlickerKeyframes 0.55s ease-in-out 6 forwards;
 }
 
 @keyframes shineBeamKeyframes {
@@ -865,7 +909,7 @@ body {
 }
 
 .animate-shine-beam {
-  animation: shineBeamKeyframes 0.9s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  animation: shineBeamKeyframes 0.9s cubic-bezier(0.4, 0, 0.2, 1) 80 forwards;
 }
 
 :root {
@@ -962,7 +1006,7 @@ body {
 }
 
 .animate-clue-word-blink {
-  animation: clueWordBlink 0.6s ease-in-out infinite alternate;
+  animation: clueWordBlink 0.6s ease-in-out 150 alternate forwards;
 }
 
 @keyframes cluePillPop {
@@ -1001,7 +1045,7 @@ body {
 }
 
 .animate-clue-glow {
-  animation: clueGlowPulseKeyframes 1.6s ease-in-out infinite;
+  animation: clueGlowPulseKeyframes 1.6s ease-in-out 6 forwards;
 }
 
 /* Infinite for as long as a clue is shown. Transform alone (scale + a
@@ -1016,7 +1060,7 @@ body {
 }
 
 .animate-clue-sparkle {
-  animation: clueSparkleTwinkle 1.2s ease-in-out infinite;
+  animation: clueSparkleTwinkle 1.2s ease-in-out 6 forwards;
 }
 
 /* 3 full seconds of animated box-shadow + filter on this one button — the
@@ -1068,7 +1112,7 @@ body {
 }
 
 .animate-light-beam-sweep {
-  animation: lightBeamSweep 1.8s ease-in-out infinite;
+  animation: lightBeamSweep 1.8s ease-in-out 3 forwards;
 }
 
 /* Futuristic Sci-Fi Starforge Typography Styles */
