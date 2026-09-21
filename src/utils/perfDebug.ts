@@ -1,17 +1,16 @@
 /**
- * Lightweight, always-on-screen timing log for diagnosing the round-
- * transition freeze WITHOUT needing USB debugging / Chrome DevTools on the
- * device — this shows up directly inside the app, so a plain screenshot
- * after a freeze is enough to see exactly which step took long.
+ * Lightweight timing-log buffer, originally built to diagnose the
+ * round-transition freeze WITHOUT needing USB debugging / Chrome DevTools
+ * on the device. The on-screen overlay that used to render this buffer
+ * (<PerfDebugOverlay/>, top-left corner) has been removed now that the
+ * freeze was root-caused and fixed (AdMob.initialize() — see
+ * universalAds.ts) — this file just keeps the in-memory buffer so the
+ * existing perfMark() call sites throughout App.tsx stay harmless no-ops
+ * instead of needing to be stripped out one by one.
  *
  * Call perfMark('some step') right before and right after any code
  * suspected of blocking the main thread. Each mark records how many
- * milliseconds elapsed since the PREVIOUS mark and shows it in
- * <PerfDebugOverlay/> (mounted once, near the top of App.tsx). Entries
- * over 300ms are highlighted so a multi-second gap is obvious at a glance.
- *
- * Temporary diagnostic tool — remove perfMark() calls and this file once
- * the round-transition freeze is found and fixed.
+ * milliseconds elapsed since the PREVIOUS mark.
  */
 
 export interface PerfEntry {
