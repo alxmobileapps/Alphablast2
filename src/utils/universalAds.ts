@@ -48,27 +48,24 @@ function nativeAdsEnabled(): boolean {
 }
 
 /**
- * RESOLVED — interstitials are back on (`false` here re-enables
- * preloadInterstitialAd()). This was flipped to `true` when interstitials
- * were removed entirely from App.tsx's requestOpenCategory. Restored now,
- * by request, but with different gating logic than before: App.tsx now
- * shows one interstitial every 3 completed rounds (before rounds 4, 7,
- * 10, ...) instead of before every single round.
+ * By request: banner AND interstitial both off again, rewarded kept on.
+ * DIAGNOSTIC_DISABLE_NATIVE_ADS above stays `false` (AdMob.initialize()
+ * still runs) specifically so showUniversalRewardedAd's native branch —
+ * gated only on nativeAdsEnabled(), not on either stopgap here — keeps
+ * working for real. This is also a useful data point on its own: if the
+ * freeze is now gone with ONLY "AdMob initialized + rewarded available,
+ * nothing shown unless the player asks for it" running, that points
+ * squarely at interstitial preloading/showing (or the banner) as the
+ * cause rather than AdMob's mere presence/initialization. If it still
+ * freezes even here, that points at AdMob.initialize() / the SDK's own
+ * background activity instead.
  */
-const STOPGAP_DISABLE_NATIVE_INTERSTITIAL_ONLY = false;
+const STOPGAP_DISABLE_NATIVE_INTERSTITIAL_ONLY = true;
 
 function nativeInterstitialEnabled(): boolean {
   return nativeAdsEnabled() && !STOPGAP_DISABLE_NATIVE_INTERSTITIAL_ONLY;
 }
 
-/**
- * By request: banner disabled, interstitial kept on. The controlled-
- * refresh-timing fix (refreshBannerIfDue, right below) wasn't enough —
- * the freeze came back on the very next test after that patch — so the
- * banner itself is off again while interstitials (every 3 rounds) and
- * rewarded ads stay untouched. Mirrors STOPGAP_DISABLE_NATIVE_
- * INTERSTITIAL_ONLY above, just for the opposite ad type.
- */
 const STOPGAP_DISABLE_NATIVE_BANNER_ONLY = true;
 
 function nativeBannerEnabled(): boolean {
