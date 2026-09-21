@@ -61,6 +61,20 @@ function nativeInterstitialEnabled(): boolean {
   return nativeAdsEnabled() && !STOPGAP_DISABLE_NATIVE_INTERSTITIAL_ONLY;
 }
 
+/**
+ * By request: banner disabled, interstitial kept on. The controlled-
+ * refresh-timing fix (refreshBannerIfDue, right below) wasn't enough —
+ * the freeze came back on the very next test after that patch — so the
+ * banner itself is off again while interstitials (every 3 rounds) and
+ * rewarded ads stay untouched. Mirrors STOPGAP_DISABLE_NATIVE_
+ * INTERSTITIAL_ONLY above, just for the opposite ad type.
+ */
+const STOPGAP_DISABLE_NATIVE_BANNER_ONLY = true;
+
+function nativeBannerEnabled(): boolean {
+  return nativeAdsEnabled() && !STOPGAP_DISABLE_NATIVE_BANNER_ONLY;
+}
+
 let admobModulePromise: Promise<typeof import('@capacitor-community/admob')> | null = null;
 let admobInitialized = false;
 let admobListenersBound = false;
@@ -430,7 +444,7 @@ export function setUniversalBannerVisible(visible: boolean, position: 'top' | 'b
   bannerCurrentPosition = position;
 
   // 1. Native AdMob (Capacitor Android app)
-  if (nativeAdsEnabled()) {
+  if (nativeBannerEnabled()) {
     void (async () => {
       try {
         const { AdMob, BannerAdPosition, BannerAdSize } = await loadAdMob();
@@ -494,7 +508,7 @@ const BANNER_MANUAL_REFRESH_MIN_INTERVAL_MS = 100_000; // ~100s
  * be visible at all (ads removed, or never shown yet).
  */
 export function refreshBannerIfDue(): void {
-  if (!nativeAdsEnabled() || !bannerCurrentlyVisible) return;
+  if (!nativeBannerEnabled() || !bannerCurrentlyVisible) return;
   const now = Date.now();
   if (now - lastBannerRefreshAt < BANNER_MANUAL_REFRESH_MIN_INTERVAL_MS) return;
   lastBannerRefreshAt = now;
