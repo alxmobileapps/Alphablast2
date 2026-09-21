@@ -153,16 +153,38 @@ export function preloadInterstitialAd(): void {
 }
 
 /**
- * Initialize Google H5 Game Ads (if script loaded) + Native AdMob (if on Capacitor Android)
+ * Initialize Google H5 Game Ads (if script loaded). Native AdMob is
+ * deliberately NOT touched here anymore.
+ *
+ * FINDING: with banner AND interstitial both already off, the freeze
+ * STILL happened — the only thing left running from the native ad stack
+ * was AdMob.initialize() itself, called eagerly right here at app start
+ * (every previous "confirmed clean" test happened to never call it at
+ * all, since nothing in those builds ever requested a rewarded ad
+ * either). That's about as clean an isolation as a screen-recording-only
+ * diagnosis can get without real native profiling tools (adb logcat /
+ * Android Studio profiler aren't available in this environment) — it
+ * points at the Google Mobile Ads SDK's own initialization/background
+ * activity, not at any specific ad unit.
+ *
+ * The fix here doesn't touch what AdMob.initialize() itself does (that's
+ * inside Google's SDK, not something this codebase controls) — it makes
+ * WHEN it happens lazy instead of eager. ensureNativeAdMobInitialized()
+ * is still called (see showUniversalRewardedAd below), but only the
+ * moment a player actually requests a rewarded ad, not automatically at
+ * app start. For most of an ordinary play session — rounds, board
+ * interaction, all the CSS effects already audited, everything except
+ * "the player taps a watch-an-ad button" — the AdMob SDK now never runs
+ * at all, so it has no ongoing background activity to compete with the
+ * WebView for. If a freeze does still happen at the exact moment a
+ * rewarded ad is requested, that's the one moment the player already
+ * expects a brief pause (they asked for an ad), not a surprise mid-round
+ * freeze — and it would also be a clean, reproducible way to confirm the
+ * SDK-init theory directly (previous tests never had this eager call in
+ * the way while EITHER banner and interstitial were still touching it).
  */
 export function initUniversalAds(): void {
   if (typeof window === 'undefined') return;
-
-  // Native AdMob (Capacitor Android app)
-  if (nativeAdsEnabled()) {
-    void ensureNativeAdMobInitialized();
-    preloadInterstitialAd();
-  }
 
   // Initialize H5 Game Ads if available (web / PWA only)
   if (typeof window.adConfig === 'function') {
