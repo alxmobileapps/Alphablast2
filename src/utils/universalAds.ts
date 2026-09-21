@@ -414,10 +414,21 @@ export function showUniversalInterstitialAd(options?: { name?: string; onAdCompl
   perfMark('direct-complete onAdCompleted() returned');
 }
 
+// Tracks whether the native banner is currently supposed to be showing,
+// and at what position, so refreshBannerIfDue() below (which has no
+// visible/position args of its own — it's called from a generic "safe
+// moment" checkpoint) knows whether there's anything to refresh at all,
+// and reuses the same position it was last shown at.
+let bannerCurrentlyVisible = false;
+let bannerCurrentPosition: 'top' | 'bottom' = 'bottom';
+
 /**
  * Control Bottom Banner Visibility across platforms
  */
 export function setUniversalBannerVisible(visible: boolean, position: 'top' | 'bottom' = 'bottom'): void {
+  bannerCurrentlyVisible = visible;
+  bannerCurrentPosition = position;
+
   // 1. Native AdMob (Capacitor Android app)
   if (nativeAdsEnabled()) {
     void (async () => {
@@ -453,4 +464,58 @@ export function setUniversalBannerVisible(visible: boolean, position: 'top' | 'b
       console.warn('[UniversalAds] Median banner control failed:', e);
     }
   }
+}
+
+let lastBannerRefreshAt = 0;
+
+// Safely under the 150s refresh interval set in the AdMob dashboard —
+// that dashboard value is now effectively just a ceiling/fallback, not
+// the thing actually driving refreshes. As long as our own refresh below
+// keeps happening well inside that window, AdMob's own internal timer
+// should rarely (if ever) get a chance to fire on its own timing instead
+// of ours.
+const BANNER_MANUAL_REFRESH_MIN_INTERVAL_MS = 100_000; // ~100s
+
+/**
+ * Manually forces the native banner to tear down and reload with a fresh
+ * ad — giving OUR code control over exactly *when* a banner refresh (and
+ * the native view relayout that comes with it) happens, instead of
+ * leaving it entirely to AdMob's own internal timer, which has no idea
+ * whether the game is mid-round, mid-animation, or sitting idle on a
+ * static screen when it decides to fire.
+ *
+ * By design, this does nothing unless the CALLER only invokes it from an
+ * already-safe, idle moment — see its one call site in App.tsx
+ * (playCategoryRound, right as the static "Ready?" prompt appears and
+ * before any board generation/animation starts). It's also time-gated
+ * (BANNER_MANUAL_REFRESH_MIN_INTERVAL_MS) so a string of fast round
+ * transitions doesn't refresh far more often than the ad unit actually
+ * needs, and it silently no-ops if the banner isn't currently supposed to
+ * be visible at all (ads removed, or never shown yet).
+ */
+export function refreshBannerIfDue(): void {
+  if (!nativeAdsEnabled() || !bannerCurrentlyVisible) return;
+  const now = Date.now();
+  if (now - lastBannerRefreshAt < BANNER_MANUAL_REFRESH_MIN_INTERVAL_MS) return;
+  lastBannerRefreshAt = now;
+
+  void (async () => {
+    try {
+      const { AdMob, BannerAdPosition, BannerAdSize } = await loadAdMob();
+      await ensureNativeAdMobInitialized();
+      // Tear down and recreate rather than trying to "reload in place" —
+      // this is the same show/hide pair setUniversalBannerVisible already
+      // uses elsewhere, just re-triggered on our own schedule instead of
+      // AdMob's.
+      await AdMob.hideBanner();
+      await AdMob.showBanner({
+        adId: ADS_CONFIG.ADMOB_ANDROID.BANNER_ID,
+        adSize: BannerAdSize.ADAPTIVE_BANNER,
+        position: bannerCurrentPosition === 'top' ? BannerAdPosition.TOP_CENTER : BannerAdPosition.BOTTOM_CENTER,
+        isTesting: ADS_CONFIG.TEST_MODE,
+      });
+    } catch (e) {
+      console.warn('[UniversalAds] Manual banner refresh failed:', e);
+    }
+  })();
 }
