@@ -30,48 +30,32 @@ export function isCapacitorNative(): boolean {
 }
 
 /**
- * DIAGNOSTIC KILL-SWITCH — TEMPORARILY back on (`true`), for a one-build
- * test only. Do NOT merge this to main / release it like this: it silences
- * every native ad (banner + rewarded), which is real lost revenue for as
- * long as it's on.
- *
- * This same flag was used once before (see the git history right above
- * this comment) to bisect an earlier ~4.5s white-screen freeze down to
- * native AdMob specifically — that one was confirmed and fixed
- * (showUniversalInterstitialAd no longer blocks on a live ad fetch).
- * Interstitials were removed entirely after that.
- *
- * Reopening this now because of a new, very direct clue: the SAME website
- * (same JS/CSS/server URL) packaged through PWABuilder's Android WebView
- * template — which has no native AdMob plugin, no native ad SDK, no native
- * ad Views compositing alongside the WebView — does NOT reproduce the
- * white-screen freeze at all, while this Capacitor build (which does run
- * the native Google Mobile Ads SDK for the always-on bottom banner) does.
- * Same rendering engine, same code, different result — the one concrete
- * difference is the native ad SDK. This flag turns that off completely
- * (banner included, not just interstitials like the stopgap below) so a
- * single test build can directly confirm or rule out native ads as the
- * cause of the freezes that are still happening after the CSS animation
- * caps + body background fix.
+ * RESOLVED — real native ads are back on (`false`). This flag was
+ * TEMPORARILY flipped to `true` for exactly one diagnostic test build (see
+ * the git history right above this comment): it confirmed, cleanly, that
+ * native AdMob — not CSS/JS — was the cause of the recurring white-screen
+ * freeze (a PWABuilder WebView build of this same site, which has no
+ * native AdMob SDK at all, never froze; this Capacitor build, which does,
+ * did). That diagnostic build got merged to main by mistake afterward
+ * (ads were fully off in production for a bit) — this flip back to
+ * `false`, plus the banner's AdMob-dashboard refresh-rate change (set to
+ * 150s, done directly in the AdMob console, not in code) fixes that.
  */
-const DIAGNOSTIC_DISABLE_NATIVE_ADS = true;
+const DIAGNOSTIC_DISABLE_NATIVE_ADS = false;
 
 function nativeAdsEnabled(): boolean {
   return isCapacitorNative() && !DIAGNOSTIC_DISABLE_NATIVE_ADS;
 }
 
 /**
- * Interstitial ads removed by request. App.tsx no longer opens
- * InterstitialAdModal (that component and its round-transition gating in
- * requestOpenCategory were deleted) — every round transition now goes
- * straight into the next round. This flag is the belt-and-suspenders
- * half of that: it also stops preloadInterstitialAd() from fetching an
- * interstitial ad creative in the background on app start (via
- * initUniversalAds) and after every round, since nothing shows it
- * anymore anyway. Banner ads (BottomBannerAd / setUniversalBannerVisible)
- * are untouched — this only affects interstitials.
+ * RESOLVED — interstitials are back on (`false` here re-enables
+ * preloadInterstitialAd()). This was flipped to `true` when interstitials
+ * were removed entirely from App.tsx's requestOpenCategory. Restored now,
+ * by request, but with different gating logic than before: App.tsx now
+ * shows one interstitial every 3 completed rounds (before rounds 4, 7,
+ * 10, ...) instead of before every single round.
  */
-const STOPGAP_DISABLE_NATIVE_INTERSTITIAL_ONLY = true;
+const STOPGAP_DISABLE_NATIVE_INTERSTITIAL_ONLY = false;
 
 function nativeInterstitialEnabled(): boolean {
   return nativeAdsEnabled() && !STOPGAP_DISABLE_NATIVE_INTERSTITIAL_ONLY;
