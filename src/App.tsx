@@ -459,7 +459,7 @@ export default function App() {
       return null;
     }
     if (!selectedTile) {
-      return 'Pick a letter';
+      return `Move letters to form words. ${movesRemaining} moves left.`;
     }
     return 'Now swap it with an adjacent letter to form words!';
   })();
