@@ -414,7 +414,10 @@ export function convertRoundEndAssetsToCoins(
  * Purchases the "Remove All Ads" package.
  * - Sets hasRemovedAds to true
  * - Adds +100 diamonds
- * - Initial balances of power-ups become 2 each
+ * - Unlocks all rounds permanently (bypasses the 5-round rewarded-ad lock
+ *   in App.tsx's requestOpenCategory — see RoundLockModal.tsx)
+ * - Does NOT change power-up balances (those stay 1x; see App.tsx's
+ *   handlePurchaseRemoveAds and the powerUps initial state)
  */
 export function purchaseRemoveAllAds(): { progress: GameProgress } {
   const current = loadGameProgress();
