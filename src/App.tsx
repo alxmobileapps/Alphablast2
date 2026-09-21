@@ -27,7 +27,7 @@ import { PerfDebugOverlay } from './components/PerfDebugOverlay';
 import { perfMark, perfResetBaseline } from './utils/perfDebug';
 import { PortraitLockOverlay } from './components/PortraitLockOverlay';
 import { isSwipeControlsEnabled, isCluesEnabled as isCluesEnabledUtil } from './utils/settings';
-import { initUniversalAds } from './utils/universalAds';
+import { initUniversalAds, refreshBannerIfDue } from './utils/universalAds';
 import { initRemoteAdsListener } from './utils/remoteAdsService';
 import { initNativeBilling } from './utils/medianBridge';
 import { initOrientationLock } from './utils/orientation';
@@ -712,6 +712,15 @@ export default function App() {
       roundStartTimeRef.current = Date.now();
       setRoundTimeConsumed(0);
       setIsReadyPromptOpen(true);
+      // Controlled banner refresh: right here, the screen is just the
+      // static "Ready?" prompt — board generation and every gameplay
+      // animation are still a moment away (deferred below via rAF). This
+      // is the safest, most predictable idle point in the whole round
+      // cycle to let the native banner tear down/reload, instead of
+      // leaving that to AdMob's own timer, which could just as easily
+      // fire mid-effect. Time-gated internally, so this is a no-op most
+      // of the time it's called.
+      refreshBannerIfDue();
       setExplosions([]);
       setIsRoundCompleteOpen(false);
       setIsGameOverOpen(false);
