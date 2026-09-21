@@ -784,6 +784,17 @@ export default function App() {
         return;
       }
 
+      // Replaying a round the player already completed before must NEVER
+      // be gated by the lock — it only exists to gate ADVANCING into new
+      // content the player hasn't cleared yet. completeCategory() (see
+      // gameProgress.ts) records every finished round's id here, standard
+      // categories and custom ones alike, so this check covers both.
+      const alreadyCompleted = (currentProgress.completedCategoryIds || []).includes(targetCat.id);
+      if (alreadyCompleted) {
+        playCategoryRound(targetCat);
+        return;
+      }
+
       if (roundsCompletedInCycleRef.current >= ROUNDS_PER_UNLOCK_CYCLE) {
         setPendingTargetCategory(targetCat);
         setIsRoundLockOpen(true);
@@ -2822,15 +2833,9 @@ export default function App() {
             setRoundTimeConsumed(0);
           }
 
-          if (updated.hasRemovedAds) {
-            setPowerUps((prev) => ({
-              hammer: Math.max(prev.hammer, 2),
-              swap: Math.max(prev.swap, 2),
-              rearrange: Math.max(prev.rearrange, 2),
-              clue: Math.max(prev.clue, 2),
-              replace: Math.max(prev.replace, 2),
-            }));
-          }
+          // Power-up balances are always 1x now, even after a cloud-restore
+          // that brings back hasRemovedAds — no more bumping them to 2 here
+          // (see handlePurchaseRemoveAds and the powerUps initial state).
         }}
         onSelectCategory={(catId) => {
           const found = INITIAL_CATEGORIES.find((c) => c.id === catId);

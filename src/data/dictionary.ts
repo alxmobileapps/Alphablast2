@@ -82,6 +82,12 @@ const IRREGULAR_NOUN_PAIRS: [string, string][] = [
   ['ELF', 'ELVES'],
   ['SCARF', 'SCARVES'],
   ['SHEAF', 'SHEAVES'],
+  ['LOAF', 'LOAVES'],
+  ['SHELF', 'SHELVES'],
+  ['SELF', 'SELVES'],
+  ['BOOKSHELF', 'BOOKSHELVES'],
+  ['MEATLOAF', 'MEATLOAVES'],
+  ['BAYLEAF', 'BAYLEAVES'],
   ['DIE', 'DICE'],
   ['MAN', 'MEN'],
   ['WOMAN', 'WOMEN'],
@@ -120,19 +126,31 @@ const VOWELS = new Set(['A', 'E', 'I', 'O', 'U']);
 
 /**
  * Generate standard English plural forms for a given root word.
+ *
+ * A word on the irregular-noun list above gets its irregular plural
+ * PLUS whatever the sibilant/Y/O rules below would separately add (e.g.
+ * CACTUS -> CACTI and, via the sibilant rule, the also-standard
+ * "CACTUSES") — those rules are safe to keep running because none of
+ * them just tack a bare "+S" onto the word. What's suppressed is only
+ * the final catch-all "+S" rule at the bottom: without that suppression,
+ * an irregular word like FOOT or WOMAN ALSO got the bare "+S" form
+ * pushed on top of its real plural, producing fake words like "FOOTS"
+ * and "WOMANS" that then got indexed as valid, playable dictionary
+ * entries via indexCategoryWords() below.
  */
 export function getPluralForms(word: string): string[] {
   const upper = word.toUpperCase().trim();
   if (upper.length < 3) return [];
 
   const results: string[] = [];
-
-  // Check irregular plurals
-  if (singularToIrregularPlural.has(upper)) {
+  const isIrregular = singularToIrregularPlural.has(upper);
+  if (isIrregular) {
     results.push(singularToIrregularPlural.get(upper)!);
   }
 
-  // Sibilants / Box / Dish / Watch -> +ES
+  // Sibilants / Box / Dish / Watch -> +ES (e.g. BUS -> BUSES, FOX -> FOXES;
+  // also correctly fires for an irregular -US noun like CACTUS, adding the
+  // standard alternate "CACTUSES" alongside "CACTI")
   if (
     upper.endsWith('S') ||
     upper.endsWith('SH') ||
@@ -143,25 +161,33 @@ export function getPluralForms(word: string): string[] {
     results.push(upper + 'ES');
   }
 
-  // Consonant + Y -> -Y + IES (e.g. BERRY -> BERRIES, PUPPY -> PUPPIES)
+  // Consonant + Y -> -Y + IES (e.g. BERRY -> BERRIES, FRY -> FRIES);
+  // Vowel + Y -> +S (e.g. MONKEY -> MONKEYS, DAY -> DAYS). This is the
+  // ONLY plural for a Y-ending word — it must not also fall through to
+  // the generic "+S" rule below (that's what used to produce "FRYS"
+  // alongside the correct "FRIES").
+  let endsInY = false;
   if (upper.endsWith('Y') && upper.length >= 3) {
+    endsInY = true;
     const prevChar = upper[upper.length - 2];
     if (!VOWELS.has(prevChar)) {
       results.push(upper.slice(0, -1) + 'IES');
     } else {
-      results.push(upper + 'S'); // MONKEY -> MONKEYS, DAY -> DAYS
+      results.push(upper + 'S');
     }
   }
 
-  // -F or -FE -> -VES (e.g. WOLF -> WOLVES, KNIFE -> KNIVES)
-  if (upper.endsWith('FE') && upper.length >= 4) {
-    results.push(upper.slice(0, -2) + 'VES');
-  } else if (upper.endsWith('F') && upper.length >= 3) {
-    results.push(upper.slice(0, -1) + 'VES');
-    results.push(upper + 'S'); // e.g. CHIEF -> CHIEFS
-  }
+  // NOTE: there is deliberately no generic "-F/-FE -> -VES" rule here.
+  // Which -F/-FE nouns take -VES (WOLF -> WOLVES) versus a plain -S
+  // (CHIEF -> CHIEFS, GIRAFFE -> GIRAFFES) is genuinely irregular, not
+  // predictable from spelling — a blanket suffix rule can't tell them
+  // apart and was generating non-words like "CHIEVES" and "GIRAFVES".
+  // Every real -F/-FE -> -VES noun is listed explicitly above instead.
 
-  // -O preceded by consonant -> +ES and +S (e.g. HERO -> HEROES, TOMATO -> TOMATOES)
+  // -O preceded by consonant -> +ES and +S (e.g. HERO -> HEROES, TOMATO -> TOMATOES).
+  // Some -O nouns only take -OS in standard English (PIANO -> PIANOS, not
+  // "PIANOES") — both forms are generated here and left for gameplay
+  // leniency rather than trying to hard-code every exception.
   if (upper.endsWith('O') && upper.length >= 3) {
     const prevChar = upper[upper.length - 2];
     if (!VOWELS.has(prevChar)) {
@@ -170,8 +196,20 @@ export function getPluralForms(word: string): string[] {
     results.push(upper + 'S');
   }
 
-  // Standard +S for general words (e.g. CAT -> CATS, DOG -> DOGS, APPLE -> APPLES)
-  if (!upper.endsWith('S') && !upper.endsWith('Z') && !upper.endsWith('X') && !upper.endsWith('CH') && !upper.endsWith('SH')) {
+  // Standard +S for everything else (e.g. CAT -> CATS, APPLE -> APPLES).
+  // Skipped for irregular nouns — a bare "+S" is never correct for one
+  // (FOOTS, WOMANS, CHILDS, LARVAS, CRITERIONS, WOLFS, LEAFS... are none
+  // of them real words), and any of those that separately need an
+  // alternate form take it via the sibilant/Y/O rules above instead.
+  if (
+    !isIrregular &&
+    !endsInY &&
+    !upper.endsWith('S') &&
+    !upper.endsWith('Z') &&
+    !upper.endsWith('X') &&
+    !upper.endsWith('CH') &&
+    !upper.endsWith('SH')
+  ) {
     results.push(upper + 'S');
   }
 
@@ -180,38 +218,45 @@ export function getPluralForms(word: string): string[] {
 
 /**
  * Generate standard English singular forms for a given plural word.
+ *
+ * Like getPluralForms above, an irregular-plural match returns
+ * immediately instead of also falling through to the pattern rules.
+ * The rules below are also now mutually exclusive (else-if, not
+ * independent ifs) — every plural ending in "-IES" or "-VES" also ends
+ * in the more generic "-ES", so without that the old code additionally
+ * ran the generic -ES branch's unconditional "remove one letter" step on
+ * top of the correct -IES/-VES result, producing garbage stems (e.g.
+ * BERRIES, having already correctly produced "BERRY", would also
+ * produce "BERRIE"; WOLVES would also produce "WOLVE").
  */
 export function getSingularForms(word: string): string[] {
   const upper = word.toUpperCase().trim();
   if (upper.length < 3) return [];
 
+  if (irregularPluralToSingular.has(upper)) {
+    // Filtered the same as the pattern-rule path below — OXEN -> OX would
+    // otherwise slip through unfiltered here (OX is only 2 letters).
+    return [irregularPluralToSingular.get(upper)!].filter((w) => w.length >= 3);
+  }
+
   const results: string[] = [];
 
-  // Check irregular plurals to singular
-  if (irregularPluralToSingular.has(upper)) {
-    results.push(irregularPluralToSingular.get(upper)!);
-  }
-
-  // -IES -> -Y (e.g. BERRIES -> BERRY, PUPPIES -> PUPPY, FLIES -> FLY)
+  // -IES -> -Y (e.g. BERRIES -> BERRY, FRIES -> FRY)
   if (upper.endsWith('IES') && upper.length >= 5) {
     results.push(upper.slice(0, -3) + 'Y');
-  }
-
-  // Special 4-letter -IES -> -Y (e.g. FLIES is 5 letters, but just in case, ensure -IES -> -Y)
-  if (upper.endsWith('IES') && upper.length === 4) {
-    results.push(upper.slice(0, -3) + 'Y');
-  }
-
-  // -VES -> -F or -FE (e.g. WOLVES -> WOLF, KNIVES -> KNIFE, LIVES -> LIFE)
-  if (upper.endsWith('VES') && upper.length >= 5) {
+  } else if (upper.endsWith('VES') && upper.length >= 5) {
+    // -VES -> -F or -FE (e.g. WOLVES -> WOLF, KNIVES -> KNIFE) — both are
+    // left as candidates for the caller to validate; which one is real
+    // is irregular, same reasoning as getPluralForms above.
     results.push(upper.slice(0, -3) + 'F');
     results.push(upper.slice(0, -3) + 'FE');
-  }
-
-  // -ES -> remove ES (e.g. FOXES -> FOX, PEACHES -> PEACH, HEROES -> HERO, BOXES -> BOX, BUSHES -> BUSH)
-  if (upper.endsWith('ES') && upper.length >= 4) {
+  } else if (upper.endsWith('ES') && upper.length >= 4) {
+    // -ES -> remove ES (e.g. FOXES -> FOX, TOMATOES -> TOMATO) when the
+    // root plausibly takes -ES (S/X/Z/CH/SH/O) — genuinely ambiguous with
+    // "remove just the -S" (e.g. BONES -> BONE, TOES -> TOE), so both are
+    // left as candidates for the caller to validate, same as the -VES
+    // branch above.
     const base = upper.slice(0, -2);
-    // Plural -ES is only added to roots ending in S, X, Z, CH, SH, or O (e.g. FOX -> FOXES, TOMATO -> TOMATOES)
     if (
       base.endsWith('S') ||
       base.endsWith('X') ||
@@ -222,13 +267,9 @@ export function getSingularForms(word: string): string[] {
     ) {
       results.push(base);
     }
-    // Or for words ending in -E that just take -S (e.g. BONES -> BONE, CAKES -> CAKE)
     results.push(upper.slice(0, -1));
-  }
-
-  // Standard -S -> remove S (e.g. DOGS -> DOG, CATS -> CAT, APPLES -> APPLE)
-  // Must NOT end in SS, and the remaining root must NOT end in a vowel followed by nothing (e.g. FLIS is not a word)
-  if (upper.endsWith('S') && !upper.endsWith('SS') && upper.length >= 4) {
+  } else if (upper.endsWith('S') && !upper.endsWith('SS') && upper.length >= 4) {
+    // Standard -S -> remove S (e.g. DOGS -> DOG, CATS -> CAT)
     results.push(upper.slice(0, -1));
   }
 
