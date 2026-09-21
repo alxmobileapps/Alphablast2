@@ -22,7 +22,7 @@ import { HomeMenu } from './components/HomeMenu';
 import { ProfileModal } from './components/ProfileModal';
 import { SettingsModal } from './components/SettingsModal';
 import { BottomBannerAd } from './components/BottomBannerAd';
-import { InterstitialAdModal } from './components/InterstitialAdModal';
+import { RoundLockModal } from './components/RoundLockModal';
 import { PerfDebugOverlay } from './components/PerfDebugOverlay';
 import { perfMark, perfResetBaseline } from './utils/perfDebug';
 import { PortraitLockOverlay } from './components/PortraitLockOverlay';
@@ -162,8 +162,9 @@ export default function App() {
   });
   const [wordHistory, setWordHistory] = useState<WordHistoryItem[]>([]);
   const [powerUps, setPowerUps] = useState<PowerUpInventory>(() => {
-    const saved = loadGameProgress();
-    const initBal = saved.hasRemovedAds ? 2 : 1;
+    // Power-up starting balances are always 1x — purchasing "Remove All Ads"
+    // no longer doubles them (see handlePurchaseRemoveAds below).
+    const initBal = 1;
     return { hammer: initBal, swap: initBal, rearrange: initBal, clue: initBal, replace: initBal };
   });
   const [replaceTargetTile, setReplaceTargetTile] = useState<{ row: number; col: number; currentLetter: string } | null>(null);
@@ -326,13 +327,15 @@ export default function App() {
   // GO! button disabled until there's really a board to play on.
   const [isBoardReady, setIsBoardReady] = useState<boolean>(true);
   const [isRollingTiles, setIsRollingTiles] = useState<boolean>(false);
-  const [isInterstitialOpen, setIsInterstitialOpen] = useState<boolean>(false);
+  const [isRoundLockOpen, setIsRoundLockOpen] = useState<boolean>(false);
   const [pendingTargetCategory, setPendingTargetCategory] = useState<Category | null>(null);
-  // Interstitial cadence: every 3 completed rounds (before rounds 4, 7,
-  // 10, ...), not every round — restored at a slower cadence than the
-  // original per-round gating this replaced.
-  const completedCategoriesCountRef = useRef<number>(0);
-  const INTERSTITIAL_EVERY_N_ROUNDS = 3;
+  // Round-lock cadence: every 5 completed rounds, the player has to watch
+  // one rewarded ad to unlock the next 5 (before rounds 6, 11, 16, ...).
+  // Replaces the old interstitial-every-3-rounds gate entirely — no more
+  // automatic interstitials, and players who bought "Remove All Ads" skip
+  // this lock completely (see requestOpenCategory below).
+  const roundsCompletedInCycleRef = useRef<number>(0);
+  const ROUNDS_PER_UNLOCK_CYCLE = 5;
 
   // Lifeline Inactivity Prompt & Shine Animation State
   const [isLifelinePromptActive, setIsLifelinePromptActive] = useState<boolean>(false);
@@ -698,8 +701,9 @@ export default function App() {
       setFormedWords(new Set());
       formedWordsRef.current = new Set();
       alertedDuplicateSetsRef.current.clear();
-      const currentProgress = loadGameProgress();
-      const initBal = currentProgress.hasRemovedAds ? 2 : 1;
+      // Power-up starting balances are always 1x, regardless of hasRemovedAds
+      // (see handlePurchaseRemoveAds below — purchasing no longer doubles them).
+      const initBal = 1;
       setPowerUps({ hammer: initBal, swap: initBal, rearrange: initBal, clue: initBal, replace: initBal });
       setReplaceTargetTile(null);
       setSelectedTile(null);
@@ -766,25 +770,25 @@ export default function App() {
     [highlightOneMoveOpportunity]
   );
 
-  // Interstitial ads restored, by request, at a slower cadence than
-  // before: one every INTERSTITIAL_EVERY_N_ROUNDS (3) completed rounds,
-  // not before every single round. (See universalAds.ts's
-  // STOPGAP_DISABLE_NATIVE_INTERSTITIAL_ONLY, flipped back on there too.)
+  // No more automatic interstitials at all — banner and interstitial are
+  // both off (see universalAds.ts), rewarded is the only ad type left.
+  // Instead, every ROUNDS_PER_UNLOCK_CYCLE (5) completed rounds, the next
+  // batch of rounds is locked until the player watches ONE rewarded ad
+  // (RoundLockModal below). Players who bought "Remove All Ads" skip this
+  // check entirely and always play straight through.
   const requestOpenCategory = useCallback(
     (targetCat: Category) => {
       perfMark('requestOpenCategory start');
-      // If user has removed ads, proceed directly
       const currentProgress = loadGameProgress();
       if (currentProgress.hasRemovedAds) {
         playCategoryRound(targetCat);
         return;
       }
 
-      // Interstitial every INTERSTITIAL_EVERY_N_ROUNDS completed rounds
-      if (completedCategoriesCountRef.current >= INTERSTITIAL_EVERY_N_ROUNDS) {
+      if (roundsCompletedInCycleRef.current >= ROUNDS_PER_UNLOCK_CYCLE) {
         setPendingTargetCategory(targetCat);
-        setIsInterstitialOpen(true);
-        perfMark('interstitial opened (headless)');
+        setIsRoundLockOpen(true);
+        perfMark('round lock opened');
         return;
       }
 
@@ -793,15 +797,23 @@ export default function App() {
     [playCategoryRound]
   );
 
-  const handleInterstitialAdCompleted = useCallback(() => {
-    perfMark('handleInterstitialAdCompleted start');
-    setIsInterstitialOpen(false);
-    completedCategoriesCountRef.current = 0; // Reset counter for next cycle
+  const handleRoundsUnlocked = useCallback(() => {
+    perfMark('handleRoundsUnlocked start');
+    setIsRoundLockOpen(false);
+    roundsCompletedInCycleRef.current = 0; // Reset counter for next cycle
     if (pendingTargetCategory) {
       playCategoryRound(pendingTargetCategory);
       setPendingTargetCategory(null);
     }
   }, [pendingTargetCategory, playCategoryRound]);
+
+  const handleRoundLockDismissed = useCallback(() => {
+    perfMark('handleRoundLockDismissed start');
+    setIsRoundLockOpen(false);
+    setPendingTargetCategory(null);
+    // Counter is left >= ROUNDS_PER_UNLOCK_CYCLE — the next attempt to
+    // advance re-opens the same lock instead of silently proceeding.
+  }, []);
 
   const startRound = useCallback(
     (catIndex: number) => {
@@ -1012,7 +1024,7 @@ export default function App() {
             if (cat && cat.gameMode !== 'timer' && categoryProgressRef.current >= cat.targetCount) {
               perfMark('ROUND COMPLETE: last target word matched');
               haptics.roundComplete();
-              completedCategoriesCountRef.current += 1;
+              roundsCompletedInCycleRef.current += 1;
 
               const finalRoundScore = roundScoreRef.current;
               const elapsedSeconds = Math.max(1, Math.round((Date.now() - roundStartTimeRef.current) / 1000));
@@ -2295,18 +2307,22 @@ export default function App() {
   const handlePurchaseRemoveAds = () => {
     const { progress } = purchaseRemoveAllAds();
     setGameProgress(progress);
-    const vipPowerUps = {
-      hammer: 2,
-      swap: 2,
-      rearrange: 2,
-      clue: 2,
-      replace: 2,
-    };
-    setPowerUps(vipPowerUps);
-    try {
-      localStorage.setItem('alphablast_powerups', JSON.stringify(vipPowerUps));
-    } catch {}
-    triggerBanner('All Ads Removed Forever! +100 💎 & Power-ups Set to 2!', 'special', '🛡️', 'NO ADS ACTIVE');
+    // Power-up balances are NOT doubled on purchase anymore — they stay at
+    // whatever the player currently has (always started at 1x, see
+    // playCategoryRound / the powerUps initial state above).
+    triggerBanner('All Ads Removed Forever! +100 💎 & All Rounds Unlocked!', 'special', '🛡️', 'NO ADS ACTIVE');
+    // hasRemovedAds now bypasses the 5-round lock entirely (see
+    // requestOpenCategory), but if the player bought this WHILE the lock
+    // modal was open (e.g. via its "Or Remove Ads to Unlock Everything"
+    // upsell button), close it and resume the round they were trying to
+    // start instead of leaving them stuck behind a now-pointless modal.
+    if (isRoundLockOpen) {
+      setIsRoundLockOpen(false);
+      if (pendingTargetCategory) {
+        playCategoryRound(pendingTargetCategory);
+        setPendingTargetCategory(null);
+      }
+    }
     syncProgressToCloud(progress).catch((err) => {
       console.warn('Auto cloud sync after removing ads:', err);
     });
@@ -2486,7 +2502,7 @@ export default function App() {
     if (timerSecondsRemaining <= 0) {
       // Timer finished! Round completed!
       haptics.roundComplete();
-      completedCategoriesCountRef.current += 1;
+      roundsCompletedInCycleRef.current += 1;
       const elapsedSeconds = currentCategory.timerSeconds || 120;
       setRoundTimeConsumed(elapsedSeconds);
       const finalScore = roundScoreRef.current;
@@ -2968,11 +2984,13 @@ export default function App() {
         onOpenShop={handleOpenShop}
       />
 
-      {/* Interstitial Ad: shown every 3 completed rounds — headless, no UI of its own */}
-      <InterstitialAdModal
-        isOpen={isInterstitialOpen}
-        hasRemovedAds={gameProgress.hasRemovedAds}
-        onAdCompleted={handleInterstitialAdCompleted}
+      {/* Round Lock: shown every 5 completed rounds — one rewarded ad unlocks the next 5 */}
+      <RoundLockModal
+        isOpen={isRoundLockOpen}
+        roundsPerCycle={ROUNDS_PER_UNLOCK_CYCLE}
+        onUnlocked={handleRoundsUnlocked}
+        onClose={handleRoundLockDismissed}
+        onOpenShop={handleOpenShop}
       />
 
       {/* Bottom Banner Ad across the screen */}

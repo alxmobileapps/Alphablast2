@@ -11,11 +11,11 @@
  */
 
 export const ADS_CONFIG = {
-  // Back to false (real ads, not Google's TEST creative). See
-  // universalAds.ts and InterstitialAdModal.tsx / BottomBannerAd.tsx for
-  // the current diagnostic: every native-ad on/off toggle so far left the
-  // interstitial modal's expensive full-screen blur active regardless, so
-  // that's what's being isolated now instead of these ad-network flags.
+  // Back to false (real ads, not Google's TEST creative). Rewarded ads are
+  // now the only native ad type — banner and interstitial are both
+  // permanently off (see universalAds.ts). Rounds lock every 5 completed
+  // rounds until the player watches one rewarded ad (RoundLockModal.tsx),
+  // unless they've purchased "Remove All Ads" (com.wordblast.removeads).
   TEST_MODE: false,
 
   // --------------------------------------------------------------------------

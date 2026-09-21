@@ -119,7 +119,7 @@ export const ShopModal: React.FC<ShopModalProps> = ({
           onPurchaseRemoveAds();
           haptics.specialCreated();
           playWin();
-          showNotification('All Ads Removed! +100 Diamonds & Power-ups Set to 2!');
+          showNotification('All Ads Removed! +100 Diamonds & All Rounds Unlocked!');
         }
       } else {
         if (res?.error && (res.error.includes('Android') || res.error.includes('Google Play'))) {
@@ -361,13 +361,13 @@ export const ShopModal: React.FC<ShopModalProps> = ({
                       ? 'bg-emerald-400 text-emerald-950'
                       : 'bg-amber-400 text-amber-950'
                   }`}>
-                    {hasRemovedAds ? 'ACTIVE' : '$6.99 • VIP PACK'}
+                    {hasRemovedAds ? 'ACTIVE' : '$4.99 • VIP PACK'}
                   </span>
                 </div>
                 <p className="text-[11px] text-blue-200 mt-0.5">
                   {hasRemovedAds
                     ? 'All Ads Removed! Enjoy uninterrupted play.'
-                    : 'Permanently removes all ads + Instantly get 100 💎 Diamonds + Power-ups balance set to 2 each!'}
+                    : 'Permanently removes all ads + unlocks all rounds forever + Instantly get 100 💎 Diamonds!'}
                 </p>
               </div>
             </div>
@@ -389,7 +389,7 @@ export const ShopModal: React.FC<ShopModalProps> = ({
                   </>
                 ) : (
                   <>
-                    <span>$6.99 Buy</span>
+                    <span>$4.99 Buy</span>
                     <span>🚀</span>
                   </>
                 )}
