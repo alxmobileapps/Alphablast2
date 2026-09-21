@@ -814,6 +814,20 @@ export default function App() {
     // advance re-opens the same lock instead of silently proceeding.
   }, []);
 
+  // RoundLockModal's "Or Remove Ads to Unlock Everything" upsell button —
+  // ShopModal and RoundLockModal render at the same z-50 stacking level, and
+  // RoundLockModal is mounted after ShopModal in the JSX below, so simply
+  // opening the shop while leaving isRoundLockOpen true left the lock
+  // window visually on top of it (looked like the button did nothing /
+  // the lock window never closed). Close the lock here first — but keep
+  // pendingTargetCategory set (don't clear it, unlike handleRoundLockDismissed)
+  // so handlePurchaseRemoveAds can still auto-resume the round if they go
+  // through with the purchase.
+  const handleOpenShopFromRoundLock = useCallback(() => {
+    setIsRoundLockOpen(false);
+    handleOpenShop();
+  }, [handleOpenShop]);
+
   const startRound = useCallback(
     (catIndex: number) => {
       const targetCat = INITIAL_CATEGORIES[catIndex] || INITIAL_CATEGORIES[0];
@@ -2311,16 +2325,17 @@ export default function App() {
     // playCategoryRound / the powerUps initial state above).
     triggerBanner('All Ads Removed Forever! +100 💎 & All Rounds Unlocked!', 'special', '🛡️', 'NO ADS ACTIVE');
     // hasRemovedAds now bypasses the 5-round lock entirely (see
-    // requestOpenCategory), but if the player bought this WHILE the lock
-    // modal was open (e.g. via its "Or Remove Ads to Unlock Everything"
-    // upsell button), close it and resume the round they were trying to
-    // start instead of leaving them stuck behind a now-pointless modal.
-    if (isRoundLockOpen) {
-      setIsRoundLockOpen(false);
-      if (pendingTargetCategory) {
-        playCategoryRound(pendingTargetCategory);
-        setPendingTargetCategory(null);
-      }
+    // requestOpenCategory). If the player reached the Shop via the lock
+    // modal's "Or Remove Ads to Unlock Everything" upsell button,
+    // handleOpenShopFromRoundLock already closed that modal (so it doesn't
+    // sit on top of the Shop) but deliberately left pendingTargetCategory
+    // set — check that directly here (not isRoundLockOpen, which is
+    // already false by now) and resume the round they were trying to
+    // start instead of leaving them stuck back at the category screen.
+    setIsRoundLockOpen(false);
+    if (pendingTargetCategory) {
+      playCategoryRound(pendingTargetCategory);
+      setPendingTargetCategory(null);
     }
     syncProgressToCloud(progress).catch((err) => {
       console.warn('Auto cloud sync after removing ads:', err);
@@ -2983,7 +2998,7 @@ export default function App() {
         roundsPerCycle={ROUNDS_PER_UNLOCK_CYCLE}
         onUnlocked={handleRoundsUnlocked}
         onClose={handleRoundLockDismissed}
-        onOpenShop={handleOpenShop}
+        onOpenShop={handleOpenShopFromRoundLock}
       />
 
       {/* Bottom Banner Ad across the screen */}
