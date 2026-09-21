@@ -30,21 +30,31 @@ export function isCapacitorNative(): boolean {
 }
 
 /**
- * RESOLVED — this used to be a diagnostic kill-switch while we isolated the
- * ~4.5s white-screen freeze reported after round completion (a two-round
- * bisection confirmed it was native AdMob, not native Billing — see the
- * `diagnostic-disable-ads-billing` / `diagnostic-reenable-billing-only`
- * branches). Root cause: showUniversalInterstitialAd() would, if the next
- * interstitial hadn't finished preloading yet, `await AdMob.prepareInterstitial()`
- * live and then show it — blocking on a real network fetch of the ad
- * creative before the native ad Activity could paint anything, which is
- * exactly the multi-second blank/white transition that was reported. The
- * actual fix is below (showUniversalInterstitialAd now skips the ad
- * entirely rather than blocking when it isn't preloaded in time, and
- * preloadInterstitialAd retries on failure instead of giving up silently).
- * Native ads are back on (`false` here) as part of that fix.
+ * DIAGNOSTIC KILL-SWITCH — TEMPORARILY back on (`true`), for a one-build
+ * test only. Do NOT merge this to main / release it like this: it silences
+ * every native ad (banner + rewarded), which is real lost revenue for as
+ * long as it's on.
+ *
+ * This same flag was used once before (see the git history right above
+ * this comment) to bisect an earlier ~4.5s white-screen freeze down to
+ * native AdMob specifically — that one was confirmed and fixed
+ * (showUniversalInterstitialAd no longer blocks on a live ad fetch).
+ * Interstitials were removed entirely after that.
+ *
+ * Reopening this now because of a new, very direct clue: the SAME website
+ * (same JS/CSS/server URL) packaged through PWABuilder's Android WebView
+ * template — which has no native AdMob plugin, no native ad SDK, no native
+ * ad Views compositing alongside the WebView — does NOT reproduce the
+ * white-screen freeze at all, while this Capacitor build (which does run
+ * the native Google Mobile Ads SDK for the always-on bottom banner) does.
+ * Same rendering engine, same code, different result — the one concrete
+ * difference is the native ad SDK. This flag turns that off completely
+ * (banner included, not just interstitials like the stopgap below) so a
+ * single test build can directly confirm or rule out native ads as the
+ * cause of the freezes that are still happening after the CSS animation
+ * caps + body background fix.
  */
-const DIAGNOSTIC_DISABLE_NATIVE_ADS = false;
+const DIAGNOSTIC_DISABLE_NATIVE_ADS = true;
 
 function nativeAdsEnabled(): boolean {
   return isCapacitorNative() && !DIAGNOSTIC_DISABLE_NATIVE_ADS;
