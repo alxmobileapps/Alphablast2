@@ -23,7 +23,6 @@ import { ProfileModal } from './components/ProfileModal';
 import { SettingsModal } from './components/SettingsModal';
 import { BottomBannerAd } from './components/BottomBannerAd';
 import { RoundLockModal } from './components/RoundLockModal';
-import { PerfDebugOverlay } from './components/PerfDebugOverlay';
 import { perfMark, perfResetBaseline } from './utils/perfDebug';
 import { PortraitLockOverlay } from './components/PortraitLockOverlay';
 import { isSwipeControlsEnabled, isCluesEnabled as isCluesEnabledUtil } from './utils/settings';
@@ -2591,12 +2590,6 @@ export default function App() {
     <div
       className="h-[100dvh] max-h-[100dvh] w-full bg-[#071330] text-white flex flex-col font-sans selection:bg-[#0EA5E9] selection:text-white overflow-hidden pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]"
     >
-      {/* TEMPORARY diagnostic overlay — see utils/perfDebug.ts. Shows a
-          live timing breakdown of the round-transition steps directly on
-          screen, so a screenshot after a freeze is enough to see which
-          step took long, with no USB debugging / DevTools needed. */}
-      <PerfDebugOverlay />
-
       {/*
         Android (Capacitor) note: on Android 15 / SDK 35, the OS enforces
         edge-to-edge rendering and effectively ignores the native
