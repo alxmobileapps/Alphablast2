@@ -214,6 +214,12 @@ export const CreateCategoryModal: React.FC<CreateCategoryModalProps> = ({
         const combined = Array.from(new Set([...parsedWords, ...suggestions]));
         setWordsInput(combined.join(', '));
         playRewardRefill();
+      } else {
+        // Previously a silent no-op -- from the player's side this looked
+        // exactly like "nothing changed", indistinguishable from the
+        // suggestions-don't-update bug this whole thing was meant to catch.
+        // Now it says so instead of failing silently.
+        setErrorMessage('Could not get word suggestions right now. Please try again.');
       }
     } catch (err: any) {
       console.error('AI Suggestion error:', err);
