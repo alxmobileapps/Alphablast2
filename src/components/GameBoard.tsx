@@ -341,7 +341,9 @@ const GameBoardImpl: React.FC<GameBoardProps> = ({
             width: '100%',
           }}
         >
-          {/* Small Alerts On Duplicate/Plural Words Directly On The Word Itself (Lasts 3s) */}
+          {/* Small Alerts Directly On The Word Itself (Lasts 3s) -- covers both
+              duplicate/plural re-forms and US/UK region-spelling mismatches;
+              alert.message/alert.icon carry the specific text/emoji to show. */}
           {wordAlerts &&
             wordAlerts.map((alert) => {
               const topPct = (alert.row + 0.5) * 12.5;
@@ -356,9 +358,9 @@ const GameBoardImpl: React.FC<GameBoardProps> = ({
                   }}
                 >
                   <div className="relative bg-amber-950/80 backdrop-blur-md border-2 border-amber-300 text-amber-200 px-3 py-1 rounded-full shadow-[0_6px_20px_rgba(0,0,0,0.7),0_0_15px_rgba(251,191,36,0.6)] flex items-center gap-1.5 whitespace-nowrap">
-                    <span className="text-xs">⚠️</span>
+                    <span className="text-xs">{alert.icon || '⚠️'}</span>
                     <span className="font-black text-[11px] sm:text-xs tracking-wide">
-                      "{alert.word}" already formed!
+                      {alert.message}
                     </span>
                     {/* Speech Pointer Arrow */}
                     <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-2.5 h-2.5 bg-amber-950/80 border-r-2 border-b-2 border-amber-300 rotate-45" />

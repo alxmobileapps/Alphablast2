@@ -415,6 +415,27 @@ export function isCategoryWord(word: string, categoryId: number): boolean {
   return true;
 }
 
+/**
+ * If `word` belongs to the given category's word set under EITHER
+ * spelling, but only validates as the OTHER region's spelling (the one
+ * isCategoryWord would just have rejected), returns which region that
+ * spelling belongs to ('US' or 'UK') -- so the game can show a "this is
+ * a UK word" style tip instead of silently doing nothing. Returns null
+ * when the word isn't a category word at all, has no US/UK distinction,
+ * or already matches the current preference.
+ */
+export function getCategoryWordRegionMismatch(word: string, categoryId: number): SpellingPreference | null {
+  if (!word || word.length < 3) return null;
+  const upper = word.toUpperCase().trim();
+  const catSet = categoryWordSets.get(categoryId);
+  if (!catSet || !catSet.has(upper)) return null;
+
+  const owner = wordSpellingOwner.get(upper);
+  if (!owner || owner === currentSpellingPreference) return null;
+
+  return owner;
+}
+
 export function registerDynamicWord(word: string, categoryId?: number) {
   if (!word || word.length < 3) return;
   const clean = word.toUpperCase().replace(/[^A-Z]/g, '');

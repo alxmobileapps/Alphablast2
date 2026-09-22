@@ -117,5 +117,6 @@ export interface WordAlert {
   row: number; // centroid row percentage/coordinate
   col: number; // centroid col percentage/coordinate
   message: string;
+  icon?: string; // defaults to the warning emoji when omitted (see GameBoard)
 }
 

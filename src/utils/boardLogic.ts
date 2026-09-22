@@ -1,5 +1,12 @@
 import { Tile, SpecialTileType, WordMatch, ClueInfo, Category, WordDirection } from '../types';
-import { isValidWord, isCategoryWord, getCategoryById, getPluralForms, getSingularForms } from '../data/dictionary';
+import {
+  isValidWord,
+  isCategoryWord,
+  getCategoryById,
+  getPluralForms,
+  getSingularForms,
+  getCategoryWordRegionMismatch,
+} from '../data/dictionary';
 import { INITIAL_CATEGORIES } from '../data/categories';
 
 export const BOARD_SIZE = 8;
@@ -186,9 +193,21 @@ export interface DuplicateWordMatch {
   tiles: { row: number; col: number; id: string; letter: string; special: SpecialTileType }[];
 }
 
+// A word formed on the board that WOULD be a category word, except its
+// spelling belongs to the other US/UK region from the player's current
+// preference (e.g. "COLOUR" formed while set to US) -- see
+// getCategoryWordRegionMismatch. `region` is which region that spelling
+// belongs to, not the player's current preference.
+export interface RegionMismatchMatch {
+  word: string;
+  region: 'US' | 'UK';
+  tiles: { row: number; col: number; id: string; letter: string; special: SpecialTileType }[];
+}
+
 export interface BoardWordScanResult {
   matches: WordMatch[];
   duplicates: DuplicateWordMatch[];
+  regionMismatches: RegionMismatchMatch[];
 }
 
 // Find all valid 3+ letter words belonging STRICTLY to the active category in ANY direction
@@ -200,6 +219,7 @@ export function findCategoryWordsWithDuplicateCheck(
 ): BoardWordScanResult {
   const matches: WordMatch[] = [];
   const duplicates: DuplicateWordMatch[] = [];
+  const regionMismatches: RegionMismatchMatch[] = [];
   const matchedPositions = new Set<string>();
   const matchedLineKeys = new Set<string>();
 
@@ -291,13 +311,21 @@ export function findCategoryWordsWithDuplicateCheck(
             for (const pos of linePosKeys) {
               matchedPositions.add(pos);
             }
+          } else {
+            // Not accepted as-is -- but would it be a category word in the
+            // OTHER US/UK spelling? If so, surface it as a region mismatch
+            // instead of silently doing nothing (see getCategoryWordRegionMismatch).
+            const mismatchRegion = getCategoryWordRegionMismatch(word, categoryId);
+            if (mismatchRegion) {
+              regionMismatches.push({ word: upperWord, region: mismatchRegion, tiles });
+            }
           }
         }
       }
     }
   }
 
-  return { matches, duplicates };
+  return { matches, duplicates, regionMismatches };
 }
 
 // Legacy helper wrapping the new duplicate-aware scanner

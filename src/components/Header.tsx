@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Menu, Plus, Home } from 'lucide-react';
 import { Category } from '../types';
 import { formatPoints } from '../utils/scoring';
+import { SpellingPreference } from '../utils/settings';
 
 interface HeaderProps {
   category: Category;
@@ -11,6 +12,7 @@ interface HeaderProps {
   score?: number;
   coins?: number;
   diamonds?: number;
+  spellingPreference?: SpellingPreference;
   onOpenCategories: () => void;
   onOpenHome?: () => void;
   onOpenLeaderboard?: () => void;
@@ -34,6 +36,7 @@ const HeaderImpl: React.FC<HeaderProps> = ({
   score = 0,
   coins = 0,
   diamonds = 0,
+  spellingPreference,
   onOpenCategories,
   onOpenHome,
   onOpenShop,
@@ -133,6 +136,20 @@ const HeaderImpl: React.FC<HeaderProps> = ({
               isGlowing ? 'border-amber-400 shadow-[0_0_15px_rgba(251,191,36,0.6)]' : 'border-[#244CB2] shadow-md'
             } rounded-xl sm:rounded-2xl px-2.5 sm:px-3.5 py-1 flex items-center justify-between gap-1.5 text-left transition-all duration-300`}
           >
+            {/* Small US/UK spelling-preference badge pinned to the points
+                card's corner -- lets the player see at a glance which
+                word spelling the game is currently validating against
+                (Settings > Spelling controls this). */}
+            {spellingPreference && (
+              <div
+                className="absolute -top-1.5 -right-1.5 bg-[#050D24] border border-[#244CB2] rounded-full px-1.5 py-0.5 text-[7.5px] sm:text-[8.5px] font-black text-blue-200 shadow-md flex items-center gap-0.5 z-10"
+                title={`Word spelling set to ${spellingPreference} -- change in Settings`}
+              >
+                <span>{spellingPreference === 'UK' ? '🇬🇧' : '🇺🇸'}</span>
+                <span>{spellingPreference}</span>
+              </div>
+            )}
+
             {/* Floating +Points animation positioned directly below points section */}
             {scoreGain && (
               <div
@@ -207,7 +224,8 @@ function headerPropsAreEqual(prev: HeaderProps, next: HeaderProps): boolean {
     prev.movesGainedBonus === next.movesGainedBonus &&
     prev.score === next.score &&
     prev.coins === next.coins &&
-    prev.diamonds === next.diamonds
+    prev.diamonds === next.diamonds &&
+    prev.spellingPreference === next.spellingPreference
   );
 }
 

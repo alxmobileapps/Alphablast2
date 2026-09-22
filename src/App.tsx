@@ -182,6 +182,10 @@ export default function App() {
   // Track already alerted duplicate words so the alert is never repeated for the same set of letters
   const alertedDuplicateSetsRef = useRef<Set<string>>(new Set());
 
+  // Same idea as alertedDuplicateSetsRef above, but for the "this is a
+  // UK/US word" region-mismatch tip -- never repeated for the same tiles.
+  const alertedRegionMismatchSetsRef = useRef<Set<string>>(new Set());
+
   // Inactivity Timer & Thinking Robot Clue (5s initial inactivity, 12s cooldown upon closing)
   const lastActivityTimeRef = useRef<number>(Date.now());
   const clueDismissedUntilRef = useRef<number>(0);
@@ -717,6 +721,7 @@ export default function App() {
       setFormedWords(new Set());
       formedWordsRef.current = new Set();
       alertedDuplicateSetsRef.current.clear();
+      alertedRegionMismatchSetsRef.current.clear();
       // Power-up starting balances are always 1x, regardless of hasRemovedAds
       // (see handlePurchaseRemoveAds below — purchasing no longer doubles them).
       const initBal = 1;
@@ -876,7 +881,7 @@ export default function App() {
         loopCount++;
         perfMark(`resolveBoard loop #${loopCount}: board scan starting`);
         // REQUIREMENT: A word can only be formed once! (Including its plural / root forms)
-        const { matches, duplicates } = findCategoryWordsWithDuplicateCheck(
+        const { matches, duplicates, regionMismatches } = findCategoryWordsWithDuplicateCheck(
           activeBoard,
           catId,
           formedWordsRef.current
@@ -936,6 +941,39 @@ export default function App() {
                 )
               );
             }, 1000);
+          });
+        }
+
+        // Tip the player off when a formed word is a real word but only in
+        // the OTHER US/UK region's spelling from their current Settings
+        // preference (e.g. "COLOUR" formed while set to US) -- otherwise
+        // it just silently doesn't count, with no clue why.
+        // REQUIREMENT: Once given for a set of letters, don't repeat it.
+        if (regionMismatches.length > 0) {
+          regionMismatches.forEach((mismatch) => {
+            const tileIdsKey = mismatch.tiles.map((t) => t.id).sort().join('-');
+            const alertKey = `${mismatch.word}:${tileIdsKey}`;
+            if (alertedRegionMismatchSetsRef.current.has(alertKey)) {
+              return;
+            }
+            alertedRegionMismatchSetsRef.current.add(alertKey);
+
+            const avgRow = mismatch.tiles.reduce((acc, t) => acc + t.row, 0) / mismatch.tiles.length;
+            const avgCol = mismatch.tiles.reduce((acc, t) => acc + t.col, 0) / mismatch.tiles.length;
+            const alertId = `region-${Date.now()}-${Math.random()}`;
+            const newAlert: WordAlert = {
+              id: alertId,
+              word: mismatch.word,
+              row: avgRow,
+              col: avgCol,
+              message: mismatch.region === 'UK' ? 'This is a UK word.' : 'This is a US word.',
+              icon: mismatch.region === 'UK' ? '🇬🇧' : '🇺🇸',
+            };
+
+            setWordAlerts((prev) => [...prev, newAlert]);
+            setTimeout(() => {
+              setWordAlerts((prev) => prev.filter((a) => a.id !== alertId));
+            }, 3000);
           });
         }
 
@@ -2676,6 +2714,7 @@ export default function App() {
               score={roundScore}
               coins={gameProgress.coins || 0}
               diamonds={gameProgress.diamonds || 0}
+              spellingPreference={spellingPreference}
               onOpenCategories={() => setIsCategoryModalOpen(true)}
               onOpenHome={() => setCurrentScreen('menu')}
               onOpenShop={handleOpenShop}
@@ -2832,6 +2871,7 @@ export default function App() {
             setFormedWords(new Set());
             formedWordsRef.current = new Set();
             alertedDuplicateSetsRef.current.clear();
+            alertedRegionMismatchSetsRef.current.clear();
             const freshBoard = generateInitialBoard(targetCat.id);
             setBoard(freshBoard);
             roundStartTimeRef.current = Date.now();
