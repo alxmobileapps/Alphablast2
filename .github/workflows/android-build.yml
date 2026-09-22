@@ -20,6 +20,12 @@ name: Android Build (APK/AAB)
 # Secrets and variables -> Actions -> Variables) to your live Firebase Hosting URL
 # so the packaged app can reach /api/gemini/* for AI word generation. Without it,
 # the app bundles dist/ as a fully local build and those endpoints won't resolve.
+#
+# versionCode (required for every Play Console upload after the first): auto-set
+# from the GitHub Actions run number (always increasing) via
+# scripts/patch-android-version.cjs -- see that file for what to do if Play
+# Console ever rejects a build for too LOW a version code (set the
+# ANDROID_VERSION_CODE_OFFSET repo variable).
 
 on:
   push:
@@ -68,6 +74,12 @@ jobs:
 
       - name: Sync Capacitor -> Android
         run: bunx cap sync android
+
+      - name: Set Android versionCode/versionName (so repeat Play Console uploads don't collide)
+        run: node scripts/patch-android-version.cjs
+        env:
+          ANDROID_VERSION_CODE_BASE: ${{ github.run_number }}
+          ANDROID_VERSION_CODE_OFFSET: ${{ vars.ANDROID_VERSION_CODE_OFFSET }}
 
       - name: Ensure AdMob Application ID is in AndroidManifest.xml
         run: node scripts/patch-android-manifest.cjs

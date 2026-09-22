@@ -90,7 +90,28 @@ The workflow auto-generates Android launcher icons + a splash screen from
 a dedicated `public/splash.png`) if you want different branding for the app
 vs. the web favicon.
 
-### 6. Testing locally (optional)
+### 6. Getting the signed AAB for Play Console, every time
+
+1. Push to `main` (or run the workflow manually from the **Actions** tab ->
+   "Android Build (APK/AAB)" -> **Run workflow**).
+2. Wait for the run to finish, then open it and scroll to **Artifacts**.
+3. Download **`alphablast-release-aab-signed`** -- that `.aab` file is what
+   you upload to Play Console (Release -> your track -> Create new release).
+   (`alphablast-release-apk-signed` is a signed APK for sideloading/testing
+   on a device; `alphablast-debug-apk` is debug-only, never upload that one.)
+
+Every one of these builds computes its own `versionCode` automatically from
+the GitHub Actions run number (see `scripts/patch-android-version.cjs`), so
+each new build you download always has a higher version code than the last
+-- you don't have to track or bump it by hand, and repeat uploads to an
+existing Play Console listing won't get rejected for reusing one. The one
+time you'd need to step in: if Play Console ever says a build's version code
+is still too LOW (for example after a manual upload from Android Studio with
+a hand-set higher number), add a repo variable **`ANDROID_VERSION_CODE_OFFSET`**
+(Settings -> Secrets and variables -> Actions -> Variables) set high enough
+to clear it, and future builds will account for it automatically.
+
+### 7. Testing locally (optional)
 
 If you'd rather iterate locally instead of waiting on CI each time:
 
