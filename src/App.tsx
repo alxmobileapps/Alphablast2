@@ -55,7 +55,6 @@ import {
   checkAndAwardDiamondMilestones,
   convertRoundEndAssetsToCoins,
   purchaseRemoveAllAds,
-  resetGameProgress,
   ROUNDS_PER_UNLOCK_BLOCK,
   isRoundBlockUnlocked,
   unlockNextRoundBlock,
@@ -2609,17 +2608,6 @@ export default function App() {
     wordHistory,
   ]);
 
-  const handleResetGameData = () => {
-    localStorage.removeItem('alphablast_first_category_tips_completed');
-    setHasCompletedFirstCategoryTutorial(false);
-    setIsTutorialTipDismissed(false);
-    lastTutorialActivityRef.current = Date.now();
-    const fresh = resetGameProgress();
-    setGameProgress(fresh);
-    playCategoryRound(INITIAL_CATEGORIES[0]);
-    triggerBanner('Progress has been reset to Round 1', 'special', '🔄', 'RESET', 3000);
-  };
-
   return (
     <div
       className="h-[100dvh] max-h-[100dvh] w-full bg-[#071330] text-white flex flex-col font-sans selection:bg-[#0EA5E9] selection:text-white overflow-hidden pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]"
@@ -2858,7 +2846,6 @@ export default function App() {
       <SettingsModal
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
-        onResetProgress={handleResetGameData}
         isSwipeEnabled={isSwipeEnabled}
         onToggleSwipe={setIsSwipeEnabled}
         isCluesEnabled={isCluesEnabled}

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Volume2, VolumeX, Music, Smartphone, RotateCcw, ShieldAlert, ArrowLeftRight, Lightbulb, Flame, Shield, Languages } from 'lucide-react';
+import { X, Volume2, VolumeX, Music, Smartphone, ArrowLeftRight, Lightbulb, Flame, Languages } from 'lucide-react';
 import { isSoundEnabled, toggleSound, isMusicEnabled, toggleMusic } from '../utils/audio';
 import {
   isSwipeControlsEnabled,
@@ -11,12 +11,10 @@ import {
   SpellingPreference,
 } from '../utils/settings';
 import { haptics } from '../utils/haptics';
-import { PrivacyModal } from './PrivacyModal';
 
 interface SettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onResetProgress?: () => void;
   isSwipeEnabled?: boolean;
   onToggleSwipe?: (enabled: boolean) => void;
   isCluesEnabled?: boolean;
@@ -28,7 +26,6 @@ interface SettingsModalProps {
 export const SettingsModal: React.FC<SettingsModalProps> = ({
   isOpen,
   onClose,
-  onResetProgress,
   isSwipeEnabled,
   onToggleSwipe,
   isCluesEnabled,
@@ -46,8 +43,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     isCluesEnabled !== undefined ? isCluesEnabled : isCluesEnabledUtil()
   );
   const [spelling, setSpelling] = useState<SpellingPreference>(() => getSpellingPreference());
-  const [confirmReset, setConfirmReset] = useState<boolean>(false);
-  const [showPrivacy, setShowPrivacy] = useState<boolean>(false);
 
   // Sync state whenever modal opens
   useEffect(() => {
@@ -108,15 +103,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     }
     haptics.tap();
   };
-
-  const handlePerformReset = () => {
-    if (onResetProgress) {
-      onResetProgress();
-    }
-    setConfirmReset(false);
-    onClose();
-  };
-
 
   return (
     <div
@@ -322,74 +308,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               </button>
             </div>
 
-            {/* 6. Privacy Policy & Data */}
-            <div className="bg-[#0C2158] border border-[#1E3A8A] rounded-2xl p-3.5 flex items-center justify-between shadow-inner">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-sky-950/60 border border-sky-500/50 text-sky-400 flex items-center justify-center">
-                  <Shield className="w-5 h-5" />
-                </div>
-                <div>
-                  <div className="font-black text-sm text-white">Privacy Policy</div>
-                  <div className="text-[11px] text-cyan-200/70">AdSense, cookies & user data rights</div>
-                </div>
-              </div>
-
-              <button
-                id="settings-privacy-policy-btn"
-                onClick={() => setShowPrivacy(true)}
-                className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 border border-sky-300 text-white font-black text-xs transition-all shadow-md shadow-sky-500/20 cursor-pointer"
-              >
-                View
-              </button>
-            </div>
-
-            {/* 7. Reset Data Section */}
-            <div className="bg-[#0C2158] border border-[#1E3A8A] rounded-2xl p-3.5 shadow-inner">
-              {confirmReset ? (
-                <div className="space-y-2 text-center animate-fade-in">
-                  <div className="flex items-center justify-center gap-1.5 text-rose-400 font-black text-xs uppercase">
-                    <ShieldAlert className="w-4 h-4" />
-                    <span>Confirm Reset Progress?</span>
-                  </div>
-                  <p className="text-[11px] text-cyan-200/80">
-                    This will clear all unlocked categories, high scores, coins, and stars.
-                  </p>
-                  <div className="flex items-center gap-2 pt-1">
-                    <button
-                      onClick={() => setConfirmReset(false)}
-                      className="flex-1 py-2 px-3 rounded-xl bg-gray-700 hover:bg-gray-600 text-white font-black text-xs cursor-pointer"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      onClick={handlePerformReset}
-                      className="flex-1 py-2 px-3 rounded-xl bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-700 hover:to-red-700 text-white font-black text-xs shadow-md cursor-pointer"
-                    >
-                      Yes, Reset
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-rose-950/60 border border-rose-600/40 text-rose-400 flex items-center justify-center">
-                      <RotateCcw className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <div className="font-black text-sm text-white">Reset Game Data</div>
-                      <div className="text-[11px] text-cyan-200/70">Clear categories & restart from Category 1</div>
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={() => setConfirmReset(true)}
-                    className="px-3.5 py-1.5 rounded-xl bg-rose-900/60 hover:bg-rose-800 border border-rose-500/60 text-rose-200 font-black text-xs transition-all cursor-pointer"
-                  >
-                    Reset
-                  </button>
-                </div>
-              )}
-            </div>
           </div>
 
           {/* Footer Close Button */}
@@ -403,12 +321,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           </div>
         </div>
       </div>
-
-      {/* Embedded Privacy Policy Modal */}
-      <PrivacyModal
-        isOpen={showPrivacy}
-        onClose={() => setShowPrivacy(false)}
-      />
     </div>
   );
 };
