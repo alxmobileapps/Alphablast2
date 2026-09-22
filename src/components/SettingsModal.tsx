@@ -1,7 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { X, Volume2, VolumeX, Music, Smartphone, RotateCcw, ShieldAlert, ArrowLeftRight, Lightbulb, Flame, Shield } from 'lucide-react';
+import { X, Volume2, VolumeX, Music, Smartphone, RotateCcw, ShieldAlert, ArrowLeftRight, Lightbulb, Flame, Shield, Languages } from 'lucide-react';
 import { isSoundEnabled, toggleSound, isMusicEnabled, toggleMusic } from '../utils/audio';
-import { isSwipeControlsEnabled, setSwipeControlsEnabled, isCluesEnabled as isCluesEnabledUtil, setCluesEnabled as setCluesEnabledUtil } from '../utils/settings';
+import {
+  isSwipeControlsEnabled,
+  setSwipeControlsEnabled,
+  isCluesEnabled as isCluesEnabledUtil,
+  setCluesEnabled as setCluesEnabledUtil,
+  getSpellingPreference,
+  setSpellingPreference,
+  SpellingPreference,
+} from '../utils/settings';
 import { haptics } from '../utils/haptics';
 import { PrivacyModal } from './PrivacyModal';
 
@@ -14,6 +22,7 @@ interface SettingsModalProps {
   isCluesEnabled?: boolean;
   onToggleClues?: (enabled: boolean) => void;
   onTriggerFireWipeoutDemo?: () => void;
+  onSpellingPreferenceChange?: (pref: SpellingPreference) => void;
 }
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({
@@ -25,6 +34,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   isCluesEnabled,
   onToggleClues,
   onTriggerFireWipeoutDemo,
+  onSpellingPreferenceChange,
 }) => {
   const [sound, setSound] = useState<boolean>(() => isSoundEnabled());
   const [music, setMusic] = useState<boolean>(() => isMusicEnabled());
@@ -35,6 +45,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [clues, setClues] = useState<boolean>(() =>
     isCluesEnabled !== undefined ? isCluesEnabled : isCluesEnabledUtil()
   );
+  const [spelling, setSpelling] = useState<SpellingPreference>(() => getSpellingPreference());
   const [confirmReset, setConfirmReset] = useState<boolean>(false);
   const [showPrivacy, setShowPrivacy] = useState<boolean>(false);
 
@@ -84,6 +95,16 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     setCluesEnabledUtil(next);
     if (onToggleClues) {
       onToggleClues(next);
+    }
+    haptics.tap();
+  };
+
+  const handleToggleSpelling = () => {
+    const next: SpellingPreference = spelling === 'US' ? 'UK' : 'US';
+    setSpelling(next);
+    setSpellingPreference(next);
+    if (onSpellingPreferenceChange) {
+      onSpellingPreferenceChange(next);
     }
     haptics.tap();
   };
@@ -272,6 +293,33 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 }`}
               >
                 {clues ? 'ON' : 'OFF'}
+              </button>
+            </div>
+
+            {/* 5b. Spelling Display (US/UK) — words are always accepted
+                either way; this only changes which spelling category
+                names are shown in (defaults to a guess from your device's
+                region the first time you open this). */}
+            <div className="bg-[#0C2158] border border-[#1E3A8A] rounded-2xl p-3.5 flex items-center justify-between shadow-inner">
+              <div className="flex items-center gap-3">
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center border ${
+                  'bg-sky-900/60 border-sky-400 text-sky-300'
+                }`}>
+                  <Languages className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="font-black text-sm text-white">Spelling</div>
+                  <div className="text-[11px] text-cyan-200/70">
+                    Both spellings are always accepted — this just picks how words are shown
+                  </div>
+                </div>
+              </div>
+
+              <button
+                onClick={handleToggleSpelling}
+                className="px-3.5 py-1.5 rounded-xl font-black text-xs transition-all cursor-pointer border bg-gradient-to-r from-sky-500 to-blue-600 text-white border-sky-300 shadow-md shadow-sky-500/30"
+              >
+                {spelling === 'UK' ? '🇬🇧 UK' : '🇺🇸 US'}
               </button>
             </div>
 

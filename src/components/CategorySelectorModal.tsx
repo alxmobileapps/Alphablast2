@@ -16,13 +16,16 @@ import {
   Star,
   Users,
   Search,
+  PlayCircle,
 } from 'lucide-react';
 import { INITIAL_CATEGORIES } from '../data/categories';
 import { Category } from '../types';
-import { GameProgress, isCategoryUnlocked, isCategoryCompleted } from '../utils/gameProgress';
+import { GameProgress, isCategoryUnlocked, isCategoryCompleted, isRoundBlockUnlocked } from '../utils/gameProgress';
 import { formatPoints } from '../utils/scoring';
 import { isSoundEnabled, toggleSound } from '../utils/audio';
 import { haptics } from '../utils/haptics';
+import { toPreferredSpelling } from '../data/dictionary';
+import { SpellingPreference } from '../utils/settings';
 
 interface CategorySelectorModalProps {
   isOpen: boolean;
@@ -30,6 +33,7 @@ interface CategorySelectorModalProps {
   gameProgress: GameProgress;
   customCategories?: Category[];
   diamonds?: number;
+  spellingPreference?: SpellingPreference;
   onSelectCategory: (category: Category) => void;
   onOpenLeaderboard?: () => void;
   onOpenHelp?: () => void;
@@ -62,6 +66,7 @@ export const CategorySelectorModal: React.FC<CategorySelectorModalProps> = ({
   gameProgress,
   customCategories = [],
   diamonds = 0,
+  spellingPreference = 'US',
   onSelectCategory,
   onOpenLeaderboard,
   onOpenHelp,
@@ -323,7 +328,7 @@ export const CategorySelectorModal: React.FC<CategorySelectorModalProps> = ({
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-1.5">
                               <span className="font-black text-xs sm:text-sm truncate text-white">
-                                {cat.name}
+                                {toPreferredSpelling(cat.name, spellingPreference)}
                               </span>
                               {isTimerRush ? (
                                 <span className="bg-amber-400/20 text-amber-300 border border-amber-400/40 text-[9px] font-black px-1.5 py-0.2 rounded shrink-0">
@@ -502,6 +507,14 @@ export const CategorySelectorModal: React.FC<CategorySelectorModalProps> = ({
                     const isSelected = !currentCategory.isCustom && currentCategory.id === cat.id;
                     const unlocked = isCategoryUnlocked(cat.id, gameProgress);
                     const completed = isCategoryCompleted(cat.id, gameProgress);
+                    // Sequentially reachable (previous round cleared) but still
+                    // gated behind the every-5-rounds rewarded-ad unlock — tapping
+                    // it still works (requestOpenCategory in App.tsx shows the ad
+                    // prompt), this is just so the list doesn't claim it's fully
+                    // open when picking it will interrupt with an ad first.
+                    const needsAdUnlock =
+                      unlocked && !completed && !gameProgress.hasRemovedAds &&
+                      !isRoundBlockUnlocked(cat.id, gameProgress);
                     const highScore = gameProgress.categoryHighScores[cat.id] || 0;
                     const stars = gameProgress.categoryStars?.[cat.id] || (completed ? 3 : 0);
 
@@ -529,6 +542,11 @@ export const CategorySelectorModal: React.FC<CategorySelectorModalProps> = ({
                                 <Lock className="w-2.5 h-2.5" />
                               </div>
                             )}
+                            {needsAdUnlock && (
+                              <div className="absolute -top-1 -right-1 bg-amber-900 text-amber-300 rounded-full p-0.5 shadow-xs border border-amber-600">
+                                <PlayCircle className="w-2.5 h-2.5" />
+                              </div>
+                            )}
                           </div>
 
                           <div className="min-w-0">
@@ -545,7 +563,7 @@ export const CategorySelectorModal: React.FC<CategorySelectorModalProps> = ({
                                     : 'text-white'
                                 }`}
                               >
-                                {cat.name}
+                                {toPreferredSpelling(cat.name, spellingPreference)}
                               </span>
                             </div>
 
@@ -576,6 +594,10 @@ export const CategorySelectorModal: React.FC<CategorySelectorModalProps> = ({
                           {!unlocked ? (
                             <span className="flex items-center gap-1 text-[10px] font-black text-gray-400 bg-gray-900/80 px-2 py-0.5 rounded-lg border border-gray-700">
                               <Lock className="w-3 h-3" /> Locked
+                            </span>
+                          ) : needsAdUnlock ? (
+                            <span className="flex items-center gap-1 text-[10px] font-black text-amber-300 bg-amber-950/60 px-2 py-0.5 rounded-lg border border-amber-500/40">
+                              <PlayCircle className="w-3 h-3" /> Watch Ad
                             </span>
                           ) : isSelected ? (
                             <span className="flex items-center gap-1 text-[10px] font-black text-cyan-100 bg-[#0284C7] px-2 py-0.5 rounded-lg border border-[#38BDF8]">

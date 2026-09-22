@@ -49,6 +49,28 @@ for (const [us, uk] of Object.entries(US_UK_SPELLING_VARIANTS)) {
   UK_US_SPELLING_VARIANTS[uk] = us;
 }
 
+/**
+ * Rewrites any US/UK spelling-variant words found in a piece of display
+ * text (a category name, etc.) to the given preference, preserving each
+ * matched word's original casing style (ALLCAPS / Titlecase / lowercase).
+ * Word VALIDATION during gameplay already accepts both spellings no
+ * matter what (see getSpellingVariants below) -- this is purely cosmetic,
+ * for players who set a US/UK display preference in Settings.
+ */
+export function toPreferredSpelling(text: string, pref: 'US' | 'UK'): string {
+  const table = pref === 'UK' ? US_UK_SPELLING_VARIANTS : UK_US_SPELLING_VARIANTS;
+  return text.replace(/[A-Za-z]+/g, (token) => {
+    const upper = token.toUpperCase();
+    const replacement = table[upper];
+    if (!replacement) return token;
+    if (token === upper) return replacement; // ALLCAPS
+    if (token[0] === token[0].toUpperCase()) {
+      return replacement[0] + replacement.slice(1).toLowerCase(); // Titlecase
+    }
+    return replacement.toLowerCase();
+  });
+}
+
 /** Returns every recognized US/UK spelling of a word (including itself). */
 function getSpellingVariants(word: string): string[] {
   const variants = [word];

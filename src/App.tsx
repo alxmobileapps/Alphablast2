@@ -25,7 +25,7 @@ import { BottomBannerAd } from './components/BottomBannerAd';
 import { RoundLockModal } from './components/RoundLockModal';
 import { perfMark, perfResetBaseline } from './utils/perfDebug';
 import { PortraitLockOverlay } from './components/PortraitLockOverlay';
-import { isSwipeControlsEnabled, isCluesEnabled as isCluesEnabledUtil } from './utils/settings';
+import { isSwipeControlsEnabled, isCluesEnabled as isCluesEnabledUtil, getSpellingPreference, SpellingPreference } from './utils/settings';
 import { initUniversalAds, refreshBannerIfDue } from './utils/universalAds';
 import { initRemoteAdsListener } from './utils/remoteAdsService';
 import { initNativeBilling } from './utils/medianBridge';
@@ -56,6 +56,9 @@ import {
   convertRoundEndAssetsToCoins,
   purchaseRemoveAllAds,
   resetGameProgress,
+  ROUNDS_PER_UNLOCK_BLOCK,
+  isRoundBlockUnlocked,
+  unlockNextRoundBlock,
 } from './utils/gameProgress';
 import {
   Tile,
@@ -294,6 +297,7 @@ export default function App() {
   const [isProfileOpen, setIsProfileOpen] = useState<boolean>(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
   const [isSwipeEnabled, setIsSwipeEnabled] = useState<boolean>(() => isSwipeControlsEnabled());
+  const [spellingPreference, setSpellingPreference] = useState<SpellingPreference>(() => getSpellingPreference());
   const [isCluesEnabled, setIsCluesEnabled] = useState<boolean>(() => isCluesEnabledUtil());
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState<boolean>(false);
   const [editingCustomCategory, setEditingCustomCategory] = useState<Category | null>(null);
@@ -328,13 +332,18 @@ export default function App() {
   const [isRollingTiles, setIsRollingTiles] = useState<boolean>(false);
   const [isRoundLockOpen, setIsRoundLockOpen] = useState<boolean>(false);
   const [pendingTargetCategory, setPendingTargetCategory] = useState<Category | null>(null);
-  // Round-lock cadence: every 5 completed rounds, the player has to watch
-  // one rewarded ad to unlock the next 5 (before rounds 6, 11, 16, ...).
-  // Replaces the old interstitial-every-3-rounds gate entirely — no more
-  // automatic interstitials, and players who bought "Remove All Ads" skip
+  // Round-lock cadence: rounds are grouped into fixed blocks of
+  // ROUNDS_PER_UNLOCK_BLOCK (block 1 = rounds 1-5, always free; block 2 =
+  // rounds 6-10; etc.). Entering a round outside an already ad-unlocked
+  // block shows RoundLockModal, and watching the rewarded ad permanently
+  // unlocks the next block via unlockNextRoundBlock() (gameProgress.ts —
+  // persisted to localStorage, so it survives closing/reopening the app).
+  // This used to be an in-memory "rounds completed since last ad" ref
+  // that reset to 0 on every app restart, which meant the gate could be
+  // bypassed entirely just by closing and reopening the app before it
+  // reached round 6 — see gameProgress.ts's ROUNDS_PER_UNLOCK_BLOCK
+  // comment for the full story. Players who bought "Remove All Ads" skip
   // this lock completely (see requestOpenCategory below).
-  const roundsCompletedInCycleRef = useRef<number>(0);
-  const ROUNDS_PER_UNLOCK_CYCLE = 5;
 
   // Lifeline Inactivity Prompt & Shine Animation State
   const [isLifelinePromptActive, setIsLifelinePromptActive] = useState<boolean>(false);
@@ -771,8 +780,8 @@ export default function App() {
 
   // No more automatic interstitials at all — banner and interstitial are
   // both off (see universalAds.ts), rewarded is the only ad type left.
-  // Instead, every ROUNDS_PER_UNLOCK_CYCLE (5) completed rounds, the next
-  // batch of rounds is locked until the player watches ONE rewarded ad
+  // Instead, every ROUNDS_PER_UNLOCK_BLOCK (5) rounds is a block, and the
+  // next block is locked until the player watches ONE rewarded ad
   // (RoundLockModal below). Players who bought "Remove All Ads" skip this
   // check entirely and always play straight through.
   const requestOpenCategory = useCallback(
@@ -795,7 +804,7 @@ export default function App() {
         return;
       }
 
-      if (roundsCompletedInCycleRef.current >= ROUNDS_PER_UNLOCK_CYCLE) {
+      if (!isRoundBlockUnlocked(targetCat.id, currentProgress)) {
         setPendingTargetCategory(targetCat);
         setIsRoundLockOpen(true);
         perfMark('round lock opened');
@@ -810,7 +819,7 @@ export default function App() {
   const handleRoundsUnlocked = useCallback(() => {
     perfMark('handleRoundsUnlocked start');
     setIsRoundLockOpen(false);
-    roundsCompletedInCycleRef.current = 0; // Reset counter for next cycle
+    unlockNextRoundBlock(); // Persist the unlock so it survives app restarts
     if (pendingTargetCategory) {
       playCategoryRound(pendingTargetCategory);
       setPendingTargetCategory(null);
@@ -821,8 +830,9 @@ export default function App() {
     perfMark('handleRoundLockDismissed start');
     setIsRoundLockOpen(false);
     setPendingTargetCategory(null);
-    // Counter is left >= ROUNDS_PER_UNLOCK_CYCLE — the next attempt to
-    // advance re-opens the same lock instead of silently proceeding.
+    // adUnlockedBlocks in gameProgress is untouched — the next attempt to
+    // advance into this block re-opens the same lock instead of silently
+    // proceeding, and this holds even across an app restart now.
   }, []);
 
   // RoundLockModal's "Or Remove Ads to Unlock Everything" upsell button —
@@ -1048,7 +1058,6 @@ export default function App() {
             if (cat && cat.gameMode !== 'timer' && categoryProgressRef.current >= cat.targetCount) {
               perfMark('ROUND COMPLETE: last target word matched');
               haptics.roundComplete();
-              roundsCompletedInCycleRef.current += 1;
 
               const finalRoundScore = roundScoreRef.current;
               const elapsedSeconds = Math.max(1, Math.round((Date.now() - roundStartTimeRef.current) / 1000));
@@ -2527,7 +2536,6 @@ export default function App() {
     if (timerSecondsRemaining <= 0) {
       // Timer finished! Round completed!
       haptics.roundComplete();
-      roundsCompletedInCycleRef.current += 1;
       const elapsedSeconds = currentCategory.timerSeconds || 120;
       setRoundTimeConsumed(elapsedSeconds);
       const finalScore = roundScoreRef.current;
@@ -2861,6 +2869,7 @@ export default function App() {
           }
         }}
         onTriggerFireWipeoutDemo={handleTriggerFireWipeoutDemo}
+        onSpellingPreferenceChange={setSpellingPreference}
       />
 
       <AdModal
@@ -2967,6 +2976,7 @@ export default function App() {
         gameProgress={gameProgress}
         customCategories={customCategories}
         diamonds={gameProgress.diamonds || 0}
+        spellingPreference={spellingPreference}
         onSelectCategory={(cat) => {
           setIsCategoryModalOpen(false);
           requestOpenCategory(cat);
@@ -3000,7 +3010,7 @@ export default function App() {
       {/* Round Lock: shown every 5 completed rounds — one rewarded ad unlocks the next 5 */}
       <RoundLockModal
         isOpen={isRoundLockOpen}
-        roundsPerCycle={ROUNDS_PER_UNLOCK_CYCLE}
+        roundsPerCycle={ROUNDS_PER_UNLOCK_BLOCK}
         onUnlocked={handleRoundsUnlocked}
         onClose={handleRoundLockDismissed}
         onOpenShop={handleOpenShopFromRoundLock}

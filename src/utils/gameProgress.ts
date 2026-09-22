@@ -17,7 +17,20 @@ export interface GameProgress {
   awarded15kMilestones: number[];
   awarded20kMilestones: number[];
   hasRemovedAds?: boolean;
+  adUnlockedBlocks: number;
 }
+
+// Rounds are grouped into fixed blocks of this size for the rewarded-ad
+// gate: block 1 (round ids 1-5) is always free, and watching one rewarded
+// ad unlocks exactly the next block (see isRoundBlockUnlocked /
+// unlockNextRoundBlock below). This replaced an in-memory "rounds
+// completed since last ad" counter that reset to 0 every time the app was
+// closed and reopened -- letting players reach round 6+ without ever being
+// asked to watch an ad, since the counter never reached its threshold
+// persistently. Tying the gate to the round's block id instead, and
+// persisting which block the player has ad-unlocked, fixes that: the gate
+// state now survives app restarts.
+export const ROUNDS_PER_UNLOCK_BLOCK = 5;
 
 const DEFAULT_PROGRESS: GameProgress = {
   unlockedCategoryIds: [1], // Round 1 is always unlocked by default
@@ -33,6 +46,7 @@ const DEFAULT_PROGRESS: GameProgress = {
   awarded15kMilestones: [],
   awarded20kMilestones: [],
   hasRemovedAds: false,
+  adUnlockedBlocks: 1, // Block 1 (rounds 1-5) is always free, no ad needed
 };
 
 export function getHighestUnlockedCategoryId(progress?: GameProgress): number {
@@ -97,6 +111,9 @@ export function loadGameProgress(): GameProgress {
         awarded15kMilestones: Array.isArray(parsed.awarded15kMilestones) ? parsed.awarded15kMilestones : [],
         awarded20kMilestones: Array.isArray(parsed.awarded20kMilestones) ? parsed.awarded20kMilestones : [],
         hasRemovedAds: Boolean(parsed.hasRemovedAds),
+        adUnlockedBlocks: typeof parsed.adUnlockedBlocks === 'number' && parsed.adUnlockedBlocks >= 1
+          ? parsed.adUnlockedBlocks
+          : 1,
       };
 
       const highestUnlocked = getHighestUnlockedCategoryId(progForCalc);
@@ -158,6 +175,44 @@ export function isCategoryUnlocked(categoryId: number, progress?: GameProgress):
 export function isCategoryCompleted(categoryId: number, progress?: GameProgress): boolean {
   const prog = progress || loadGameProgress();
   return prog.completedCategoryIds.includes(categoryId);
+}
+
+/**
+ * Which ad-unlock block a round belongs to: rounds 1-5 are block 1, 6-10
+ * are block 2, etc.
+ */
+export function getRoundBlock(categoryId: number): number {
+  return Math.ceil(categoryId / ROUNDS_PER_UNLOCK_BLOCK);
+}
+
+/**
+ * Whether the round's block has been unlocked via a rewarded ad (block 1
+ * is always unlocked). This is purely a function of persisted progress, so
+ * -- unlike the old in-memory cycle counter it replaced -- it gives the
+ * same answer before and after the app is closed and reopened.
+ */
+export function isRoundBlockUnlocked(categoryId: number, progress?: GameProgress): boolean {
+  const prog = progress || loadGameProgress();
+  return getRoundBlock(categoryId) <= (prog.adUnlockedBlocks || 1);
+}
+
+/**
+ * Called when the player successfully watches the rewarded ad in
+ * RoundLockModal: permanently unlocks the next block of
+ * ROUNDS_PER_UNLOCK_BLOCK rounds. Capped at the last real block so it can
+ * never "unlock" blocks beyond the last category.
+ */
+export function unlockNextRoundBlock(): GameProgress {
+  const current = loadGameProgress();
+  const maxBlock = Math.max(1, getRoundBlock(
+    INITIAL_CATEGORIES.reduce((max, c) => Math.max(max, c.id), 1)
+  ));
+  const updated: GameProgress = {
+    ...current,
+    adUnlockedBlocks: Math.min(maxBlock, (current.adUnlockedBlocks || 1) + 1),
+  };
+  saveGameProgress(updated);
+  return updated;
 }
 
 /**

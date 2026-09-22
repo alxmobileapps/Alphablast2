@@ -126,6 +126,7 @@ export function mergeGameProgress(local: GameProgress, cloud: GameProgress): Gam
     diamonds: 0,
     awarded15kMilestones: [],
     awarded20kMilestones: [],
+    adUnlockedBlocks: Math.max(local.adUnlockedBlocks || 1, cloud.adUnlockedBlocks || 1),
   });
 
   return {
@@ -153,6 +154,10 @@ export function mergeGameProgress(local: GameProgress, cloud: GameProgress): Gam
     awarded20kMilestones: Array.from(m20k),
     // IAP: If either local or cloud has removed ads, grant it permanently
     hasRemovedAds: Boolean(local.hasRemovedAds || cloud.hasRemovedAds),
+    // Ad-unlocked round blocks: use the higher of the two so restoring
+    // from the cloud can never re-lock rounds the player already
+    // ad-unlocked on this device (or vice versa).
+    adUnlockedBlocks: Math.max(local.adUnlockedBlocks || 1, cloud.adUnlockedBlocks || 1),
   };
 }
 
