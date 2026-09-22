@@ -1,15 +1,50 @@
 import { INITIAL_CATEGORIES } from './categories';
 import { COMMON_WORDS } from './commonWords';
 import { Category } from '../types';
+import { getSpellingPreference, SpellingPreference } from '../utils/settings';
 
 /**
- * US <-> UK spelling variants. Both spellings are accepted as valid words
- * everywhere a word is checked (general dictionary AND category words) —
- * this only affects word VALIDATION, not what's displayed in clues/category
- * lists (those still show whatever spelling the category data was authored
- * with). Purely additive, one-time indexing at module load below, next to
- * the existing plural-form indexing — no per-render or per-move cost, and
- * no changes anywhere outside this file.
+ * The player's current US/UK word-VALIDATION preference (separate from,
+ * but normally kept in sync with, the display preference in settings.ts —
+ * see setDictionarySpellingPreference below). Seeded from whatever was
+ * last saved in Settings so gameplay is correct from the very first board
+ * of a session, even before the player opens Settings.
+ *
+ * When set to 'US', only the American spelling of a word with a known
+ * UK counterpart (COLOR, not COLOUR) is accepted on the board, and vice
+ * versa for 'UK' -- see the wordSpellingOwner map and its use in
+ * isValidWord/isCategoryWord further down this file. A word with no
+ * listed US/UK counterpart (the vast majority of the dictionary) is
+ * completely unaffected either way.
+ */
+let currentSpellingPreference: SpellingPreference = (() => {
+  try {
+    return getSpellingPreference();
+  } catch {
+    return 'US';
+  }
+})();
+
+/**
+ * Called whenever the player's spelling preference changes (Settings
+ * toggle, or app startup syncing from the persisted value) so that word
+ * validation takes effect immediately, mid-round included.
+ */
+export function setDictionarySpellingPreference(pref: SpellingPreference): void {
+  currentSpellingPreference = pref;
+}
+
+/**
+ * US <-> UK spelling variants. Which one of a pair is accepted as a valid
+ * word depends on the player's current spelling preference (see
+ * wordSpellingOwner and isValidWord/isCategoryWord below) — a word with no
+ * listed counterpart here is unaffected and always accepted. This also
+ * doesn't affect what's displayed in clues/category lists (those still
+ * show whatever spelling the category data was authored with, unless
+ * rewritten for display via toPreferredSpelling). Purely additive,
+ * one-time indexing at module load below, next to the existing
+ * plural-form indexing — no per-render or per-move cost, and no changes
+ * anywhere outside this file plus the one-line sync call in App.tsx.
  */
 const US_UK_SPELLING_VARIANTS: Record<string, string> = {
   COLOR: 'COLOUR', COLORS: 'COLOURS', COLORED: 'COLOURED', COLORFUL: 'COLOURFUL',
@@ -53,9 +88,9 @@ for (const [us, uk] of Object.entries(US_UK_SPELLING_VARIANTS)) {
  * Rewrites any US/UK spelling-variant words found in a piece of display
  * text (a category name, etc.) to the given preference, preserving each
  * matched word's original casing style (ALLCAPS / Titlecase / lowercase).
- * Word VALIDATION during gameplay already accepts both spellings no
- * matter what (see getSpellingVariants below) -- this is purely cosmetic,
- * for players who set a US/UK display preference in Settings.
+ * This is purely cosmetic text rewriting; the actual gameplay enforcement
+ * of the preference (only the matching spelling counts as a valid word)
+ * lives in wordSpellingOwner / isValidWord / isCategoryWord below.
  */
 export function toPreferredSpelling(text: string, pref: 'US' | 'UK'): string {
   const table = pref === 'UK' ? US_UK_SPELLING_VARIANTS : UK_US_SPELLING_VARIANTS;
@@ -331,13 +366,37 @@ for (const cat of INITIAL_CATEGORIES) {
   categoryWordSets.set(cat.id, catSet);
 }
 
+/**
+ * Maps every spelling-variant-specific word form -- both the base word
+ * from US_UK_SPELLING_VARIANTS and every plural generated from it -- to
+ * which preference ('US' or 'UK') it belongs to. A word that's NOT in
+ * this map has no US/UK distinction (the vast majority of the
+ * dictionary) and is accepted no matter what the player's preference is;
+ * see isValidWord/isCategoryWord below, which are the only things that
+ * consult it. Built once, here, after getPluralForms (and everything it
+ * depends on -- VOWELS, the irregular-noun maps) is already defined.
+ */
+const wordSpellingOwner = new Map<string, SpellingPreference>();
+for (const [usWord, ukWord] of Object.entries(US_UK_SPELLING_VARIANTS)) {
+  wordSpellingOwner.set(usWord, 'US');
+  for (const p of getPluralForms(usWord)) wordSpellingOwner.set(p, 'US');
+  wordSpellingOwner.set(ukWord, 'UK');
+  for (const p of getPluralForms(ukWord)) wordSpellingOwner.set(p, 'UK');
+}
+
 export function isValidWord(word: string): boolean {
   if (!word || word.length < 3) return false;
   const upper = word.toUpperCase().trim();
   // Exact match in master dictionary or verified category words
-  if (globalWordSet.has(upper)) return true;
+  if (!globalWordSet.has(upper)) return false;
 
-  return false;
+  // Reject a spelling-variant word that doesn't match the player's
+  // current US/UK preference (e.g. "COLOUR" while set to US) -- a word
+  // with no listed variant (not in the map) is unaffected.
+  const owner = wordSpellingOwner.get(upper);
+  if (owner && owner !== currentSpellingPreference) return false;
+
+  return true;
 }
 
 export function isCategoryWord(word: string, categoryId: number): boolean {
@@ -347,9 +406,13 @@ export function isCategoryWord(word: string, categoryId: number): boolean {
   if (!catSet) return false;
 
   // Exact match in verified category set
-  if (catSet.has(upper)) return true;
+  if (!catSet.has(upper)) return false;
 
-  return false;
+  // Same US/UK preference gate as isValidWord above.
+  const owner = wordSpellingOwner.get(upper);
+  if (owner && owner !== currentSpellingPreference) return false;
+
+  return true;
 }
 
 export function registerDynamicWord(word: string, categoryId?: number) {

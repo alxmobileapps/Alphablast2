@@ -282,9 +282,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               </button>
             </div>
 
-            {/* 5b. Spelling Display (US/UK) — words are always accepted
-                either way; this only changes which spelling category
-                names are shown in (defaults to US). */}
+            {/* 5b. Spelling Preference (US/UK) — picks BOTH which spelling
+                of a word counts as valid on the board (e.g. only "COLOR"
+                when set to US, only "COLOUR" when set to UK) AND which
+                spelling category names are shown in (defaults to US). */}
             <div className="bg-[#0C2158] border border-[#1E3A8A] rounded-2xl p-3.5 flex items-center justify-between shadow-inner">
               <div className="flex items-center gap-3">
                 <div className={`w-10 h-10 rounded-xl flex items-center justify-center border ${
@@ -295,7 +296,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 <div>
                   <div className="font-black text-sm text-white">Spelling</div>
                   <div className="text-[11px] text-cyan-200/70">
-                    Both spellings are always accepted — this just picks how words are shown
+                    Sets which spelling of a word counts as correct (e.g. COLOR vs COLOUR)
                   </div>
                 </div>
               </div>

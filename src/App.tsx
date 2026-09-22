@@ -26,6 +26,7 @@ import { RoundLockModal } from './components/RoundLockModal';
 import { perfMark, perfResetBaseline } from './utils/perfDebug';
 import { PortraitLockOverlay } from './components/PortraitLockOverlay';
 import { isSwipeControlsEnabled, isCluesEnabled as isCluesEnabledUtil, getSpellingPreference, SpellingPreference } from './utils/settings';
+import { setDictionarySpellingPreference } from './data/dictionary';
 import { initUniversalAds, refreshBannerIfDue } from './utils/universalAds';
 import { initRemoteAdsListener } from './utils/remoteAdsService';
 import { initNativeBilling } from './utils/medianBridge';
@@ -297,6 +298,14 @@ export default function App() {
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
   const [isSwipeEnabled, setIsSwipeEnabled] = useState<boolean>(() => isSwipeControlsEnabled());
   const [spellingPreference, setSpellingPreference] = useState<SpellingPreference>(() => getSpellingPreference());
+
+  // Keep the dictionary's word-validation gate in sync with the player's
+  // US/UK preference -- runs on mount (so gameplay is correct from the
+  // very first board) and again every time the player toggles it in
+  // Settings, so an in-progress round respects the change immediately.
+  useEffect(() => {
+    setDictionarySpellingPreference(spellingPreference);
+  }, [spellingPreference]);
   const [isCluesEnabled, setIsCluesEnabled] = useState<boolean>(() => isCluesEnabledUtil());
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState<boolean>(false);
   const [editingCustomCategory, setEditingCustomCategory] = useState<Category | null>(null);
