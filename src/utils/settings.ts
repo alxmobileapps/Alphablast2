@@ -6,51 +6,37 @@ const SPELLING_PREF_KEY = 'word_blast_spelling_preference';
 
 export type SpellingPreference = 'US' | 'UK';
 
-// Country/region codes where British-style spelling (COLOUR, CENTRE, ...)
-// is the everyday standard -- used only to pick a sensible default the
-// FIRST time a player opens the game (before they've ever touched this
-// setting). Word acceptance during gameplay is unaffected either way --
-// both spellings are always accepted (see dictionary.ts) -- this only
-// controls which spelling is used for on-screen text like category names.
-const UK_SPELLING_REGIONS = new Set([
-  'GB', 'UK', 'IE', 'AU', 'NZ', 'ZA', 'IN', 'SG', 'MY', 'HK', 'PK', 'NG',
-  'KE', 'GH', 'JM', 'TT', 'MT', 'CY', 'BD', 'LK',
-  // NOT the Philippines: despite the region's British-spelling neighbors,
-  // Philippine English follows AMERICAN spelling conventions (a legacy of
-  // US, not British, colonial administration) -- "color", "center",
-  // "organize", not "colour", "centre", "organise" -- so 'PH' correctly
-  // falls through to the US default below.
-]);
-
 /**
- * Guesses a default US/UK spelling preference from the device's own
- * locale (navigator.language, e.g. "en-GB", "en-AU") -- only used the
- * first time this setting is read, before the player has ever chosen one
- * explicitly. Falls back to US on anything unrecognized/unavailable.
+ * Default US/UK spelling preference before the player has ever touched
+ * this setting: always US.
+ *
+ * This used to guess from the device's locale (navigator.language, e.g.
+ * "en-GB" -> UK), but that reflects the device/browser's LANGUAGE
+ * setting, not the player's actual location -- plenty of Android phones
+ * (and desktop browsers, when testing a web build) ship with "English
+ * (UK)" as their base English locale regardless of where the device
+ * actually is or who's using it, which showed up as players in the
+ * Philippines (whose devices report en-GB) seeing a UK default despite
+ * Philippine English itself following American spelling. Defaulting to
+ * US outright is simpler and matches this game's mostly Filipino
+ * audience; a player who genuinely prefers UK spelling can switch it in
+ * Settings, and that choice is remembered from then on.
  */
 function detectDefaultSpellingPreference(): SpellingPreference {
-  try {
-    const locale =
-      (typeof navigator !== 'undefined' && (navigator.language || (navigator as any).userLanguage)) || '';
-    const region = locale.split(/[-_]/)[1]?.toUpperCase();
-    if (region && UK_SPELLING_REGIONS.has(region)) return 'UK';
-  } catch {
-    // Ignore -- fall through to the US default below.
-  }
   return 'US';
 }
 
 /**
  * Reads the player's US/UK display-spelling preference (category names,
- * etc.). Defaults to a locale-based guess the first time it's read, then
- * whatever the player explicitly picked in Settings from then on.
+ * etc.). Defaults to US the first time it's read, then whatever the
+ * player explicitly picked in Settings from then on.
  */
 export function getSpellingPreference(): SpellingPreference {
   try {
     const val = localStorage.getItem(SPELLING_PREF_KEY);
     if (val === 'US' || val === 'UK') return val;
   } catch {
-    // Ignore -- fall through to the locale-based default below.
+    // Ignore -- fall through to the US default below.
   }
   return detectDefaultSpellingPreference();
 }
