@@ -186,9 +186,11 @@ export const CreateCategoryModal: React.FC<CreateCategoryModalProps> = ({
   // Compute parsed words
   const rawList = wordsInput
     .split(/[\n,;\s]+/)
-    .map((w) => w.trim())
+    .map((w) => w.trim().toUpperCase().replace(/[^A-Z]/g, ''))
     .filter(Boolean);
   const parsedWords = sanitizeCategoryWords(rawList);
+  const rejectedLongWords = Array.from(new Set(rawList.filter((w) => w.length >= 9)));
+  const rejectedShortWords = Array.from(new Set(rawList.filter((w) => w.length < 3)));
 
   // Requirement for valid words:
   // In Target mode: at least targetCount words (min 5 words)
@@ -843,7 +845,7 @@ export const CreateCategoryModal: React.FC<CreateCategoryModalProps> = ({
             />
             <div className="flex items-center justify-between text-[10.5px]">
               <span className="font-medium text-gray-500">
-                Separate words with commas, spaces, or lines.
+                Board is 8x8: words must be <strong>3 to 8 letters</strong> (shorter words prioritized).
               </span>
               {!isWordsSatisfied ? (
                 <span className="text-rose-600 font-bold">
@@ -855,6 +857,26 @@ export const CreateCategoryModal: React.FC<CreateCategoryModalProps> = ({
                 </span>
               )}
             </div>
+
+            {rejectedLongWords.length > 0 && (
+              <div className="bg-amber-50 border border-amber-200 text-amber-800 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold flex items-start gap-1.5">
+                <AlertCircle className="w-3.5 h-3.5 text-amber-600 shrink-0 mt-0.5" />
+                <span>
+                  Excluded {rejectedLongWords.length} word{rejectedLongWords.length > 1 ? 's' : ''} with 9+ letters (cannot fit 8x8 grid):{' '}
+                  <span className="font-mono font-bold text-amber-900">{rejectedLongWords.slice(0, 5).join(', ')}{rejectedLongWords.length > 5 ? ` +${rejectedLongWords.length - 5} more` : ''}</span>
+                </span>
+              </div>
+            )}
+
+            {rejectedShortWords.length > 0 && (
+              <div className="bg-amber-50 border border-amber-200 text-amber-800 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold flex items-start gap-1.5">
+                <AlertCircle className="w-3.5 h-3.5 text-amber-600 shrink-0 mt-0.5" />
+                <span>
+                  Excluded {rejectedShortWords.length} word{rejectedShortWords.length > 1 ? 's' : ''} under 3 letters:{' '}
+                  <span className="font-mono font-bold text-amber-900">{rejectedShortWords.slice(0, 5).join(', ')}</span>
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Error Notice */}

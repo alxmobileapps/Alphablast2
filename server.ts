@@ -8,6 +8,7 @@ import {
   seededShuffle,
   hashStringToSeed,
   EXPANDED_GENERIC_WORDS,
+  filterAndSortShortestFirst,
 } from './src/data/themeDictionaries';
 
 function generateFallbackTheme(prompt: string, targetCount: number = 8) {
@@ -153,13 +154,9 @@ Include a catchy Category Name (up to 25 chars), an appropriate single Emoji ico
         const text = response.text?.trim();
         if (text) {
           const data = JSON.parse(text);
-          const cleanedWords = Array.from(
-            new Set(
-              (data.words || [])
-                .map((w: string) => w.toUpperCase().replace(/[^A-Z]/g, ''))
-                .filter((w: string) => w.length >= 3 && w.length <= 8)
-            )
-          );
+          const rawWords = (data.words || [])
+            .map((w: string) => w.toUpperCase().replace(/[^A-Z]/g, ''));
+          const cleanedWords = filterAndSortShortestFirst(rawWords);
 
           if (cleanedWords.length >= 8) {
             return res.json({
@@ -307,9 +304,9 @@ Include a catchy Category Name (up to 25 chars), an appropriate single Emoji ico
           const text = response.text?.trim();
           if (text) {
             const data = JSON.parse(text);
-            const cleaned = (data.suggestions || [])
-              .map((w: string) => w.toUpperCase().replace(/[^A-Z]/g, ''))
-              .filter((w: string) => w.length >= 3 && w.length <= 8);
+            const rawSuggestions = (data.suggestions || [])
+              .map((w: string) => w.toUpperCase().replace(/[^A-Z]/g, ''));
+            const cleaned = filterAndSortShortestFirst(rawSuggestions);
             if (cleaned.length > 0) {
               return res.json({ suggestions: cleaned });
             }

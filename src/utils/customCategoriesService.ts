@@ -36,7 +36,9 @@ export function sanitizeCategoryWords(rawWords: string[]): string[] {
       set.add(clean);
     }
   }
-  return Array.from(set);
+  const result = Array.from(set);
+  result.sort((a, b) => a.length - b.length || a.localeCompare(b));
+  return result;
 }
 
 function getStoredCategories(): Category[] {
