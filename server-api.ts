@@ -56,7 +56,7 @@ function generateFallbackTheme(prompt: string, targetCount: number = 8) {
  * word lists.
  *
  * By extracting the API logic into this reusable createApiApp() function,
- * BOTH server.ts (local dev / local preview server) and api/[...path].ts
+ * BOTH server.ts (local dev / local preview server) and api/index.ts
  * (the Vercel catch-all function, see that file) can mount the exact same
  * routes without duplicating them.
  */

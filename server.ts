@@ -6,7 +6,7 @@ import { createApiApp } from './server-api';
 // All /api/* route logic (Gemini AI category generation, word validation,
 // trivia, word suggestions) now lives in server-api.ts's createApiApp(),
 // so it can be shared between this local dev/preview server and Vercel's
-// serverless function at api/[...path].ts -- see server-api.ts's doc
+// serverless function at api/index.ts -- see server-api.ts's doc
 // comment for why that split exists and what bug it fixes.
 async function startServer() {
   const app = createApiApp();

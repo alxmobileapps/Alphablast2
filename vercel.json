@@ -5,6 +5,10 @@
       "destination": "/.well-known/assetlinks.json"
     },
     {
+      "source": "/api/(.*)",
+      "destination": "/api"
+    },
+    {
       "source": "/((?!api/).*)",
       "destination": "/index.html"
     }
