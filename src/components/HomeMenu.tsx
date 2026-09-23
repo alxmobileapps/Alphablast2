@@ -15,7 +15,7 @@ import { Category } from '../types';
 import { GameProgress, getTotalStars } from '../utils/gameProgress';
 import { getUserProfile } from '../utils/leaderboard';
 import { haptics } from '../utils/haptics';
-import alphablastLogoImage from '../assets/logo.webp';
+import alphablastLogoImage from '../assets/logo.png';
 
 interface HomeMenuProps {
   currentCategory: Category;

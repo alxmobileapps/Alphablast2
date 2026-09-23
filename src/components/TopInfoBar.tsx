@@ -22,7 +22,7 @@ interface TopInfoBarProps {
   onTriggerFireWipeoutDemo?: () => void;
 }
 
-const TopInfoBarImpl: React.FC<TopInfoBarProps> = ({
+export const TopInfoBar: React.FC<TopInfoBarProps> = ({
   specialTileInfo,
   activePowerUp,
   pendingReplaceLetter,
@@ -160,20 +160,3 @@ const TopInfoBarImpl: React.FC<TopInfoBarProps> = ({
     </div>
   );
 };
-
-// Same reasoning as GameBoard/Header's memo — see GameBoard.tsx. Doesn't
-// need the once-a-second timer tick, ignores handler prop identity
-// (onDismissTutorialTip/onDismissBanner/onTriggerFireWipeoutDemo), only
-// compares the data it actually displays.
-function topInfoBarPropsAreEqual(prev: TopInfoBarProps, next: TopInfoBarProps): boolean {
-  return (
-    prev.specialTileInfo === next.specialTileInfo &&
-    prev.activePowerUp === next.activePowerUp &&
-    prev.pendingReplaceLetter === next.pendingReplaceLetter &&
-    prev.selectedTileForSwap === next.selectedTileForSwap &&
-    prev.banner === next.banner &&
-    prev.tutorialTip === next.tutorialTip
-  );
-}
-
-export const TopInfoBar = React.memo(TopInfoBarImpl, topInfoBarPropsAreEqual);

@@ -29,9 +29,7 @@ import { isSwipeControlsEnabled, isCluesEnabled as isCluesEnabledUtil, getSpelli
 import { setDictionarySpellingPreference } from './data/dictionary';
 import { initUniversalAds, refreshBannerIfDue } from './utils/universalAds';
 import { initRemoteAdsListener } from './utils/remoteAdsService';
-import { initNativeBilling } from './utils/medianBridge';
 import { initOrientationLock } from './utils/orientation';
-import { initNativeStatusBar } from './utils/nativeShell';
 import { INITIAL_CATEGORIES } from './data/categories';
 import { calculateWordPoints, calculateSpecialReactionPoints, formatPoints } from './utils/scoring';
 import { recordScore, getUserProfile } from './utils/leaderboard';
@@ -649,10 +647,8 @@ export default function App() {
   // Start relaxing background sound, enforce portrait lock, and initialize universal ads + Firestore remote config sync on mount
   useEffect(() => {
     initOrientationLock();
-    initNativeStatusBar();
     startBackgroundMusic();
     initUniversalAds();
-    initNativeBilling();
     const unsubscribeAds = initRemoteAdsListener();
     return () => {
       unsubscribeAds();
@@ -1171,26 +1167,16 @@ export default function App() {
           // Record score to Category and Overall Leaderboards (include time consumed if round complete)
           const isFinished = cat.gameMode !== 'timer' && match.isCategory && categoryProgressRef.current >= cat.targetCount;
           const currentElapsed = Math.max(1, Math.round((Date.now() - roundStartTimeRef.current) / 1000));
-          // Deferred (setTimeout 0) instead of called inline: recordScore does a
-          // localStorage read-modify-write plus two Firestore calls, and this is
-          // inside resolveBoard's per-match loop — a cascade with several matches
-          // in one resolution pass would otherwise run all of that back-to-back,
-          // synchronously, in the same tick as the tile-clear animation, with no
-          // chance for the browser to paint in between. Deferring it lets pending
-          // animation frames (and the round-complete modal's own setTimeout)
-          // get a turn on the main thread first.
-          setTimeout(() => {
-            recordScore({
-              categoryId: catId,
-              categoryName: cat.name,
-              categoryScore: wordPts.points,
-              wordsCount: 1,
-              highestWord: match.word,
-              highestWordPoints: wordPts.points,
-              isRoundComplete: isFinished,
-              timeConsumedSeconds: isFinished ? currentElapsed : undefined,
-            });
-          }, 0);
+          recordScore({
+            categoryId: catId,
+            categoryName: cat.name,
+            categoryScore: wordPts.points,
+            wordsCount: 1,
+            highestWord: match.word,
+            highestWordPoints: wordPts.points,
+            isRoundComplete: isFinished,
+            timeConsumedSeconds: isFinished ? currentElapsed : undefined,
+          });
 
           // Trigger real-time statement banner showing points earned
           triggerBanner(
@@ -2656,19 +2642,7 @@ export default function App() {
   ]);
 
   return (
-    <div
-      className="h-[100dvh] max-h-[100dvh] w-full bg-[#071330] text-white flex flex-col font-sans selection:bg-[#0EA5E9] selection:text-white overflow-hidden pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]"
-    >
-      {/*
-        Android (Capacitor) note: on Android 15 / SDK 35, the OS enforces
-        edge-to-edge rendering and effectively ignores the native
-        StatusBar plugin's attempt to reserve space (see
-        src/utils/nativeShell.ts). This CSS safe-area padding is the
-        actual fix — it pushes the whole app below the status bar (and
-        above the gesture/nav bar) using the WebView's own inset values,
-        which works regardless of what the native side does. On web /
-        iOS these env() values are simply 0, so this is a no-op there.
-      */}
+    <div className="h-[100dvh] max-h-[100dvh] w-full bg-[#071330] text-white flex flex-col font-sans selection:bg-[#0EA5E9] selection:text-white overflow-hidden">
       {/* Active Screen Area (Menu or Game Board) */}
       <div className="flex-1 min-h-0 w-full flex flex-col overflow-hidden">
         {currentScreen === 'menu' ? (

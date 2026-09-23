@@ -2,243 +2,13 @@ import express from 'express';
 import path from 'path';
 import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI, Type } from '@google/genai';
-
-// Built-in curated theme dictionaries with 50+ words for instant resilient generation if AI is offline or rate-limited
-const SMART_THEME_FALLBACKS: Record<string, { icon: string; name: string; words: string[] }> = {
-  beast: {
-    icon: '🐉',
-    name: 'Mythical Beasts',
-    words: [
-      'DRAGON', 'PHOENIX', 'GRIFFIN', 'KRAKEN', 'HYDRA', 'SPHINX', 'GOLEM', 'PEGASUS',
-      'CHIMERA', 'BASILISK', 'MINOTAUR', 'CYCLOPS', 'GHOUL', 'SIREN', 'YETI', 'WEREWOLF',
-      'VAMPIRE', 'CERBERUS', 'VALKYRIE', 'GOBLIN', 'PIXIE', 'SPRITE', 'BANSHEE', 'CENTAUR',
-      'GARGOYLE', 'MANTICORE', 'UNICORN', 'WYRM', 'LEVIATHAN', 'HARPY', 'BEHEMOTH', 'SPECTER',
-      'WRAITH', 'SHADOW', 'TITAN', 'KOBOLD', 'ORC', 'OGRE', 'TROLL', 'DRAKE',
-      'DEMON', 'BEAST', 'MONSTER', 'CHIMERA', 'SELKIE', 'DJINN', 'GENIE', 'FAIRY',
-      'GHOST', 'ZOMBIE', 'IMP', 'SALAMANDER'
-    ],
-  },
-  myth: {
-    icon: '⚡',
-    name: 'Myth & Legends',
-    words: [
-      'ZEUS', 'THOR', 'ODIN', 'ATHENA', 'ARES', 'HERMES', 'APOLLO', 'ANUBIS',
-      'OSIRIS', 'RA', 'LOKI', 'FREYA', 'HADES', 'POSEIDON', 'TITAN', 'HERO',
-      'LEGEND', 'ORACLE', 'TEMPLE', 'MYTH', 'SPARTAN', 'OLYMPUS', 'ASGARD', 'VALHALLA',
-      'SHIELD', 'SPEAR', 'EXCALIBUR', 'AVALON', 'HECTOR', 'ACHILLES', 'HERCULES', 'PERSEUS',
-      'MEDUSA', 'MIDAS', 'ICARUS', 'DAEDALUS', 'ATLAS', 'CRONUS', 'CHIRON', 'NARCISSUS',
-      'PEGASUS', 'EROS', 'PSYCHE', 'HESTIA', 'DEMETER', 'DIONYSUS', 'HELIOS', 'SELENE',
-      'HORUS', 'SET', 'THOTH', 'BASTET'
-    ],
-  },
-  coffee: {
-    icon: '☕',
-    name: 'Coffee & Cafe',
-    words: [
-      'ESPRESSO', 'LATTE', 'MOCHA', 'BREW', 'ROAST', 'BARISTA', 'CAFE', 'BEANS',
-      'AROMA', 'CREMA', 'CAPPUCCINO', 'MACCHIATO', 'FRAPPE', 'POUROVER', 'FILTER', 'MUG',
-      'STEAM', 'DRIP', 'GRIND', 'SIP', 'CARAMEL', 'VANILLA', 'ICED', 'DECAF',
-      'AMERICANO', 'FROTH', 'CUP', 'WARMTH', 'ARABICA', 'ROBUSTA', 'COLD', 'PRESS',
-      'AEROPRESS', 'CHEMEX', 'SYRUP', 'CINNAMON', 'HAZELNUT', 'NUTMEG', 'CREAM', 'SUGAR',
-      'COFFEE', 'JAVA', 'CHAI', 'MATCHA', 'FLATWHITE', 'AFFOGATO', 'RISTRETTO', 'LUNGO',
-      'COCOA', 'CAFFEINE', 'CUPPING', 'THERMOS'
-    ],
-  },
-  cafe: {
-    icon: '🥐',
-    name: 'Bakery & Cafe',
-    words: [
-      'CROISSANT', 'BAGUETTE', 'PASTRY', 'MUFFIN', 'SCONE', 'BAGEL', 'TOAST', 'DANISH',
-      'ECLAIR', 'BRIOCHE', 'BREAD', 'DONUT', 'CAKE', 'COOKIE', 'TART', 'PIE',
-      'ROLL', 'SUGAR', 'BUTTER', 'CINNAMON', 'JAM', 'CRUMB', 'BAKER', 'OVEN',
-      'FLOUR', 'YEAST', 'BUN', 'WAFFLE', 'PANCAKE', 'MACARON', 'SOUFFLE', 'CUPCAKE',
-      'BROWNIE', 'SCONE', 'PRETZEL', 'FOCACCIA', 'CIABATTA', 'CHALLAH', 'PUDDING', 'CUSTARD',
-      'MERINGUE', 'TIRAMISU', 'CANNOLE', 'CREPE', 'GALETTE', 'STRUDEL', 'LOAF', 'DOUGH',
-      'CRUST', 'ICING', 'GLAZE', 'GANACHE'
-    ],
-  },
-  racing: {
-    icon: '🏎️',
-    name: 'Formula 1 Racing',
-    words: [
-      'SPEED', 'RACE', 'TURBO', 'ENGINE', 'CHICANE', 'PITSTOP', 'LAP', 'CIRCUIT',
-      'DRIVER', 'HELMET', 'TRACK', 'APEX', 'GRID', 'POLE', 'PODIUM', 'TROPHY',
-      'DRIFT', 'TIRES', 'STEER', 'CLUTCH', 'BRAKE', 'OVERTAKE', 'SPRINT', 'VICTORY',
-      'CHECKERED', 'AERO', 'BOOST', 'FLAG', 'PADDOCK', 'TELEMETRY', 'CORNER', 'SECTOR',
-      'CHAMPION', 'SLICK', 'WING', 'SUSPENSION', 'EXHAUST', 'GEARBOX', 'DRS', 'SAFETY',
-      'QUALIFY', 'RIVAL', 'TEAM', 'CHASSIS', 'HEADER', 'MONOCOQUE', 'SPEEDWAY', 'RADAR',
-      'ASPHALT', 'RACING', 'MOTOR', 'GAUGE'
-    ],
-  },
-  music: {
-    icon: '🎸',
-    name: 'Rock Music',
-    words: [
-      'GUITAR', 'DRUMS', 'BASS', 'VOCALS', 'AMPLIFIER', 'STAGE', 'CONCERT', 'SOLO',
-      'RIFF', 'TEMPO', 'RHYTHM', 'CHORD', 'ALBUM', 'VINYL', 'PEDAL', 'BAND',
-      'CHORUS', 'TREBLE', 'SOUND', 'TRACK', 'BEAT', 'HARMONY', 'VOLUME', 'CYMBAL',
-      'STRINGS', 'PICK', 'STUDIO', 'ENCORE', 'ACOUSTIC', 'ELECTRIC', 'FUZZ', 'OVERDRIVE',
-      'MELODY', 'BRIDGE', 'VERSES', 'OCTAVE', 'TUNER', 'SNARE', 'HIHAT', 'ORGAN',
-      'SYNTH', 'GROOVE', 'JAM', 'ROCKER', 'SINGER', 'KEYBOARD', 'SPEAKER', 'MIC',
-      'AUDIENCE', 'HEADPHONES', 'REVERB', 'DISTORTION'
-    ],
-  },
-  space: {
-    icon: '🚀',
-    name: 'Deep Space',
-    words: [
-      'GALAXY', 'NEBULA', 'PLANET', 'ROCKET', 'COMET', 'ASTEROID', 'METEOR', 'ORBIT',
-      'STAR', 'COSMOS', 'PULSAR', 'QUASAR', 'ECLIPSE', 'SOLAR', 'LUNAR', 'ASTRONAUT',
-      'GRAVITY', 'APOLLO', 'VOYAGER', 'HUBBLE', 'SPACE', 'SHUTTLE', 'MARTIAN', 'CRATER',
-      'ALIEN', 'COSMIC', 'STARDUST', 'HORIZON', 'BLACKHOLE', 'SUPERNOVA', 'SATELLITE', 'TELESCOPE',
-      'SPACESHIP', 'VENUS', 'MARS', 'JUPITER', 'SATURN', 'URANUS', 'NEPTUNE', 'PLUTO',
-      'MERCURY', 'SUN', 'MOON', 'VOID', 'ZENITH', 'NADIR', 'CLUSTER', 'ORBITER',
-      'LANDER', 'PROBE', 'ASTRONOMY', 'SPACETIME'
-    ],
-  },
-  ocean: {
-    icon: '🌊',
-    name: 'Ocean Depths',
-    words: [
-      'DOLPHIN', 'WHALE', 'SHARK', 'CORAL', 'OCTOPUS', 'JELLYFISH', 'LOBSTER', 'MANTA',
-      'SEAHORSE', 'STARFISH', 'TURTLE', 'ANEMONE', 'PLANKTON', 'REEF', 'TRENCH', 'ABYSS',
-      'CURRENT', 'WAVE', 'TIDE', 'SEASHELL', 'PEARL', 'SQUID', 'CLAM', 'CRAB',
-      'OTTER', 'PENGUIN', 'SPONGE', 'SURF', 'MARLIN', 'BARRACUDA', 'STINGRAY', 'SEAL',
-      'WALRUS', 'ALGAE', 'KELP', 'BARNACLE', 'SUBMARINE', 'NAUTILUS', 'TIDAL', 'OCEAN',
-      'PELICAN', 'SEAGULL', 'ATOLL', 'LAGOON', 'ISLAND', 'COAST', 'BEACH', 'DUNE',
-      'ANCHOR', 'HARBOR', 'VOYAGE', 'MARINER'
-    ],
-  },
-  dessert: {
-    icon: '🧁',
-    name: 'Sweet Treats',
-    words: [
-      'CUPCAKE', 'CHOCOLATE', 'BROWNIE', 'CARAMEL', 'SUNDAE', 'PUDDING', 'GELATO', 'TRUFFLE',
-      'FUDGE', 'CANDY', 'WAFFLE', 'PANCAKE', 'CREPE', 'MOUSSE', 'PARFAIT', 'SORBET',
-      'MACARON', 'FROSTING', 'SPRINKLES', 'SYRUP', 'HONEY', 'TOFFEE', 'TARTLET', 'PASTRY',
-      'COOKIE', 'VANILLA', 'CREAM', 'CHERRY', 'DONUT', 'MARSHMALLOW', 'NOUGAT', 'PRALINE',
-      'BONBON', 'LOLLIPOP', 'JELLY', 'CUSTARD', 'ECLAIR', 'PIE', 'TART', 'CHEESECAKE',
-      'TIRAMISU', 'SHORTBREAD', 'CRUMBLE', 'COBLER', 'SUGAR', 'ICING', 'SWEET', 'BERRY',
-      'BUTTERSCOTCH', 'FONDANT', 'GANACHE', 'TREAT'
-    ],
-  },
-  nature: {
-    icon: '🌲',
-    name: 'Wild Nature',
-    words: [
-      'FOREST', 'MOUNTAIN', 'RIVER', 'VALLEY', 'CANYON', 'GLACIER', 'WATERFALL', 'VOLCANO',
-      'MEADOW', 'JUNGLE', 'DESERT', 'STREAM', 'ISLAND', 'CLIFF', 'TIMBER', 'BLOSSOM',
-      'FOLIAGE', 'TRAIL', 'SUMMIT', 'BREEZE', 'SUNSHINE', 'WILDERNESS', 'CAVERN', 'GEYSER',
-      'SAVANNA', 'TUNDRA', 'HORIZON', 'GROVE', 'SUNSET', 'SUNRISE', 'RIDGE', 'PEAK',
-      'PLATEAU', 'OASIS', 'PRAIRIE', 'RAINBOW', 'THUNDER', 'LIGHTNING', 'STORM', 'AURORA',
-      'AUTUMN', 'SPRING', 'SUMMER', 'WINTER', 'FLORA', 'FAUNA', 'WOODLAND', 'CANOPY',
-      'LAKE', 'POND', 'DELTA', 'BROOK'
-    ],
-  },
-};
-
-const EXPANDED_GENERIC_WORDS = [
-  'BLAST', 'SPARK', 'FLASH', 'CRYSTAL', 'SHINE', 'POWER', 'ENERGY', 'CHAMP',
-  'MASTER', 'QUEST', 'LEGEND', 'PUZZLE', 'VICTORY', 'GOLDEN', 'SILVER', 'ROYAL',
-  'KNIGHT', 'MAGIC', 'WONDER', 'BRAVE', 'DREAM', 'FLIGHT', 'STRIKE', 'SHIELD',
-  'VALOR', 'HEROIC', 'TRIUMPH', 'SPIRIT', 'FORCE', 'RADIANT', 'FOCUS', 'SWIFT',
-  'SHADOW', 'FLAME', 'FROST', 'STORM', 'THUNDER', 'SOLAR', 'LUNAR', 'COSMIC',
-  'MYSTIC', 'PRIME', 'STEEL', 'BLADE', 'TEMPLE', 'CASTLE', 'GLORY', 'DESTINY',
-  'BEACON', 'CROWN', 'THRONE', 'HORIZON',
-  // Extra padding words (see buildFallbackWordList below) -- these exist so
-  // there's still a large enough pool left to reach the requested count
-  // after existing/duplicate words get filtered out, and so the per-theme
-  // shuffle has enough material to make different themes look genuinely
-  // different instead of just re-ordering the same ~50 words.
-  'ARCADE', 'COMBO', 'LEVEL', 'BONUS', 'TROPHY', 'MEDAL', 'RIBBON', 'BANNER',
-  'PENNANT', 'ARENA', 'STADIUM', 'CHALLENGE', 'MISSION', 'JOURNEY', 'ADVENTURE', 'EXPLORE',
-  'DISCOVER', 'TREASURE', 'VAULT', 'CHEST', 'RELIC', 'ARTIFACT', 'RUNE', 'SIGIL',
-  'EMBLEM', 'INSIGNIA', 'MEDALLION', 'AMULET', 'TALISMAN', 'CHARM', 'GEM', 'JEWEL',
-  'DIAMOND', 'EMERALD', 'SAPPHIRE', 'RUBY', 'OPAL', 'PEARL', 'IVORY', 'MARBLE'
-];
-
-/**
- * Simple deterministic string hash (djb2-ish) used only to seed the shuffle
- * below -- NOT for anything security-sensitive. Same theme text always maps
- * to the same seed, so results are stable per theme, but different theme
- * text maps to a different seed.
- */
-function hashStringToSeed(str: string): number {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    hash = (hash * 31 + str.charCodeAt(i)) >>> 0;
-  }
-  return hash || 1;
-}
-
-/** Deterministic, seedable shuffle (mulberry32 PRNG). Same seed -> same
- * order every time; different seed -> a different order/selection. */
-function seededShuffle<T>(array: T[], seed: number): T[] {
-  const result = array.slice();
-  let state = seed;
-  const next = () => {
-    state = (state + 0x6d2b79f5) | 0;
-    let t = Math.imul(state ^ (state >>> 15), 1 | state);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-  for (let i = result.length - 1; i > 0; i--) {
-    const j = Math.floor(next() * (i + 1));
-    [result[i], result[j]] = [result[j], result[i]];
-  }
-  return result;
-}
-
-/**
- * Finds a curated SMART_THEME_FALLBACKS bucket matching free-text theme
- * input. Checks both the short bucket key ("space") and its full display
- * name ("Deep Space") against the player's text, in both directions -- the
- * two previous call sites (this file's generate-category fallback, and the
- * suggest-words fallback below) each only checked ONE of those, so a theme
- * could match under one but not the other depending on which endpoint was
- * called, and most free-typed themes matched neither at all.
- */
-function matchSmartTheme(themeText: string): { icon: string; name: string; words: string[] } | null {
-  const clean = (themeText || '').toLowerCase().trim();
-  if (!clean) return null;
-  for (const bucket of Object.values(SMART_THEME_FALLBACKS)) {
-    const bucketName = bucket.name.toLowerCase();
-    if (clean.includes(bucketName) || bucketName.includes(clean)) {
-      return bucket;
-    }
-  }
-  for (const [key, bucket] of Object.entries(SMART_THEME_FALLBACKS)) {
-    if (clean.includes(key)) {
-      return bucket;
-    }
-  }
-  return null;
-}
-
-/**
- * Builds a fallback word list that actually varies with the player's theme
- * text even when it doesn't match one of the curated SMART_THEME_FALLBACKS
- * buckets -- this is the fix for "suggested words don't change when I
- * change the theme": the old code fell back to the exact same static
- * EXPANDED_GENERIC_WORDS list, in the exact same order, for every theme
- * that didn't hit one of the ~10 curated buckets (which is most free-typed
- * themes). Here the generic pool is shuffled with a seed derived from the
- * theme text itself, so different themes reliably produce a different
- * selection and order, then tops up from the rest of the shuffled pool if
- * filtering out words the player already has would otherwise drop the
- * count below what was requested.
- */
-function buildFallbackWordList(themeText: string, existingWords: string[], count: number): string[] {
-  const matched = matchSmartTheme(themeText);
-  const existingSet = new Set((existingWords || []).map((w) => w.toUpperCase()));
-
-  const primaryPool = matched ? matched.words : [];
-  const shuffledGeneric = seededShuffle(EXPANDED_GENERIC_WORDS, hashStringToSeed(themeText || 'default'));
-
-  const combinedPool = Array.from(new Set([...primaryPool, ...shuffledGeneric]));
-  const available = combinedPool.filter((w) => !existingSet.has(w));
-  return available.slice(0, count);
-}
+import {
+  matchSmartTheme,
+  buildThemeWordList,
+  seededShuffle,
+  hashStringToSeed,
+  EXPANDED_GENERIC_WORDS,
+} from './src/data/themeDictionaries';
 
 function generateFallbackTheme(prompt: string, targetCount: number = 8) {
   const matched = matchSmartTheme(prompt);
@@ -249,12 +19,11 @@ function generateFallbackTheme(prompt: string, targetCount: number = 8) {
       icon: matched.icon,
       targetCount: Math.max(5, Math.min(12, targetCount)),
       description: `Explore themed words for ${matched.name}!`,
-      words: matched.words,
+      words: buildThemeWordList(prompt, [], 50),
     };
   }
 
   // Generic procedural synthesis from prompt keywords -- shuffled per-theme
-  // (see buildFallbackWordList above) instead of a fixed static list.
   const capitalized = prompt
     .split(' ')
     .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
@@ -266,7 +35,7 @@ function generateFallbackTheme(prompt: string, targetCount: number = 8) {
     icon: '✨',
     targetCount: Math.max(5, Math.min(12, targetCount)),
     description: `Special custom puzzle category for ${capitalized}`,
-    words: seededShuffle(EXPANDED_GENERIC_WORDS, hashStringToSeed(prompt || 'default')),
+    words: buildThemeWordList(prompt, [], 50),
   };
 }
 
@@ -556,7 +325,7 @@ Include a catchy Category Name (up to 25 chars), an appropriate single Emoji ico
       // bucket's display NAME, never its short key, and fell back to the
       // exact same static EXPANDED_GENERIC_WORDS list/order for anything
       // that didn't match).
-      const fallbackSuggestions = buildFallbackWordList(categoryName, existingWords, count);
+      const fallbackSuggestions = buildThemeWordList(categoryName, existingWords, count);
       res.json({ suggestions: fallbackSuggestions });
     } catch (error: any) {
       res.status(500).json({ error: error.message || 'Failed to suggest words.' });

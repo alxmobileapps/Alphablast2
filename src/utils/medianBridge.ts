@@ -1,16 +1,9 @@
 /**
  * Google Play Billing & TWA (PWABuilder) / Median.co Unified Bridge
  * Supports:
- * 0. Capacitor Native Google Play Billing (cordova-plugin-purchase / "cdv-purchase") — real Android app builds
  * 1. PWABuilder / Trusted Web Activity (TWA) via Digital Goods API & PaymentRequest (https://play.google.com/billing)
  * 2. Median.co (GoNative) In-App Purchases & AdMob
  * 3. Browser simulation fallback for testing
- *
- * NOTE on the native (cdv-purchase) path: it was scaffolded against the documented
- * cdv-purchase v13 "Capacitor" integration API but could not be build-tested locally
- * in this environment (no local Android toolchain / npm registry access at the time
- * it was written). Verify against a real device build (see .github/workflows/android-build.yml)
- * and the plugin's own Capacitor guide before shipping: https://github.com/j3k0/cordova-plugin-purchase
  */
 
 declare global {
@@ -18,191 +11,6 @@ declare global {
     median?: any;
     gonative?: any;
     getDigitalGoodsService?: (serviceName: string) => Promise<any>;
-    Capacitor?: any;
-    CdvPurchase?: any;
-  }
-}
-
-/** All known Google Play Billing product IDs used by AlphaBlast's shop. */
-const NATIVE_BILLING_PRODUCTS: Array<{ id: string; consumable: boolean }> = [
-  { id: 'com.wordblast.removeads', consumable: false },
-  { id: 'com.wordblast.diamonds_10', consumable: true },
-  { id: 'com.wordblast.diamonds_50', consumable: true },
-];
-
-type PendingPurchase = {
-  callback: (success: boolean, result?: IapPurchaseResult) => void;
-};
-
-let nativeBillingReady: Promise<void> | null = null;
-const pendingPurchases = new Map<string, PendingPurchase>();
-
-function isCapacitorNativeBilling(): boolean {
-  return typeof window !== 'undefined' && !!window.Capacitor?.isNativePlatform?.();
-}
-
-// TEMPORARY DIAGNOSTIC FLAG — see the matching flag in universalAds.ts for
-// the full rationale. Set to true, this makes the app behave as if native
-// Google Play Billing (cdv-purchase) were unavailable, falling through to
-// the PWABuilder/Median/web-fallback paths below — exactly like the old
-// working PWABuilder build. This is to isolate whether the native billing
-// code path (as opposed to the native AdMob code path, gated separately)
-// is contributing to the ~4.5s white-screen freeze after round completion.
-// MUST be set back to false (or removed) before shipping to production —
-// leaving it true ships a build where real-money purchases don't work.
-//
-// ROUND 2 of the diagnostic: the previous test (both native AdMob AND
-// native Billing disabled) confirmed the freeze disappears. This flag is
-// now flipped back to false (billing re-enabled) while
-// DIAGNOSTIC_DISABLE_NATIVE_ADS in universalAds.ts stays true, to check
-// whether native Billing alone was ever part of the problem, or whether
-// native AdMob was the sole cause all along (the working theory, since the
-// freeze happens right after round completion — exactly when an
-// interstitial ad would try to show — while native Billing only runs on
-// user-initiated Shop actions, never automatically after a round).
-const DIAGNOSTIC_DISABLE_NATIVE_BILLING = false;
-
-function nativeBillingEnabled(): boolean {
-  return isCapacitorNativeBilling() && !DIAGNOSTIC_DISABLE_NATIVE_BILLING;
-}
-
-/**
- * Initializes the cdv-purchase store once (registers products + wires event handlers).
- * Safe to call multiple times — subsequent calls reuse the same initialization promise.
- */
-function ensureNativeBillingReady(): Promise<void> {
-  if (nativeBillingReady) return nativeBillingReady;
-
-  nativeBillingReady = new Promise<void>((resolve) => {
-    const CdvPurchase = window.CdvPurchase;
-    if (!CdvPurchase) {
-      console.warn('[NativeBilling] window.CdvPurchase not found (cordova-plugin-purchase not installed/synced yet)');
-      resolve();
-      return;
-    }
-
-    try {
-      const { store, ProductType, Platform } = CdvPurchase;
-
-      store.register(
-        NATIVE_BILLING_PRODUCTS.map((p) => ({
-          id: p.id,
-          type: p.consumable ? ProductType.CONSUMABLE : ProductType.NON_CONSUMABLE,
-          platform: Platform.GOOGLE_PLAY,
-        }))
-      );
-
-      store.when().approved((transaction: any) => {
-        transaction.verify();
-      });
-
-      store.when().verified((receipt: any) => {
-        receipt.finish();
-      });
-
-      store.when().finished((transaction: any) => {
-        const productId: string | undefined = transaction?.products?.[0]?.id;
-        if (!productId) return;
-        const pending = pendingPurchases.get(productId);
-        if (pending) {
-          pendingPurchases.delete(productId);
-          pending.callback(true, {
-            status: 'success',
-            productId,
-            transactionId: transaction.transactionId,
-            purchaseToken: transaction.purchaseId || transaction.nativePurchase?.purchaseToken,
-          });
-        }
-      });
-
-      store.error((err: any) => {
-        console.warn('[NativeBilling] Store error:', err);
-        // If the error carries a productId we were waiting on, fail that specific purchase.
-        const productId = err?.productId;
-        if (productId && pendingPurchases.has(productId)) {
-          pendingPurchases.delete(productId);
-          pendingPurchases.get(productId);
-          const pending = pendingPurchases.get(productId);
-          pending?.callback(false, { status: 'error', productId, error: err?.message || 'Billing error' });
-        }
-      });
-
-      store.initialize([Platform.GOOGLE_PLAY]).then(() => {
-        console.log('[NativeBilling] cdv-purchase store initialized');
-        resolve();
-      }).catch((e: any) => {
-        console.warn('[NativeBilling] initialize() failed:', e);
-        resolve();
-      });
-    } catch (e) {
-      console.warn('[NativeBilling] Failed to set up store:', e);
-      resolve();
-    }
-  });
-
-  return nativeBillingReady;
-}
-
-/** Kick off native billing initialization as early as possible (call once on app mount). */
-export function initNativeBilling(): void {
-  if (nativeBillingEnabled()) {
-    void ensureNativeBillingReady();
-  }
-}
-
-async function purchaseNative(
-  productId: string,
-  callback: (success: boolean, result?: IapPurchaseResult) => void
-): Promise<void> {
-  await ensureNativeBillingReady();
-  const CdvPurchase = window.CdvPurchase;
-  if (!CdvPurchase) {
-    callback(false, { status: 'error', productId, error: 'Native billing unavailable on this build.' });
-    return;
-  }
-
-  try {
-    const { store } = CdvPurchase;
-    const product = store.get(productId);
-    const offer = product?.getOffer?.();
-    if (!offer) {
-      callback(false, { status: 'error', productId, error: 'Product not available from Google Play yet.' });
-      return;
-    }
-    pendingPurchases.set(productId, { callback });
-    await offer.order();
-  } catch (e: any) {
-    pendingPurchases.delete(productId);
-    const message: string = e?.message || String(e);
-    if (message.toLowerCase().includes('cancel')) {
-      callback(false, { status: 'cancelled', productId });
-    } else {
-      callback(false, { status: 'error', productId, error: message });
-    }
-  }
-}
-
-async function restoreNative(
-  onComplete: (restoredProductIds: string[]) => void,
-  onError?: (err: string) => void
-): Promise<void> {
-  await ensureNativeBillingReady();
-  const CdvPurchase = window.CdvPurchase;
-  if (!CdvPurchase) {
-    onComplete([]);
-    return;
-  }
-  try {
-    const { store } = CdvPurchase;
-    await store.restorePurchases();
-    const restored: string[] = NATIVE_BILLING_PRODUCTS
-      .filter((p) => !p.consumable)
-      .map((p) => p.id)
-      .filter((id) => store.get(id)?.owned);
-    onComplete(restored);
-  } catch (e: any) {
-    if (onError) onError(e?.message || 'Could not restore purchases.');
-    else onComplete([]);
   }
 }
 
@@ -323,12 +131,6 @@ export async function purchaseIAP(
   productId: string,
   callback: (success: boolean, result?: IapPurchaseResult) => void
 ): Promise<void> {
-  // 0. Capacitor Native Google Play Billing (real Android app build)
-  if (nativeBillingEnabled()) {
-    await purchaseNative(productId, callback);
-    return;
-  }
-
   // 1. Check if PWABuilder / TWA Google Play Billing PaymentRequest is available
   if (typeof window !== 'undefined' && 'PaymentRequest' in window) {
     try {
@@ -441,12 +243,6 @@ export async function restorePurchases(
   onComplete: (restoredProductIds: string[]) => void,
   onError?: (err: string) => void
 ): Promise<void> {
-  // 0. Capacitor Native Google Play Billing (real Android app build)
-  if (nativeBillingEnabled()) {
-    await restoreNative(onComplete, onError);
-    return;
-  }
-
   const restored: string[] = [];
 
   // 1. Check PWABuilder / TWA Digital Goods Service

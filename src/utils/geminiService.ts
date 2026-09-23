@@ -1,3 +1,9 @@
+import {
+  SMART_THEME_DICTIONARIES,
+  matchSmartTheme,
+  buildThemeWordList,
+} from '../data/themeDictionaries';
+
 export interface AiCategoryResponse {
   name: string;
   icon: string;
@@ -20,41 +26,15 @@ export interface AiWordTriviaResponse {
 
 const API_BASE_URL = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
 
-// Smart client-side fallbacks if static CDN returns HTML or server is unreachable
-const LOCAL_FALLBACKS: Record<string, { icon: string; name: string; words: string[] }> = {
-  beast: {
-    icon: '🐉',
-    name: 'Mythical Beasts',
-    words: ['DRAGON', 'PHOENIX', 'GRIFFIN', 'KRAKEN', 'HYDRA', 'SPHINX', 'GOLEM', 'PEGASUS', 'CHIMERA', 'BASILISK', 'MINOTAUR', 'CYCLOPS', 'GHOUL', 'SIREN', 'YETI', 'WEREWOLF', 'VAMPIRE', 'CERBERUS', 'VALKYRIE', 'GOBLIN', 'PIXIE', 'SPRITE', 'BANSHEE', 'CENTAUR'],
-  },
-  space: {
-    icon: '🚀',
-    name: 'Deep Space',
-    words: ['GALAXY', 'NEBULA', 'PLANET', 'ROCKET', 'COMET', 'ASTEROID', 'METEOR', 'ORBIT', 'STAR', 'COSMOS', 'PULSAR', 'QUASAR', 'ECLIPSE', 'SOLAR', 'LUNAR', 'ASTRONAUT', 'GRAVITY', 'APOLLO', 'VOYAGER', 'HUBBLE'],
-  },
-  ocean: {
-    icon: '🌊',
-    name: 'Ocean Depths',
-    words: ['DOLPHIN', 'WHALE', 'SHARK', 'CORAL', 'OCTOPUS', 'JELLYFISH', 'LOBSTER', 'MANTA', 'SEAHORSE', 'STARFISH', 'TURTLE', 'ANEMONE', 'PLANKTON', 'REEF', 'TRENCH', 'ABYSS', 'CURRENT', 'WAVE', 'TIDE', 'SEASHELL'],
-  },
-  coffee: {
-    icon: '☕',
-    name: 'Coffee & Cafe',
-    words: ['ESPRESSO', 'LATTE', 'MOCHA', 'BREW', 'ROAST', 'BARISTA', 'CAFE', 'BEANS', 'AROMA', 'CREMA', 'CAPPUCCINO', 'MACCHIATO', 'FRAPPE', 'POUROVER', 'FILTER', 'MUG', 'STEAM', 'DRIP', 'GRIND', 'SIP'],
-  },
-};
-
 function getLocalFallbackCategory(prompt: string, targetCount: number = 8): AiCategoryResponse {
-  const p = prompt.toLowerCase();
-  const key = Object.keys(LOCAL_FALLBACKS).find((k) => p.includes(k));
-  if (key) {
-    const fb = LOCAL_FALLBACKS[key];
+  const matched = matchSmartTheme(prompt);
+  if (matched) {
     return {
-      name: fb.name,
-      icon: fb.icon,
+      name: matched.name,
+      icon: matched.icon,
       targetCount: Math.max(5, Math.min(12, targetCount)),
-      description: `Explore themed words for ${fb.name}!`,
-      words: fb.words,
+      description: `Explore curated puzzle words for ${matched.name}!`,
+      words: buildThemeWordList(prompt, [], 50),
     };
   }
 
@@ -64,18 +44,12 @@ function getLocalFallbackCategory(prompt: string, targetCount: number = 8): AiCa
     .join(' ')
     .substring(0, 24) || 'Custom Theme';
 
-  const defaultPool = [
-    'BLAST', 'SPARK', 'FLASH', 'CRYSTAL', 'SHINE', 'POWER', 'ENERGY', 'CHAMP',
-    'MASTER', 'QUEST', 'LEGEND', 'PUZZLE', 'VICTORY', 'GOLDEN', 'SILVER', 'ROYAL',
-    'KNIGHT', 'MAGIC', 'WONDER', 'BRAVE', 'DREAM', 'FLIGHT', 'STRIKE', 'SHIELD'
-  ];
-
   return {
     name,
     icon: '✨',
     targetCount: Math.max(5, Math.min(12, targetCount)),
     description: `Special custom puzzle category for ${name}`,
-    words: defaultPool,
+    words: buildThemeWordList(prompt, [], 50),
   };
 }
 
@@ -183,8 +157,13 @@ export async function suggestWordsWithAi(
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ categoryName, existingWords, count }),
     });
-    return data.suggestions || [];
+    if (data.suggestions && data.suggestions.length > 0) {
+      return data.suggestions;
+    }
   } catch (err) {
-    return [];
+    console.warn('[GeminiService] Suggest words API error, using smart fallback pool:', err);
   }
+
+  // Guaranteed smart semantic fallback with 30 themes & seeded procedural variation
+  return buildThemeWordList(categoryName, existingWords, count);
 }

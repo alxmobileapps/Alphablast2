@@ -113,7 +113,7 @@ function generateLightningBolt(x1: number, y1: number, x2: number, y2: number, s
   return path;
 }
 
-const GameBoardImpl: React.FC<GameBoardProps> = ({
+export const GameBoard: React.FC<GameBoardProps> = ({
   board,
   selectedTile,
   onTileClick,
@@ -1002,43 +1002,3 @@ const GameBoardImpl: React.FC<GameBoardProps> = ({
     </div>
   );
 };
-
-/**
- * The board (8x8+ tiles, each with its own conditional gradients/shadows/
- * animations) is by far the most expensive thing App.tsx renders. App.tsx
- * also has a `setInterval(..., 1000)` timer-mode countdown that updates
- * state once per second — and GameBoard doesn't even use that value, but
- * without this memo it was re-rendering (and repainting) in full every
- * single second anyway, just because it's a sibling of whatever component
- * does need the tick. That's the per-second "flicker" reported on-device.
- *
- * Custom comparator instead of plain React.memo: only skip the re-render
- * when none of the props GameBoard actually reads for rendering/game logic
- * have changed — this deliberately ignores identity changes on the
- * onTileClick/onTileSelect/onTileSwipe/onDismissRobot/onDismissTutorialTip
- * callback props (those aren't memoized with useCallback in App.tsx, so
- * they get a new reference on every render regardless; comparing them
- * would defeat the memo entirely and bring back the every-second
- * re-render).
- */
-function gameBoardPropsAreEqual(prev: GameBoardProps, next: GameBoardProps): boolean {
-  return (
-    prev.board === next.board &&
-    prev.selectedTile === next.selectedTile &&
-    prev.isSwipeEnabled === next.isSwipeEnabled &&
-    prev.swappingTiles === next.swappingTiles &&
-    prev.clue === next.clue &&
-    prev.activePowerUp === next.activePowerUp &&
-    prev.pendingReplaceLetter === next.pendingReplaceLetter &&
-    prev.explosions === next.explosions &&
-    prev.isAnimating === next.isAnimating &&
-    prev.banner === next.banner &&
-    prev.wordAlerts === next.wordAlerts &&
-    prev.robotWords === next.robotWords &&
-    prev.isReady === next.isReady &&
-    prev.isRolling === next.isRolling &&
-    prev.tutorialTip === next.tutorialTip
-  );
-}
-
-export const GameBoard = React.memo(GameBoardImpl, gameBoardPropsAreEqual);

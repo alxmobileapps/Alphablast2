@@ -6,10 +6,3 @@ coverage/
 *.log
 .env*
 !.env.example
-
-# Capacitor / Android (native project is bootstrapped fresh by CI, not committed)
-android/
-/assets/
-*.keystore
-*.jks
-android/keystore.properties

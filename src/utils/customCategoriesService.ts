@@ -70,12 +70,12 @@ export async function publishCustomCategory(
   input: CreateCustomCategoryInput
 ): Promise<Category> {
   const targetCount = Math.max(3, Math.min(30, input.targetCount || 8));
-  const minRequiredWords = targetCount * 2;
+  const minRequiredWords = input.gameMode === 'timer' ? 5 : Math.max(5, targetCount);
   const cleanWords = sanitizeCategoryWords(input.words);
 
   if (cleanWords.length < minRequiredWords) {
     throw new Error(
-      `Please provide at least ${minRequiredWords} valid theme words (at least 2× the target goal of ${targetCount} words). Currently provided: ${cleanWords.length}.`
+      `Please provide at least ${minRequiredWords} valid theme words (target goal: ${targetCount} words). Currently provided: ${cleanWords.length}.`
     );
   }
 
