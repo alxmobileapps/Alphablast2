@@ -176,6 +176,15 @@ export const CreateCategoryModal: React.FC<CreateCategoryModalProps> = ({
     }
   }, [editingCategory, isOpen]);
 
+  // Dynamic Theme Matching & Live Suggestions that adapt whenever the theme changes
+  // MUST be called before any early returns (Rules of Hooks)
+  const previewSuggestions = useMemo(() => {
+    if (!isOpen) return [];
+    const currentQuery = (name || aiPrompt || '').trim();
+    if (!currentQuery) return [];
+    return buildThemeWordList(currentQuery, [], 50);
+  }, [isOpen, name, aiPrompt]);
+
   if (!isOpen) return null;
 
   // Compute parsed words
@@ -192,13 +201,7 @@ export const CreateCategoryModal: React.FC<CreateCategoryModalProps> = ({
   const isWordsSatisfied = parsedWords.length >= minRequiredWords;
   const wordsProgressPercent = Math.min(100, Math.round((parsedWords.length / minRequiredWords) * 100));
 
-  // Dynamic Theme Matching & Live Suggestions that adapt whenever the theme changes
   const activeThemeMatch = matchSmartTheme(name || aiPrompt || '');
-  const previewSuggestions = useMemo(() => {
-    const currentQuery = (name || aiPrompt || '').trim();
-    if (!currentQuery) return [];
-    return buildThemeWordList(currentQuery, [], 50);
-  }, [name, aiPrompt]);
 
   const handleGenerateAiTheme = async (customPrompt?: string) => {
     const promptToUse = (customPrompt || aiPrompt || name).trim();
