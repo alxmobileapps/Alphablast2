@@ -330,22 +330,179 @@ export const SMART_THEME_DICTIONARIES: Record<string, ThemeDictionary> = {
       'SILVER', 'BRONZE', 'FRAME', 'MURAL', 'GRAFFITI', 'INK', 'PIGMENT', 'GLAZE'
     ],
   },
+  furniture: {
+    key: 'furniture',
+    name: 'Furniture & Decor',
+    icon: '🪑',
+    keywords: [
+      'furniture', 'furnish', 'chair', 'table', 'desk', 'bed', 'sofa', 'couch',
+      'cabinet', 'drawer', 'interior', 'decor', 'stool', 'bench', 'shelf', 'shelves',
+      'wardrobe', 'dresser', 'seating', 'living', 'room', 'home', 'decorating',
+      'cushion', 'mattress', 'woodwork', 'credenza', 'bookcase'
+    ],
+    words: [
+      'CHAIR', 'TABLE', 'SOFA', 'COUCH', 'DESK', 'BED', 'BENCH', 'STOOL',
+      'SHELF', 'DRAWER', 'CABINET', 'DRESSER', 'WARDROBE', 'ARMOIRE', 'OTTOMAN', 'RECLINER',
+      'BOOKCASE', 'NIGHTSTAND', 'CREDENZA', 'BUFFET', 'SIDEBOARD', 'LOVESEAT', 'SETTEE', 'DIVAN',
+      'FUTON', 'MATTRESS', 'HEADBOARD', 'CRADLE', 'CRIB', 'CUSHION', 'PILLOW', 'VANITY',
+      'MIRROR', 'CARPET', 'RUG', 'CURTAIN', 'BLINDS', 'LAMPSHADE', 'EASEL', 'CHEST',
+      'FOOTREST', 'HUTCH', 'CUPBOARD', 'STAND', 'PODIUM', 'HAMMOCK', 'CANOPY', 'BEDSIDE',
+      'HASSOCK', 'GLIDER', 'VALET', 'CONSOLE', 'BUREAU', 'SHELVES', 'DAYBED', 'DESKTOP'
+    ],
+  },
+  kitchen: {
+    key: 'kitchen',
+    name: 'Kitchen & Cooking',
+    icon: '🍳',
+    keywords: ['kitchen', 'cook', 'cooking', 'chef', 'utensil', 'appliance', 'stove', 'oven', 'pan', 'pot', 'knife', 'dish', 'recipe', 'culinary'],
+    words: [
+      'STOVE', 'OVEN', 'TOASTER', 'BLENDER', 'KETTLE', 'PAN', 'POT', 'SKILLET',
+      'KNIFE', 'FORK', 'SPOON', 'PLATE', 'BOWL', 'MUG', 'GLASS', 'DISH',
+      'SPATULA', 'WHISK', 'PEELER', 'GRATER', 'SIEVE', 'TONGS', 'APRON', 'TRAY',
+      'FRIDGE', 'FREEZER', 'MIXER', 'PITCHER', 'JAR', 'CONTAINER', 'COLANDER', 'LADLE',
+      'CHOPPING', 'BOARD', 'SAUCEPAN', 'WOK', 'STEAMER', 'TIMER', 'SCALE', 'CUP',
+      'NAPKIN', 'CLEAVER', 'TEAPOT', 'THERMOS', 'CORKSCREW', 'GRINDER', 'CARAFE', 'ROASTER'
+    ],
+  },
+  clothing: {
+    key: 'clothing',
+    name: 'Clothes & Fashion',
+    icon: '👗',
+    keywords: ['clothes', 'clothing', 'fashion', 'wear', 'dress', 'shirt', 'pants', 'shoes', 'outfit', 'apparel', 'garment', 'style'],
+    words: [
+      'SHIRT', 'PANTS', 'JEANS', 'DRESS', 'SKIRT', 'JACKET', 'COAT', 'SWEATER',
+      'HOODIE', 'SUIT', 'BLAZER', 'SHORTS', 'VEST', 'SOCKS', 'SHOES', 'BOOTS',
+      'SNEAKER', 'HEELS', 'SANDALS', 'SLIPPERS', 'HAT', 'CAP', 'BEANIE', 'SCARF',
+      'GLOVES', 'MITTENS', 'BELT', 'TIE', 'BOWTIE', 'CLOAK', 'ROBE', 'PAJAMAS',
+      'CARDIGAN', 'PARKA', 'PONCHO', 'TUNIC', 'JERSEY', 'BLOUSE', 'APRON', 'COLLAR',
+      'SLEEVE', 'POCKET', 'ZIPPER', 'BUTTON', 'FABRIC', 'COTTON', 'WOOL', 'SILK'
+    ],
+  },
+  vehicles: {
+    key: 'vehicles',
+    name: 'Vehicles & Transport',
+    icon: '🚗',
+    keywords: ['vehicle', 'car', 'transport', 'drive', 'truck', 'train', 'plane', 'boat', 'travel', 'ride', 'automobile', 'motor'],
+    words: [
+      'CAR', 'TRUCK', 'VAN', 'BUS', 'TRAIN', 'SUBWAY', 'TRAM', 'PLANE',
+      'JET', 'GLIDER', 'BOAT', 'SHIP', 'YACHT', 'FERRY', 'CANOE', 'KAYAK',
+      'BICYCLE', 'BIKE', 'SCOOTER', 'MOPED', 'TRACTOR', 'TAXI', 'CAB', 'WAGON',
+      'CART', 'AMBULANCE', 'HELICOPTER', 'CRUISER', 'SPEEDBOAT', 'STEAMER', 'MOTORCYCLE', 'CHARIOT',
+      'TROLLEY', 'LOCOMOTIVE', 'FREIGHTER', 'TRAILER', 'CARAVAN', 'BUGGY', 'GO-KART', 'MONORAIL',
+      'BARGE', 'DINGHY', 'CATAMARAN', 'GONDOLA', 'DIRTBIKE', 'MINIVAN', 'PICKUP', 'TOWTRUCK'
+    ],
+  },
+  fruits: {
+    key: 'fruits',
+    name: 'Fruits & Berries',
+    icon: '🍎',
+    keywords: ['fruit', 'fruits', 'berry', 'berries', 'citrus', 'apple', 'banana', 'orange', 'sweet', 'orchard', 'produce'],
+    words: [
+      'APPLE', 'BANANA', 'ORANGE', 'GRAPE', 'MANGO', 'LEMON', 'LIME', 'CHERRY',
+      'PEACH', 'PLUM', 'BERRY', 'MELON', 'WATERMELON', 'KIWI', 'PEAR', 'PAPAYA',
+      'GUAVA', 'FIG', 'DATE', 'APRICOT', 'PINEAPPLE', 'COCONUT', 'AVOCADO', 'LYCHEE',
+      'PASSION', 'BLUEBERRY', 'RASPBERRY', 'BLACKBERRY', 'CRANBERRY', 'POMEGRANATE', 'GRAPEFRUIT', 'TANGERINE',
+      'CANTALOUPE', 'HONEYDEW', 'NECTARINE', 'DRAGONFRUIT', 'MULBERRY', 'ELDERBERRY', 'PERSIMMON', 'TANGELO',
+      'QUINCE', 'PLANTAIN', 'KUMQUAT', 'STARFRUIT', 'FEIJOA', 'CURRANT', 'GOOSEBERRY', 'TAMARIND'
+    ],
+  },
+  vegetables: {
+    key: 'vegetables',
+    name: 'Vegetables & Greens',
+    icon: '🥦',
+    keywords: ['vegetable', 'vegetables', 'veggie', 'greens', 'salad', 'farm', 'garden', 'produce', 'healthy', 'organic'],
+    words: [
+      'CARROT', 'POTATO', 'TOMATO', 'ONION', 'GARLIC', 'PEPPER', 'SPINACH', 'BROCCOLI',
+      'CABBAGE', 'LETTUCE', 'RADISH', 'CELERY', 'PEA', 'BEAN', 'BEET', 'SQUASH',
+      'CORN', 'PUMPKIN', 'CUCUMBER', 'GINGER', 'MUSHROOM', 'OLIVE', 'EGGPLANT', 'ZUCCHINI',
+      'ASPARAGUS', 'ARTICHOKE', 'CAULIFLOWER', 'KALE', 'TURNIP', 'PARSNIP', 'SCALLION', 'SHALLOT',
+      'LEEK', 'CHIVE', 'OKRA', 'YAM', 'SPROUTS', 'ARUGULA', 'ENDIVE', 'FENNEL',
+      'CHARD', 'BOKCHOY', 'RUTABAGA', 'WATERCRESS', 'JALAPENO', 'HABANERO', 'SWEETPOTATO', 'CASSAVA'
+    ],
+  },
+  tools: {
+    key: 'tools',
+    name: 'Tools & Hardware',
+    icon: '🔨',
+    keywords: ['tool', 'tools', 'hardware', 'build', 'repair', 'hammer', 'wrench', 'workshop', 'craft', 'construction', 'diy'],
+    words: [
+      'HAMMER', 'WRENCH', 'PLIERS', 'SAW', 'DRILL', 'CHISEL', 'CLAMP', 'LEVEL',
+      'FILE', 'SANDER', 'SCREW', 'NAIL', 'BOLT', 'NUT', 'WASHER', 'TAPE',
+      'RULER', 'SPADE', 'SHOVEL', 'AXE', 'MALLET', 'RAKE', 'HOE', 'SHEARS',
+      'ANVIL', 'VISE', 'TROWEL', 'HACKSAW', 'CROWBAR', 'PUNCH', 'SOCKET', 'CALIPER',
+      'BIT', 'BLADE', 'LADDER', 'BENCH', 'TOOLBOX', 'TORCH', 'SOLDERING', 'RIVET',
+      'STAPLER', 'SQUARE', 'PLUMB', 'GAUGE', 'LATHE', 'GRINDER', 'COMPASS', 'SLEDGE'
+    ],
+  },
+  house: {
+    key: 'house',
+    name: 'House & Home',
+    icon: '🏠',
+    keywords: ['house', 'home', 'room', 'building', 'living', 'residence', 'apartment', 'property', 'architecture', 'yard'],
+    words: [
+      'HOUSE', 'HOME', 'ROOM', 'WALL', 'DOOR', 'WINDOW', 'ROOF', 'FLOOR',
+      'CEILING', 'KITCHEN', 'BEDROOM', 'BATHROOM', 'ATTIC', 'CELLAR', 'BASEMENT', 'GARAGE',
+      'PORCH', 'PATIO', 'BALCONY', 'HALLWAY', 'STAIRS', 'PANTRY', 'CLOSET', 'FOYER',
+      'CHIMNEY', 'HEARTH', 'YARD', 'GARDEN', 'FENCE', 'GATE', 'LAWN', 'SHED',
+      'DRIVEWAY', 'SIDEWALK', 'ROOFTOP', 'TERRACE', 'CORRIDOR', 'ENTRYWAY', 'LOBBY', 'PARLOR',
+      'SUNROOM', 'VERANDA', 'GUTTER', 'SHUTTER', 'SIDING', 'FOUNDATION', 'BEAM', 'PILLAR'
+    ],
+  },
+  anatomy: {
+    key: 'anatomy',
+    name: 'Body & Anatomy',
+    icon: '🫀',
+    keywords: ['body', 'anatomy', 'organ', 'bone', 'muscle', 'human', 'health', 'medical', 'physical', 'biology'],
+    words: [
+      'HEAD', 'FACE', 'EYE', 'EAR', 'NOSE', 'MOUTH', 'LIP', 'TOOTH',
+      'TONGUE', 'CHIN', 'CHEEK', 'NECK', 'THROAT', 'CHEST', 'HEART', 'LUNG',
+      'LIVER', 'STOMACH', 'SPINE', 'BONE', 'SKULL', 'ARM', 'ELBOW', 'WRIST',
+      'HAND', 'PALM', 'FINGER', 'THUMB', 'LEG', 'KNEE', 'ANKLE', 'FOOT',
+      'HEEL', 'TOE', 'SKIN', 'MUSCLE', 'RIB', 'SHOULDER', 'PELVIS', 'KIDNEY',
+      'BRAIN', 'NERVE', 'VEIN', 'ARTERY', 'JOINT', 'TENDON', 'BELLY', 'JAW'
+    ],
+  },
+  professions: {
+    key: 'professions',
+    name: 'Jobs & Professions',
+    icon: '💼',
+    keywords: ['job', 'profession', 'career', 'work', 'worker', 'occupation', 'trade', 'employment', 'business'],
+    words: [
+      'DOCTOR', 'NURSE', 'SURGEON', 'DENTIST', 'TEACHER', 'PROFESSOR', 'LAWYER', 'JUDGE',
+      'ARTIST', 'ACTOR', 'SINGER', 'DANCER', 'WRITER', 'AUTHOR', 'PILOT', 'CAPTAIN',
+      'SAILOR', 'CHEF', 'BAKER', 'COOK', 'FARMER', 'DRIVER', 'MECHANIC', 'PLUMBER',
+      'BUILDER', 'MASON', 'GUARD', 'POLICE', 'SOLDIER', 'ARCHITECT', 'ENGINEER', 'SCIENTIST',
+      'TAILOR', 'BARBER', 'CARPENTER', 'ELECTRICIAN', 'FIREFIGHTER', 'PARAMEDIC', 'VET', 'OPTICIAN',
+      'ACCOUNTANT', 'MANAGER', 'DIRECTOR', 'CLERK', 'BARISTA', 'FLORIST', 'JEWELER', 'ASTRONAUT'
+    ],
+  },
+  plants: {
+    key: 'plants',
+    name: 'Plants & Flowers',
+    icon: '🌸',
+    keywords: ['plant', 'plants', 'flower', 'flowers', 'garden', 'flora', 'tree', 'botany', 'bloom', 'petal', 'nature'],
+    words: [
+      'ROSE', 'TULIP', 'DAISY', 'LILY', 'ORCHID', 'LOTUS', 'POPPY', 'VIOLET',
+      'JASMINE', 'SUNFLOWER', 'PEONY', 'IRIS', 'CARNATION', 'FERN', 'MOSS', 'CACTUS',
+      'BAMBOO', 'PALM', 'OAK', 'PINE', 'CEDAR', 'MAPLE', 'WILLOW', 'BIRCH',
+      'SEED', 'ROOT', 'STEM', 'LEAF', 'BUD', 'BLOSSOM', 'PETAL', 'BRANCH',
+      'BARK', 'TWIG', 'IVY', 'CLOVER', 'LAVENDER', 'ROSEMARY', 'THYME', 'BASIL',
+      'MINT', 'SAGE', 'DAFFODIL', 'BEGONIA', 'MAGNOLIA', 'HIBISCUS', 'GARDENIA', 'HYDRANGEA'
+    ],
+  },
 };
 
 export const EXPANDED_GENERIC_WORDS: string[] = [
-  'BLAST', 'SPARK', 'FLASH', 'CRYSTAL', 'SHINE', 'POWER', 'ENERGY', 'CHAMP',
-  'MASTER', 'QUEST', 'LEGEND', 'PUZZLE', 'VICTORY', 'GOLDEN', 'SILVER', 'ROYAL',
-  'KNIGHT', 'MAGIC', 'WONDER', 'BRAVE', 'DREAM', 'FLIGHT', 'STRIKE', 'SHIELD',
-  'VALOR', 'HEROIC', 'TRIUMPH', 'SPIRIT', 'FORCE', 'RADIANT', 'FOCUS', 'SWIFT',
-  'SHADOW', 'FLAME', 'FROST', 'STORM', 'THUNDER', 'SOLAR', 'LUNAR', 'COSMIC',
-  'MYSTIC', 'PRIME', 'STEEL', 'BLADE', 'TEMPLE', 'CASTLE', 'GLORY', 'DESTINY',
-  'BEACON', 'CROWN', 'THRONE', 'HORIZON', 'ARCADE', 'COMBO', 'LEVEL', 'BONUS',
-  'TROPHY', 'MEDAL', 'RIBBON', 'BANNER', 'PENNANT', 'ARENA', 'STADIUM', 'CHALLENGE',
-  'MISSION', 'JOURNEY', 'ADVENTURE', 'EXPLORE', 'DISCOVER', 'TREASURE', 'VAULT', 'CHEST',
-  'RELIC', 'ARTIFACT', 'RUNE', 'SIGIL', 'EMBLEM', 'INSIGNIA', 'MEDALLION', 'AMULET',
-  'TALISMAN', 'CHARM', 'GEM', 'JEWEL', 'DIAMOND', 'EMERALD', 'SAPPHIRE', 'RUBY',
-  'OPAL', 'PEARL', 'IVORY', 'MARBLE', 'VORTEX', 'ZENITH', 'NEXUS', 'PINNACLE',
-  'APEX', 'SUMMIT', 'HORIZON', 'INFINITY', 'AURORA', 'CELESTIAL', 'ETERNAL', 'PHANTOM'
+  'APPLE', 'WATER', 'BREAD', 'HOUSE', 'LIGHT', 'CHAIR', 'TABLE', 'SMILE',
+  'CLOUD', 'RIVER', 'GRASS', 'FLOWER', 'CLOCK', 'PAPER', 'MUSIC', 'TRAIN',
+  'SHIRT', 'SHOES', 'BEACH', 'WINDOW', 'SPOON', 'PLATE', 'BIRD', 'HEART',
+  'PLANT', 'BRUSH', 'PENCIL', 'GLASS', 'BOTTLE', 'PLANET', 'OCEAN', 'DANCE',
+  'LAUGH', 'SILVER', 'BRIGHT', 'FOREST', 'GARDEN', 'STAR', 'SUNNY', 'DREAM',
+  'BRIDGE', 'ROAD', 'TOWER', 'MARKET', 'FLIGHT', 'WHEEL', 'BRICK', 'STONE',
+  'VOICE', 'NIGHT', 'STORY', 'SWEET', 'HONEY', 'CANDLE', 'BASKET', 'BLANKET',
+  'CARPET', 'BREEZE', 'ISLAND', 'STREAM', 'VALLEY', 'MEADOW', 'MORNING', 'SUNSET',
+  'SPRING', 'SUMMER', 'AUTUMN', 'WINTER', 'GOLDEN', 'YELLOW', 'PURPLE', 'ORANGE',
+  'SHADOW', 'MIRROR', 'LANTERN', 'PILLOW', 'HARBOR', 'CANVAS', 'RECORD', 'POCKET'
 ];
 
 /**

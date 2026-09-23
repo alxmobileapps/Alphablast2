@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Sparkles, Gem, Plus, Minus, Clock, Users, Lightbulb, AlertCircle, CheckCircle2, Target, Wand2, Loader2, Timer, Zap, Edit3 } from 'lucide-react';
 import {
   CUSTOM_CATEGORY_DIAMOND_COST,
@@ -14,7 +14,6 @@ import { generateAiCategory, suggestWordsWithAi } from '../utils/geminiService';
 import { CurrencyPromptModal, CurrencyPromptType } from './CurrencyPromptModal';
 import {
   SMART_THEME_DICTIONARIES,
-  matchSmartTheme,
   buildThemeWordList,
 } from '../data/themeDictionaries';
 
@@ -45,6 +44,12 @@ const PRESET_TIMERS = [
 ];
 
 const PRESET_THEMES = [
+  {
+    name: 'Furniture & Decor',
+    icon: '🪑',
+    targetCount: 10,
+    words: SMART_THEME_DICTIONARIES.furniture.words,
+  },
   {
     name: 'Space Explorer',
     icon: '🚀',
@@ -176,15 +181,6 @@ export const CreateCategoryModal: React.FC<CreateCategoryModalProps> = ({
     }
   }, [editingCategory, isOpen]);
 
-  // Dynamic Theme Matching & Live Suggestions that adapt whenever the theme changes
-  // MUST be called before any early returns (Rules of Hooks)
-  const previewSuggestions = useMemo(() => {
-    if (!isOpen) return [];
-    const currentQuery = (name || aiPrompt || '').trim();
-    if (!currentQuery) return [];
-    return buildThemeWordList(currentQuery, [], 50);
-  }, [isOpen, name, aiPrompt]);
-
   if (!isOpen) return null;
 
   // Compute parsed words
@@ -200,8 +196,6 @@ export const CreateCategoryModal: React.FC<CreateCategoryModalProps> = ({
   const minRequiredWords = gameMode === 'target' ? Math.max(5, targetCount) : 5;
   const isWordsSatisfied = parsedWords.length >= minRequiredWords;
   const wordsProgressPercent = Math.min(100, Math.round((parsedWords.length / minRequiredWords) * 100));
-
-  const activeThemeMatch = matchSmartTheme(name || aiPrompt || '');
 
   const handleGenerateAiTheme = async (customPrompt?: string) => {
     const promptToUse = (customPrompt || aiPrompt || name).trim();
@@ -795,88 +789,6 @@ export const CreateCategoryModal: React.FC<CreateCategoryModalProps> = ({
               className="w-full px-3 py-2 bg-gray-50 border-2 border-gray-200 rounded-xl text-sm font-bold text-gray-800 focus:bg-white focus:border-purple-500 focus:outline-none transition-colors"
             />
           </div>
-
-          {/* Dynamic Live Suggestions Box that reacts as soon as category name changes */}
-          {name.trim().length >= 2 && (
-            <div className="bg-gradient-to-r from-purple-50 via-indigo-50 to-pink-50 border-2 border-purple-200 rounded-2xl p-3 shadow-xs flex flex-col gap-2 animate-fade-in">
-              <div className="flex items-center justify-between flex-wrap gap-1">
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  <Sparkles className="w-3.5 h-3.5 text-purple-600 animate-pulse" />
-                  <span className="text-xs font-black text-purple-950">
-                    Live Suggestions for: <span className="text-purple-700 underline underline-offset-2 font-bold">"{name.trim()}"</span>
-                  </span>
-                  {activeThemeMatch && (
-                    <span className="bg-purple-200/90 text-purple-900 text-[10px] font-black px-2 py-0.5 rounded-full flex items-center gap-1 shadow-2xs">
-                      <span>{activeThemeMatch.icon}</span>
-                      <span>{activeThemeMatch.name}</span>
-                    </span>
-                  )}
-                </div>
-                <span className="text-[10px] font-mono font-bold text-purple-700 bg-white/90 px-2 py-0.5 rounded-lg border border-purple-200">
-                  {previewSuggestions.length} Curated Words
-                </span>
-              </div>
-
-              {/* Live Word Preview Chips - Click any chip to quickly add it */}
-              <div className="flex flex-wrap gap-1 max-h-24 overflow-y-auto custom-scrollbar py-0.5">
-                {previewSuggestions.slice(0, 16).map((w) => {
-                  const alreadyHas = parsedWords.includes(w);
-                  return (
-                    <button
-                      key={w}
-                      type="button"
-                      onClick={() => {
-                        if (!alreadyHas) {
-                          const updated = [...parsedWords, w];
-                          setWordsInput(updated.join(', '));
-                          haptics.tap();
-                        }
-                      }}
-                      disabled={alreadyHas}
-                      className={`text-[10px] font-mono font-black px-2 py-0.5 rounded-lg border transition-all cursor-pointer ${
-                        alreadyHas
-                          ? 'bg-emerald-100 text-emerald-800 border-emerald-300 opacity-60 cursor-default'
-                          : 'bg-white hover:bg-purple-100 text-purple-900 border-purple-200 active:scale-95 shadow-2xs'
-                      }`}
-                      title={alreadyHas ? 'Already in word list' : 'Click to add word'}
-                    >
-                      {alreadyHas ? `✓ ${w}` : `+ ${w}`}
-                    </button>
-                  );
-                })}
-                {previewSuggestions.length > 16 && (
-                  <span className="text-[10px] text-purple-600 font-bold self-center px-1">
-                    +{previewSuggestions.length - 16} more
-                  </span>
-                )}
-              </div>
-
-              {/* Actions: Fill 50 Words or Add 50 Words */}
-              <div className="flex items-center gap-2 pt-1 border-t border-purple-200/70 flex-wrap sm:flex-nowrap">
-                <button
-                  type="button"
-                  onClick={() => handleSuggestAiWords(true)}
-                  disabled={isSuggestingAi}
-                  className="flex-1 py-1.5 px-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-xl text-xs font-black shadow-xs active:scale-95 transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
-                  title="Replace word list with 50 fresh words matching this theme"
-                >
-                  <Wand2 className="w-3.5 h-3.5 text-amber-300" />
-                  <span>✨ Fill 50 Words for "{name.trim().substring(0, 16)}"</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleSuggestAiWords(false)}
-                  disabled={isSuggestingAi}
-                  className="py-1.5 px-3 bg-white hover:bg-purple-100 text-purple-900 border border-purple-300 rounded-xl text-xs font-black shadow-2xs active:scale-95 transition-all flex items-center justify-center gap-1 cursor-pointer disabled:opacity-50"
-                  title="Add 50 words without deleting existing words"
-                >
-                  <Plus className="w-3.5 h-3.5 text-purple-600" />
-                  <span>+ Add 50 More</span>
-                </button>
-              </div>
-            </div>
-          )}
 
           {/* Word List Textarea */}
           <div className="flex flex-col gap-1">
