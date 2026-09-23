@@ -1,5 +1,5 @@
 import express from 'express';
-import { GoogleGenAI, Type } from '@google/genai';
+import type { GoogleGenAI } from '@google/genai';
 import {
   matchSmartTheme,
   buildThemeWordList,
@@ -53,15 +53,12 @@ function generateFallbackTheme(prompt: string, targetCount: number = 8) {
  * its whole UI live from alphablast.site) fell through Vercel's catch-all
  * rewrite straight to index.html -- the app always got an HTML page back
  * instead of a JSON answer, silently failed, and fell back to the offline
- * word lists. That's the actual root cause of "custom category still shows
- * generic words": it was never a logic bug in the word-matching code, it's
- * that the smart AI backend was never reachable in production at all, for
- * ANY theme, matched or not.
+ * word lists.
  *
  * By extracting the API logic into this reusable createApiApp() function,
  * BOTH server.ts (local dev / local preview server) and api/[...path].ts
- * (the new Vercel catch-all function, see that file) can mount the exact
- * same routes without duplicating them.
+ * (the Vercel catch-all function, see that file) can mount the exact same
+ * routes without duplicating them.
  */
 export function createApiApp() {
   const app = express();
@@ -79,15 +76,36 @@ export function createApiApp() {
 
   app.use(express.json());
 
-  // Lazy Gemini Client Initialization
+  // Lazy Gemini Client Initialization.
+  //
+  // IMPORTANT: '@google/genai' is imported with a dynamic import() INSIDE
+  // this function, not as a top-level `import` at the top of the file. On
+  // Vercel, the very first deploy of this /api/* function crashed on every
+  // request (500 FUNCTION_INVOCATION_FAILED) -- including /api/health,
+  // which doesn't touch Gemini at all -- with no error details surfaced in
+  // the dashboard's Runtime Logs (a Hobby-plan visibility limit). The
+  // prime suspect is '@google/genai' (a heavy Google Cloud client library
+  // with several sub-dependencies) not bundling/loading cleanly inside
+  // Vercel's Node function bundler, which would take the ENTIRE module
+  // down at import time -- before any of this file's own try/catch blocks
+  // ever get a chance to run.
+  //
+  // Deferring the import to only happen when a request actually needs
+  // Gemini (and only once, cached in aiClient) means: (a) /api/health and
+  // every fallback path work regardless of whether that package loads
+  // cleanly in this environment, and (b) if it still fails, it fails
+  // inside the try/catch each route already has around its AI attempt,
+  // which cleanly falls back to the offline word banks instead of
+  // crashing the whole function.
   let aiClient: GoogleGenAI | null = null;
-  function getGenAI(): GoogleGenAI {
+  async function getGenAI(): Promise<GoogleGenAI> {
     if (!aiClient) {
       const apiKey = process.env.GEMINI_API_KEY;
       if (!apiKey) {
         throw new Error('GEMINI_API_KEY environment variable is missing.');
       }
-      aiClient = new GoogleGenAI({
+      const { GoogleGenAI: GoogleGenAICtor } = await import('@google/genai');
+      aiClient = new GoogleGenAICtor({
         apiKey,
         httpOptions: {
           headers: {
@@ -146,7 +164,7 @@ export function createApiApp() {
     // Try Gemini API first
     if (process.env.GEMINI_API_KEY) {
       try {
-        const ai = getGenAI();
+        const ai = await getGenAI();
         const response = await generateWithResilience(ai, {
           contents: `Create a custom word puzzle category based on the player's theme: "${prompt}".
 Generate at least 50 distinct, genuine English words (3 to 8 uppercase letters each, no spaces, no punctuation, real standard spelling).
@@ -155,15 +173,15 @@ Include a catchy Category Name (up to 25 chars), an appropriate single Emoji ico
           config: {
             responseMimeType: 'application/json',
             responseSchema: {
-              type: Type.OBJECT,
+              type: 'OBJECT',
               properties: {
-                name: { type: Type.STRING, description: 'Category title, max 25 chars' },
-                icon: { type: Type.STRING, description: 'Single emoji icon for the category' },
-                targetCount: { type: Type.INTEGER, description: 'Target word count to clear, between 6 and 12' },
-                description: { type: Type.STRING, description: 'Brief exciting 1-sentence description of the theme' },
+                name: { type: 'STRING', description: 'Category title, max 25 chars' },
+                icon: { type: 'STRING', description: 'Single emoji icon for the category' },
+                targetCount: { type: 'INTEGER', description: 'Target word count to clear, between 6 and 12' },
+                description: { type: 'STRING', description: 'Brief exciting 1-sentence description of the theme' },
                 words: {
-                  type: Type.ARRAY,
-                  items: { type: Type.STRING },
+                  type: 'ARRAY',
+                  items: { type: 'STRING' },
                   minItems: minWords,
                   description: `List of at least 50 valid uppercase English words (3-8 letters) strictly related to the theme`,
                 },
@@ -211,18 +229,18 @@ Include a catchy Category Name (up to 25 chars), an appropriate single Emoji ico
       const cleanWord = word.toUpperCase().replace(/[^A-Z]/g, '');
       if (process.env.GEMINI_API_KEY) {
         try {
-          const ai = getGenAI();
+          const ai = await getGenAI();
           const response = await generateWithResilience(ai, {
             contents: `Evaluate candidate word "${cleanWord}" in English context (and category "${categoryName || 'General'}"). Is it a valid real word?`,
             config: {
               responseMimeType: 'application/json',
               responseSchema: {
-                type: Type.OBJECT,
+                type: 'OBJECT',
                 properties: {
-                  isValidWord: { type: Type.BOOLEAN },
-                  isCategoryMatch: { type: Type.BOOLEAN },
-                  definition: { type: Type.STRING },
-                  reason: { type: Type.STRING },
+                  isValidWord: { type: 'BOOLEAN' },
+                  isCategoryMatch: { type: 'BOOLEAN' },
+                  definition: { type: 'STRING' },
+                  reason: { type: 'STRING' },
                 },
                 required: ['isValidWord', 'isCategoryMatch', 'definition'],
               },
@@ -261,7 +279,7 @@ Include a catchy Category Name (up to 25 chars), an appropriate single Emoji ico
       const cleanWord = word.toUpperCase().replace(/[^A-Z]/g, '');
       if (process.env.GEMINI_API_KEY) {
         try {
-          const ai = getGenAI();
+          const ai = await getGenAI();
           const response = await generateWithResilience(ai, {
             contents: `Provide 1-sentence definition and 1 interesting fun fact about "${cleanWord}"${
               categoryName ? ` in "${categoryName}"` : ''
@@ -269,10 +287,10 @@ Include a catchy Category Name (up to 25 chars), an appropriate single Emoji ico
             config: {
               responseMimeType: 'application/json',
               responseSchema: {
-                type: Type.OBJECT,
+                type: 'OBJECT',
                 properties: {
-                  definition: { type: Type.STRING },
-                  funFact: { type: Type.STRING },
+                  definition: { type: 'STRING' },
+                  funFact: { type: 'STRING' },
                 },
                 required: ['definition', 'funFact'],
               },
@@ -303,17 +321,17 @@ Include a catchy Category Name (up to 25 chars), an appropriate single Emoji ico
       const { categoryName = 'General', existingWords = [], count = 50 } = req.body;
       if (process.env.GEMINI_API_KEY) {
         try {
-          const ai = getGenAI();
+          const ai = await getGenAI();
           const response = await generateWithResilience(ai, {
             contents: `Suggest ${count} new, creative, valid English words (3-8 letters each) strictly relevant to category "${categoryName}". Exclude these already existing words: ${existingWords.slice(0, 60).join(', ')}.`,
             config: {
               responseMimeType: 'application/json',
               responseSchema: {
-                type: Type.OBJECT,
+                type: 'OBJECT',
                 properties: {
                   suggestions: {
-                    type: Type.ARRAY,
-                    items: { type: Type.STRING },
+                    type: 'ARRAY',
+                    items: { type: 'STRING' },
                     minItems: count,
                     description: `Array of at least ${count} uppercase valid English words related to ${categoryName}`,
                   },
