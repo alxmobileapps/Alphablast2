@@ -24,7 +24,25 @@ export interface AiWordTriviaResponse {
   funFact: string;
 }
 
-const API_BASE_URL = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
+const DEFAULT_PRODUCTION_API_URL = 'https://ais-dev-n4xbzsr6eksnu2snoyo5vc-236356958766.asia-southeast1.run.app';
+
+function getApiBaseUrl(): string {
+  if (import.meta.env.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL.replace(/\/$/, '');
+  }
+  // When running inside Android Capacitor webview (e.g. capacitor://localhost or file://, or capacitor native runtime)
+  if (typeof window !== 'undefined') {
+    const origin = window.location?.origin || '';
+    const isCapacitorNative = !!(window as any)?.Capacitor?.isNativePlatform?.() || origin.startsWith('capacitor:') || origin.startsWith('file:');
+    if (isCapacitorNative) {
+      return DEFAULT_PRODUCTION_API_URL;
+    }
+  }
+  // In Chrome / desktop browser, relative path '' works directly with the local dev server or hosted web app
+  return '';
+}
+
+const API_BASE_URL = getApiBaseUrl();
 
 function getLocalFallbackCategory(prompt: string, targetCount: number = 8): AiCategoryResponse {
   const matched = matchSmartTheme(prompt);
