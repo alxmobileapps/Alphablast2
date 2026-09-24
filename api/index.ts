@@ -1,5 +1,5 @@
 import type { IncomingMessage, ServerResponse } from 'http';
-import { createApiApp } from '../server-api.ts';
+import { createApiApp } from '../server-api.js';
 
 // FOUND IT. After 5 rounds of isolation testing (api/ping.ts, then
 // api/ping-express.ts, api/ping-theme.ts, api/ping-theme-local.ts,

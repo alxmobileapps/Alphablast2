@@ -1,7 +1,7 @@
 import express from 'express';
 import path from 'path';
 import { createServer as createViteServer } from 'vite';
-import { createApiApp } from './server-api.ts';
+import { createApiApp } from './server-api.js';
 
 // All /api/* route logic (Gemini AI category generation, word validation,
 // trivia, word suggestions) now lives in server-api.ts's createApiApp(),
