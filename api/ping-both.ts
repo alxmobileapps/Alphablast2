@@ -1,5 +1,5 @@
 import express from 'express';
-import { tinyValue } from './_lib/tiny.ts';
+import { tinyValue } from './_lib/tiny.js';
 
 // Second half of this round's isolation: express AND a local .ts-extension
 // import, TOGETHER, in one function -- something never tested in
