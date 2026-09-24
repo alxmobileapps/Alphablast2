@@ -4,7 +4,7 @@ import {
   matchSmartTheme,
   buildThemeWordList,
   filterAndSortShortestFirst,
-} from './src/data/themeDictionaries.ts';
+} from './src/data/themeDictionaries.js';
 
 function generateFallbackTheme(prompt: string, targetCount: number = 8) {
   const matched = matchSmartTheme(prompt);
