@@ -1,4 +1,4 @@
-import { tinyValue } from './_lib/tiny.ts';
+import { tinyValue } from './_lib/tiny.js';
 
 // The full fix (adding .ts extensions everywhere) was merged and deployed,
 // but alphablast.site/api/health still 500s. Before assuming the theory
