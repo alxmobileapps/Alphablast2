@@ -1,24 +1,35 @@
 import type { IncomingMessage, ServerResponse } from 'http';
-import { createApiApp } from '../server-api';
+import { createApiApp } from '../server-api.ts';
 
-// Renamed from api/[...path].ts (Next.js-style bracket catch-all filename)
-// to this: api/index.ts, paired with an explicit vercel.json rewrite that
-// sends every /api/* request here ("/api/(.*)" -> "/api" -- see
-// vercel.json). Two earlier targeted fixes (adding this function at all,
-// then deferring the '@google/genai' import) still left alphablast.site/
-// api/health returning 500 FUNCTION_INVOCATION_FAILED, even though that
-// route does nothing but return a static JSON object and has zero
-// dependency on Gemini. That rules out both previous suspects.
+// FOUND IT. After 5 rounds of isolation testing (api/ping.ts, then
+// api/ping-express.ts, api/ping-theme.ts, api/ping-theme-local.ts,
+// api/ping-tiny.ts -- all removed now that this is fixed), the pattern
+// was unmistakable: any function with zero local imports, or only an npm
+// package import (like 'express'), worked. ANY function that imported a
+// local project .ts file with a relative path -- however small, however
+// deeply or shallowly nested -- crashed with 500
+// FUNCTION_INVOCATION_FAILED. That includes this exact function, since
+// it imports '../server-api'.
 //
-// api/[...path].ts's bracket syntax is a routing convention Vercel
-// supports, but Vercel's own documented recipe for running an Express app
-// as a Function uses exactly this shape instead: a plain api/index.ts
-// default-exporting the app, reached via an explicit rewrite rather than
-// relying on automatic dynamic-segment routing picking it up. Switching
-// to the officially documented shape removes one more variable. See
-// api/ping.ts (new, zero dependencies at all) for an isolation test that
-// tells us whether the problem is specific to this function or to
-// anything running as a Function on this project at all.
+// The actual cause: this project's package.json has "type": "module", and
+// Vercel is running these functions on Node.js 24.x, which executes .ts
+// files directly via Node's native TypeScript support (no bundler
+// involved). Under Node's native ESM loader, a relative import MUST
+// include the file's real extension -- 'from "./server-api"' is invalid;
+// it has to be 'from "./server-api.ts"'. Verified directly: the exact
+// same error (ERR_MODULE_NOT_FOUND) reproduces with a trivial
+// two-file Node ESM project whenever the extension is omitted, and goes
+// away the moment it's added. tsconfig.json's `allowImportingTsExtensions`
+// flag (already present in this project) exists for exactly this style of
+// import; nothing here previously used it.
+//
+// The fix: every local relative import that a Vercel Function actually
+// loads now ends in ".ts" -- here, and in server-api.ts's own import of
+// themeDictionaries.ts, and server.ts's import of server-api.ts (for
+// consistency / local dev). The frontend's imports of themeDictionaries.ts
+// (via Vite, in geminiService.ts / CreateCategoryModal.tsx) were never
+// broken -- Vite resolves extension-less imports itself -- so those are
+// untouched.
 const app = createApiApp();
 
 export default function handler(req: IncomingMessage, res: ServerResponse) {
