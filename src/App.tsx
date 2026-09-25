@@ -226,12 +226,28 @@ export default function App() {
   const [swappingTiles, setSwappingTiles] = useState<{ r1: number; c1: number; r2: number; c2: number } | null>(null);
   const [activePowerUp, setActivePowerUp] = useState<PowerUpType | null>(null);
 
-  // Compute informational popup data for touched/selected special tiles
+  // Compute informational popup data for touched/selected special tiles.
+  //
+  // Depending on the whole `board` array below used to make this recompute
+  // (and return a brand-new object) on EVERY board change anywhere -- a
+  // match, a refill, a burn-tick toggling isBurning on an unrelated tile --
+  // not just when the SELECTED tile's own special type actually changes.
+  // TopInfoBar's memo compares specialTileInfo by reference (see
+  // topInfoBarPropsAreEqual in TopInfoBar.tsx), so a fresh object every
+  // board update made it re-render and remount its badge (animate-scale-in
+  // / animate-bounce) constantly while a special tile was selected -- the
+  // "kumikislap" reported on special-tile badges during active play,
+  // roughly once per board change instead of only when it should actually
+  // change. Depending on just the selected cell's own special/electrified
+  // fields (primitives, stable unless THAT cell actually changes) instead
+  // of the whole board keeps the returned object's reference stable across
+  // unrelated board churn.
+  const selectedTileForInfo = selectedTile ? board[selectedTile.row]?.[selectedTile.col] : undefined;
+  const selectedTileSpecialType = selectedTileForInfo?.special;
+  const selectedTileIsElectrified = selectedTileForInfo?.isElectrified;
   const selectedSpecialTileInfo = useMemo<SpecialTileInfo | null>(() => {
     if (!selectedTile || activePowerUp) return null;
-    const r = selectedTile.row;
-    const c = selectedTile.col;
-    const t = board[r]?.[c];
+    const t = selectedTileForInfo;
     if (!t || (t.special === 'none' && !t.isElectrified)) return null;
 
     if (t.special === 'bomb') {
@@ -280,7 +296,7 @@ export default function App() {
       };
     }
     return null;
-  }, [selectedTile, activePowerUp, board]);
+  }, [selectedTile, activePowerUp, selectedTileSpecialType, selectedTileIsElectrified]);
   const [clue, setClue] = useState<ClueInfo | null>(null);
   const [explosions, setExplosions] = useState<ExplosionEffect[]>([]);
   const [isAnimating, setIsAnimating] = useState<boolean>(false);
