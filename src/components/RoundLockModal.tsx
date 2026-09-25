@@ -6,6 +6,9 @@ import { haptics } from '../utils/haptics';
 interface RoundLockModalProps {
   isOpen: boolean;
   roundsPerCycle: number;
+  // Set when the lock is for a custom (community) game rather than the next
+  // campaign rounds — the ad then unlocks only that custom game.
+  customGameName?: string;
   onUnlocked: () => void;
   onClose: () => void;
   onOpenShop?: () => void;
@@ -21,6 +24,7 @@ interface RoundLockModalProps {
 export const RoundLockModal: React.FC<RoundLockModalProps> = ({
   isOpen,
   roundsPerCycle,
+  customGameName,
   onUnlocked,
   onClose,
   onOpenShop,
@@ -52,7 +56,7 @@ export const RoundLockModal: React.FC<RoundLockModalProps> = ({
   const handleStartWatch = () => {
     haptics.tap();
     showUniversalRewardedAd({
-      name: 'unlock_next_rounds',
+      name: customGameName ? 'unlock_custom_game' : 'unlock_next_rounds',
       onReward: () => {
         setCompleted(true);
         setIsPlaying(false);
@@ -83,9 +87,19 @@ export const RoundLockModal: React.FC<RoundLockModalProps> = ({
               <Lock className="w-8 h-8" />
             </div>
 
-            <h2 className="text-2xl font-black text-[#2D3748] mb-1">Rounds Locked!</h2>
+            <h2 className="text-2xl font-black text-[#2D3748] mb-1">
+              {customGameName ? 'Custom Game Locked!' : 'Rounds Locked!'}
+            </h2>
             <p className="text-gray-600 text-xs sm:text-sm mb-5 leading-relaxed">
-              Watch a short ad to unlock the next <strong className="text-indigo-600 font-black">{roundsPerCycle} rounds</strong>.
+              {customGameName ? (
+                <>
+                  Watch a short ad to unlock <strong className="text-indigo-600 font-black">{customGameName}</strong>.
+                </>
+              ) : (
+                <>
+                  Watch a short ad to unlock the next <strong className="text-indigo-600 font-black">{roundsPerCycle} rounds</strong>.
+                </>
+              )}
             </p>
 
             <div className="flex flex-col gap-2.5">
@@ -154,7 +168,9 @@ export const RoundLockModal: React.FC<RoundLockModalProps> = ({
 
             <h2 className="text-2xl font-black text-[#2D3748] mb-1">Unlocked!</h2>
             <p className="text-gray-600 text-sm mb-6">
-              The next {roundsPerCycle} rounds are open. Have fun!
+              {customGameName
+                ? `${customGameName} is open. Have fun!`
+                : `The next ${roundsPerCycle} rounds are open. Have fun!`}
             </p>
 
             <button

@@ -57,6 +57,8 @@ import {
   ROUNDS_PER_UNLOCK_BLOCK,
   isRoundBlockUnlocked,
   unlockNextRoundBlock,
+  isCustomCategoryAdUnlocked,
+  unlockCustomCategoryByAd,
 } from './utils/gameProgress';
 import {
   Tile,
@@ -813,6 +815,20 @@ export default function App() {
         return;
       }
 
+      // Custom (community) games have their own per-game ad gate, separate
+      // from the every-5-rounds campaign lock: the ad unlocks only that one
+      // custom game, and the campaign's round blocks never unlock it.
+      if (targetCat.isCustom) {
+        if (isCustomCategoryAdUnlocked(targetCat)) {
+          playCategoryRound(targetCat);
+        } else {
+          setPendingTargetCategory(targetCat);
+          setIsRoundLockOpen(true);
+          perfMark('custom game ad lock opened');
+        }
+        return;
+      }
+
       if (!isRoundBlockUnlocked(targetCat.id, currentProgress)) {
         setPendingTargetCategory(targetCat);
         setIsRoundLockOpen(true);
@@ -828,7 +844,14 @@ export default function App() {
   const handleRoundsUnlocked = useCallback(() => {
     perfMark('handleRoundsUnlocked start');
     setIsRoundLockOpen(false);
-    unlockNextRoundBlock(); // Persist the unlock so it survives app restarts
+    // Unlock ONLY what the ad was watched for: a custom game's ad unlocks
+    // just that custom game; the round-lock ad unlocks just the next 5
+    // campaign rounds.
+    if (pendingTargetCategory?.isCustom) {
+      unlockCustomCategoryByAd(pendingTargetCategory);
+    } else {
+      unlockNextRoundBlock(); // Persist the unlock so it survives app restarts
+    }
     if (pendingTargetCategory) {
       playCategoryRound(pendingTargetCategory);
       setPendingTargetCategory(null);
@@ -3021,6 +3044,7 @@ export default function App() {
       <RoundLockModal
         isOpen={isRoundLockOpen}
         roundsPerCycle={ROUNDS_PER_UNLOCK_BLOCK}
+        customGameName={pendingTargetCategory?.isCustom ? pendingTargetCategory.name : undefined}
         onUnlocked={handleRoundsUnlocked}
         onClose={handleRoundLockDismissed}
         onOpenShop={handleOpenShopFromRoundLock}
