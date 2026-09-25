@@ -333,26 +333,24 @@ export function getSingularForms(word: string): string[] {
   return Array.from(new Set(results.filter((w) => w.length >= 3)));
 }
 
-// Helper to index a category's word list with full singular, plural, AND
-// US/UK spelling variant recognition
+// Helper to index a category's word list with US/UK spelling variant
+// recognition. Deliberately EXACT-MATCH only otherwise (no auto-generated
+// plurals): a word counts only if it's literally in the category's list (or
+// its US/UK spelling counterpart) -- see the removal of the old plural
+// indexing below, which used to also accept every auto-generated plural of
+// every word, correct ones (HERO -> HEROES) and incorrect "leniency" ones
+// alike (HERO -> HEROS), even when that exact form was never actually in
+// the creator's word list.
 function indexCategoryWords(catId: number, words: string[]): Set<string> {
   const catSet = new Set<string>();
 
   for (const rawWord of words) {
     const clean = rawWord.toUpperCase().replace(/[\s\-_']/g, '');
     if (clean.length >= 3) {
-      // 1. Index base word and its US/UK spelling variant(s), e.g. COLOR <-> COLOUR
+      // Index base word and its US/UK spelling variant(s), e.g. COLOR <-> COLOUR
       for (const spellingVariant of getSpellingVariants(clean)) {
         catSet.add(spellingVariant);
         globalWordSet.add(spellingVariant);
-
-        // 2. Generate and index all plural variations for each spelling
-        // variant (e.g. DOG -> DOGS, BERRY -> BERRIES, FOX -> FOXES, FLY -> FLIES)
-        const plurals = getPluralForms(spellingVariant);
-        for (const p of plurals) {
-          catSet.add(p);
-          globalWordSet.add(p);
-        }
       }
     }
   }
@@ -440,13 +438,9 @@ export function registerDynamicWord(word: string, categoryId?: number) {
   if (!word || word.length < 3) return;
   const clean = word.toUpperCase().replace(/[^A-Z]/g, '');
   if (clean.length >= 3) {
+    // Exact-match only -- no auto-generated plurals/singulars, same as
+    // indexCategoryWords above.
     globalWordSet.add(clean);
-    
-    // Add plurals & singulars
-    const plurals = getPluralForms(clean);
-    const singulars = getSingularForms(clean);
-    for (const p of plurals) globalWordSet.add(p);
-    for (const s of singulars) globalWordSet.add(s);
 
     if (categoryId !== undefined) {
       let catSet = categoryWordSets.get(categoryId);
@@ -455,8 +449,6 @@ export function registerDynamicWord(word: string, categoryId?: number) {
         categoryWordSets.set(categoryId, catSet);
       }
       catSet.add(clean);
-      for (const p of plurals) catSet.add(p);
-      for (const s of singulars) catSet.add(s);
     }
   }
 }

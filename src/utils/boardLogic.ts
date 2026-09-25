@@ -477,7 +477,13 @@ export function countOneMoveCategoryOpportunities(
   return opportunities;
 }
 
-// Plant a word on the board with exactly 1 letter displaced to an adjacent cell
+// Plant a word on the board with exactly 1 letter displaced to an adjacent cell.
+// Returns every board position this call actually wrote a new letter into
+// (so the caller can re-check for accidental matches by scanning only those
+// tiles instead of the whole board), plus the exact (gap, swapTarget) pair
+// that completes the word -- so the caller can verify the guaranteed 1-move
+// opportunity by checking that ONE known pair instead of re-scanning the
+// whole board for any opportunity, anywhere -- or null if the word doesn't fit.
 function plantOneMoveWord(
   board: Tile[][],
   word: string,
@@ -485,13 +491,13 @@ function plantOneMoveWord(
   startCol: number,
   dr: number,
   dc: number
-): boolean {
+): { modified: { row: number; col: number }[]; gap: { row: number; col: number }; swapTarget: { row: number; col: number } } | null {
   const len = word.length;
   const endR = startRow + dr * (len - 1);
   const endC = startCol + dc * (len - 1);
 
   if (endR < 0 || endR >= BOARD_SIZE || endC < 0 || endC >= BOARD_SIZE) {
-    return false;
+    return null;
   }
 
   const displaceIdx = Math.floor(Math.random() * len);
@@ -504,25 +510,32 @@ function plantOneMoveWord(
   if (c > 0) neighbors.push({ r, c: c - 1 });
   if (c < BOARD_SIZE - 1) neighbors.push({ r, c: c + 1 });
 
-  if (neighbors.length === 0) return false;
+  if (neighbors.length === 0) return null;
   const swapTarget = neighbors[Math.floor(Math.random() * neighbors.length)];
+
+  const modified: { row: number; col: number }[] = [];
 
   // Place non-displaced letters
   for (let i = 0; i < len; i++) {
     if (i !== displaceIdx) {
-      board[startRow + dr * i][startCol + dc * i].letter = word[i];
+      const rr = startRow + dr * i;
+      const cc = startCol + dc * i;
+      board[rr][cc].letter = word[i];
+      modified.push({ row: rr, col: cc });
     }
   }
 
   // Place displaced letter in neighbor
   board[swapTarget.r][swapTarget.c].letter = word[displaceIdx];
+  modified.push({ row: swapTarget.r, col: swapTarget.c });
   // Put a non-matching letter in the gap
   let dummyLetter = getRandomLetter();
   while (dummyLetter === word[displaceIdx]) {
     dummyLetter = getRandomLetter();
   }
   board[r][c].letter = dummyLetter;
-  return true;
+  modified.push({ row: r, col: c });
+  return { modified, gap: { row: r, col: c }, swapTarget: { row: swapTarget.r, col: swapTarget.c } };
 }
 
 // Hard ceiling on how long ensureOneMoveOpportunity may search. It runs on the
@@ -595,9 +608,17 @@ export function ensureOneMoveOpportunity(
         return board;
       }
       const cloned = cloneBoard(board);
-      if (plantOneMoveWord(cloned, word, slot.r, slot.c, slot.dr, slot.dc)) {
-        // Ensure no pre-existing match was created accidentally
-        let preMatches = findValidWordsOnBoard(cloned, categoryId, formedWords);
+      const planted = plantOneMoveWord(cloned, word, slot.r, slot.c, slot.dr, slot.dc);
+      if (planted) {
+        // Ensure no pre-existing match was created accidentally. The board
+        // we started from is guaranteed match-free (matches are always
+        // cleared immediately during play), so a NEW match can only run
+        // through a tile we just wrote to -- scanning just the rays
+        // through those tiles (instead of every length/position/direction
+        // combo on the whole 8x8 board, ~3000+ checks) finds the exact
+        // same accidental matches at a fraction of the cost.
+        let dirty = [...planted.modified];
+        let preMatches = findCategoryWordsCrossingTiles(cloned, categoryId, dirty, formedWords);
         let fixCycles = 0;
         while (preMatches.length > 0 && fixCycles < 6) {
           fixCycles++;
@@ -606,13 +627,38 @@ export function ensureOneMoveOpportunity(
             // Don't modify the planted slot if possible
             if (midTile.row !== slot.r || midTile.col !== slot.c) {
               cloned[midTile.row][midTile.col].letter = getRandomLetter();
+              dirty.push({ row: midTile.row, col: midTile.col });
             }
           }
-          preMatches = findValidWordsOnBoard(cloned, categoryId, formedWords);
+          preMatches = findCategoryWordsCrossingTiles(cloned, categoryId, dirty, formedWords);
         }
 
         if (preMatches.length === 0) {
-          const verifiedOpps = countOneMoveCategoryOpportunities(cloned, categoryId, formedWords);
+          // Verify the guaranteed opportunity by checking ONLY the exact
+          // (gap, swapTarget) pair we just engineered -- swapping those two
+          // specific tiles is what's supposed to complete the planted word
+          // in one move. This is what was actually keeping custom games
+          // laggy even after the 200ms budget and the pre-match fix above:
+          // this verify step used to re-scan the WHOLE board (all 64 tiles
+          // x both directions, ~128 targeted scans) after every single
+          // plant attempt, and small creator-typed word lists (a custom
+          // game) essentially always need several plant attempts before
+          // one sticks -- while campaign categories, having far more
+          // words, usually already have an opportunity and skip this
+          // entire search via the early return above. Checking just the
+          // one pair we engineered (instead of every pair on the board)
+          // turns this from an O(board) re-scan into an O(1) check.
+          const { gap, swapTarget } = planted;
+          const gapTile = cloned[gap.row][gap.col];
+          const targetTile = cloned[swapTarget.row][swapTarget.col];
+          const origGap = gapTile.letter;
+          const origTarget = targetTile.letter;
+          gapTile.letter = origTarget;
+          targetTile.letter = origGap;
+          const verifiedOpps = findCategoryWordsCrossingTiles(cloned, categoryId, [gap, swapTarget], formedWords);
+          gapTile.letter = origGap;
+          targetTile.letter = origTarget;
+
           if (verifiedOpps.length >= 1) {
             for (let r = 0; r < BOARD_SIZE; r++) {
               for (let c = 0; c < BOARD_SIZE; c++) {
