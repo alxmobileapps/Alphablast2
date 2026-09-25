@@ -571,18 +571,27 @@ export function recordScore({
 
   saveLocalLeaderboards(data);
 
-  // Sync to global Firestore in background
-  syncUserToGlobalFirestore(profile);
-  syncCategoryScoreToFirestore({
-    categoryId,
-    categoryName,
-    score: bestScore,
-    wordsCount,
-    highestWord,
-    highestWordPoints,
-    timeConsumedSeconds,
-    profile,
-  });
+  // Only push to Firestore once the round is actually finished, not on every
+  // single word match. During a round (especially with chain-reaction/special
+  // effects rounds that can trigger many matches within milliseconds of each
+  // other) this used to fire a network write per word; the player's local
+  // score/rank above is already updated instantly on every match, so nothing
+  // about their in-game experience needs the live network round-trip — only
+  // the shared leaderboard does, and that can wait until the round result is
+  // final.
+  if (isRoundComplete) {
+    syncUserToGlobalFirestore(profile);
+    syncCategoryScoreToFirestore({
+      categoryId,
+      categoryName,
+      score: bestScore,
+      wordsCount,
+      highestWord,
+      highestWordPoints,
+      timeConsumedSeconds,
+      profile,
+    });
+  }
 
   return {
     newOverallRank: newOverallRank > 0 ? newOverallRank : 1,
