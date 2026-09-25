@@ -23,6 +23,7 @@ import { ProfileModal } from './components/ProfileModal';
 import { SettingsModal } from './components/SettingsModal';
 import { BottomBannerAd } from './components/BottomBannerAd';
 import { RoundLockModal } from './components/RoundLockModal';
+import { CustomGamePasswordModal } from './components/CustomGamePasswordModal';
 import { perfMark, perfResetBaseline } from './utils/perfDebug';
 import { PortraitLockOverlay } from './components/PortraitLockOverlay';
 import { isSwipeControlsEnabled, isCluesEnabled as isCluesEnabledUtil, getSpellingPreference, SpellingPreference } from './utils/settings';
@@ -38,6 +39,7 @@ import { syncProgressToCloud } from './utils/authService';
 import {
   subscribeToActiveCustomCategories,
   recordCategoryPlay,
+  canPlayCustomGameWithoutPassword,
 } from './utils/customCategoriesService';
 import {
   GameProgress,
@@ -409,6 +411,9 @@ export default function App() {
   const [isRollingTiles, setIsRollingTiles] = useState<boolean>(false);
   const [isRoundLockOpen, setIsRoundLockOpen] = useState<boolean>(false);
   const [pendingTargetCategory, setPendingTargetCategory] = useState<Category | null>(null);
+  // Custom game waiting for its (optional) creator-set password -- see
+  // requestOpenCategory and CustomGamePasswordModal.
+  const [passwordPromptCategory, setPasswordPromptCategory] = useState<Category | null>(null);
   // Round-lock cadence: rounds are grouped into fixed blocks of
   // ROUNDS_PER_UNLOCK_BLOCK (block 1 = rounds 1-5, always free; block 2 =
   // rounds 6-10; etc.). Entering a round outside an already ad-unlocked
@@ -887,6 +892,16 @@ export default function App() {
   const requestOpenCategory = useCallback(
     (targetCat: Category) => {
       perfMark('requestOpenCategory start');
+
+      // A custom game whose creator set a password asks for it first (its
+      // creator, and anyone who already typed it on this device, skip this).
+      // Checked before every other gate so nothing -- not even "already
+      // completed" or "Remove Ads" -- starts a protected game without it.
+      if (targetCat.isCustom && !canPlayCustomGameWithoutPassword(targetCat)) {
+        setPasswordPromptCategory(targetCat);
+        return;
+      }
+
       const currentProgress = loadGameProgress();
       if (currentProgress.hasRemovedAds) {
         playCategoryRound(targetCat);
@@ -3185,6 +3200,17 @@ export default function App() {
         editingCategory={editingCustomCategory}
         onCategoryUpdated={handleCustomCategoryUpdated}
         onOpenShop={handleOpenShop}
+      />
+
+      <CustomGamePasswordModal
+        category={passwordPromptCategory}
+        onUnlocked={(cat) => {
+          setPasswordPromptCategory(null);
+          // The right password is now remembered, so this continues on to
+          // the normal custom-game flow (ad gate, then play).
+          requestOpenCategory(cat);
+        }}
+        onClose={() => setPasswordPromptCategory(null)}
       />
 
       {/* Round Lock: shown every 5 completed rounds — one rewarded ad unlocks the next 5 */}

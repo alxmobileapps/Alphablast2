@@ -54,6 +54,9 @@ export interface Category {
   // whenever anonymous sign-in isn't available), kept as a secondary check.
   creatorKeyHash?: string;
   creatorUid?: string;
+  // Optional password set by the creator. Only a salted SHA-256 of it is
+  // stored (see hashCustomGamePassword); no password = anyone can play.
+  passwordHash?: string;
   createdAt?: number;
   expiresAt?: number;
   firestoreDocId?: string;
