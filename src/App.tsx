@@ -1192,16 +1192,27 @@ export default function App() {
           // Record score to Category and Overall Leaderboards (include time consumed if round complete)
           const isFinished = cat.gameMode !== 'timer' && match.isCategory && categoryProgressRef.current >= cat.targetCount;
           const currentElapsed = Math.max(1, Math.round((Date.now() - roundStartTimeRef.current) / 1000));
-          recordScore({
-            categoryId: catId,
-            categoryName: cat.name,
-            categoryScore: wordPts.points,
-            wordsCount: 1,
-            highestWord: match.word,
-            highestWordPoints: wordPts.points,
-            isRoundComplete: isFinished,
-            timeConsumedSeconds: isFinished ? currentElapsed : undefined,
-          });
+          // Deferred (setTimeout 0) instead of called inline: recordScore does a
+          // localStorage read-modify-write plus two Firestore calls, and this is
+          // inside resolveBoard's per-match loop -- a cascade with several matches
+          // in one resolution pass (special tiles, beams, chain reactions) would
+          // otherwise run all of that back-to-back, synchronously, in the same
+          // tick as the tile-clear animation, with no chance for the browser to
+          // paint in between.
+          // RESTORED: this deferral was removed by commit 9d09bb9 ("chore:
+          // cleanup and refactor Capacitor configuration").
+          setTimeout(() => {
+            recordScore({
+              categoryId: catId,
+              categoryName: cat.name,
+              categoryScore: wordPts.points,
+              wordsCount: 1,
+              highestWord: match.word,
+              highestWordPoints: wordPts.points,
+              isRoundComplete: isFinished,
+              timeConsumedSeconds: isFinished ? currentElapsed : undefined,
+            });
+          }, 0);
 
           // Trigger real-time statement banner showing points earned
           triggerBanner(
