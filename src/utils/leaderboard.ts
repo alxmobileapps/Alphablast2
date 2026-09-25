@@ -312,8 +312,21 @@ function saveLocalLeaderboards(data: StoredLeaderboards): void {
  * Deduplicate leaderboard entries so that the current user's local & cloud sessions
  * are consolidated into a single entry with their highest career stats, while
  * other distinct players who happen to share the same name REMAIN SEPARATE entries!
+ *
+ * `fallbackCurrentUser` controls what happens when the current player has no
+ * matching entry in `entries` yet:
+ *  - omitted (undefined): use the player's career-wide totals. Only correct
+ *    for the OVERALL leaderboard, which really is about career totals.
+ *  - `null`: inject nothing. Correct for any per-category / per-custom-game
+ *    leaderboard -- a player who never touched that category shouldn't
+ *    appear on its leaderboard at all, let alone in 1st place showing
+ *    unrelated career stats from every other game they've ever played.
  */
-function deduplicateLeaderboardEntries(entries: LeaderboardEntry[], currentProfile: UserProfile): LeaderboardEntry[] {
+function deduplicateLeaderboardEntries(
+  entries: LeaderboardEntry[],
+  currentProfile: UserProfile,
+  fallbackCurrentUser?: { score: number; wordsCount: number; highestWord: string; highestWordPoints: number } | null
+): LeaderboardEntry[] {
   const map = new Map<string, LeaderboardEntry>();
   const currentLocalId = (currentProfile.playerId || '').trim();
   const legacyIds = getLegacyPlayerIds();
@@ -363,25 +376,35 @@ function deduplicateLeaderboardEntries(entries: LeaderboardEntry[], currentProfi
     }
   }
 
-  // Ensure current user is in the list if they have points
-  if (currentProfile.totalPoints > 0) {
+  // Ensure current user is in the list if they have points on THIS leaderboard.
+  const fallback =
+    fallbackCurrentUser === undefined
+      ? {
+          score: currentProfile.totalPoints,
+          wordsCount: currentProfile.totalWordsFormed,
+          highestWord: currentProfile.highestWord,
+          highestWordPoints: currentProfile.highestWordPoints,
+        }
+      : fallbackCurrentUser;
+
+  if (fallback && fallback.score > 0) {
     const userDoc = map.get('__CURRENT_USER__');
     if (userDoc) {
-      userDoc.score = Math.max(userDoc.score, currentProfile.totalPoints);
-      userDoc.wordsCount = Math.max(userDoc.wordsCount, currentProfile.totalWordsFormed);
-      if ((currentProfile.highestWordPoints || 0) > (userDoc.highestWordPoints || 0)) {
-        userDoc.highestWord = currentProfile.highestWord;
-        userDoc.highestWordPoints = currentProfile.highestWordPoints;
+      userDoc.score = Math.max(userDoc.score, fallback.score);
+      userDoc.wordsCount = Math.max(userDoc.wordsCount, fallback.wordsCount);
+      if ((fallback.highestWordPoints || 0) > (userDoc.highestWordPoints || 0)) {
+        userDoc.highestWord = fallback.highestWord;
+        userDoc.highestWordPoints = fallback.highestWordPoints;
       }
     } else {
       map.set('__CURRENT_USER__', {
         id: currentProfile.playerId,
         playerName: currentProfile.name || 'You',
         avatar: currentProfile.avatar || '👑',
-        score: currentProfile.totalPoints,
-        wordsCount: currentProfile.totalWordsFormed,
-        highestWord: currentProfile.highestWord || 'WORD',
-        highestWordPoints: currentProfile.highestWordPoints || 500,
+        score: fallback.score,
+        wordsCount: fallback.wordsCount,
+        highestWord: fallback.highestWord || 'WORD',
+        highestWordPoints: fallback.highestWordPoints || 500,
         date: 'Today',
         isCurrentUser: true,
       });
@@ -478,13 +501,16 @@ export async function fetchLiveGlobalCategory(categoryId: number, categoryName?:
         });
 
         // For campaign categories (< 1000), merge with defaults if few scores.
+        // `null` fallback: this is a per-category board, so only inject the
+        // current player if they actually have a scored entry for THIS
+        // category already in the list -- never their unrelated career total.
         if (!isCustomGame) {
           const defaults = generateDefaultCategoryEntries(categoryId, catName);
           const combined = [...liveList, ...defaults];
-          return deduplicateLeaderboardEntries(combined, profile);
+          return deduplicateLeaderboardEntries(combined, profile, null);
         }
 
-        return deduplicateLeaderboardEntries(liveList, profile);
+        return deduplicateLeaderboardEntries(liveList, profile, null);
       }
     }
   } catch (err) {
@@ -523,7 +549,8 @@ export function getCategoryLeaderboard(categoryId: number, categoryName?: string
     list = (list || []).filter((e) => !e.id.includes('seed-'));
   }
 
-  return deduplicateLeaderboardEntries(list, profile);
+  // `null` fallback: per-category board -- see fetchLiveGlobalCategory.
+  return deduplicateLeaderboardEntries(list, profile, null);
 }
 
 async function syncUserToGlobalFirestore(profile: UserProfile): Promise<void> {
