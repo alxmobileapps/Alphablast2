@@ -133,14 +133,6 @@ export default function App() {
   const currentCategory: Category =
     selectedCustomCategory || INITIAL_CATEGORIES[categoryIndex] || INITIAL_CATEGORIES[0];
 
-  // Subscribe to real-time 1-hour community categories from Firestore
-  useEffect(() => {
-    const unsubscribe = subscribeToActiveCustomCategories((cats) => {
-      setCustomCategories(cats);
-    });
-    return () => unsubscribe();
-  }, []);
-
   const [categoryProgress, setCategoryProgress] = useState<number>(0);
   const categoryProgressRef = useRef<number>(0);
   const [movesRemaining, setMovesRemaining] = useState<number>(INITIAL_MOVES);
@@ -336,6 +328,47 @@ export default function App() {
   const [targetAdPowerUpType, setTargetAdPowerUpType] = useState<PowerUpType | null>(null);
   const [isRoundCompleteOpen, setIsRoundCompleteOpen] = useState<boolean>(false);
   const [isGameOverOpen, setIsGameOverOpen] = useState<boolean>(false);
+
+  // Subscribe to real-time 1-hour community categories from Firestore ("Public
+  // Shelf"). This fires on EVERY change anywhere -- another player publishing
+  // or updating a custom category, this device's own play-count increment
+  // echoing back, or just the 15s prune sweep -- and pushing it into state
+  // re-renders the entire App tree (customCategories is read by the home
+  // menu/category picker). That's harmless at the menu, but starting a
+  // custom round always fires recordCategoryPlay() (a Firestore write) whose
+  // local echo lands back in this same subscription within the same
+  // gameplay session, and every other publish on the "Public Shelf" while
+  // this device happens to be mid-round does too -- forcing a full top-level
+  // re-render on top of the tile-clear/refill animation and causing the
+  // custom-game-only lag/white-screen. Campaign rounds never touch this
+  // collection at all, which is why they never see it.
+  // Fix: while a round is actually being played (board interactive), buffer
+  // the latest list in a ref instead of pushing it into state, and flush it
+  // once the player is back at a point where a re-render is free (menu, or
+  // the round-complete/game-over modal is up and the board is no longer
+  // animating).
+  const isActivelyPlayingRef = useRef(false);
+  const pendingCustomCategoriesRef = useRef<Category[] | null>(null);
+
+  useEffect(() => {
+    isActivelyPlayingRef.current = currentScreen === 'game' && !isRoundCompleteOpen && !isGameOverOpen;
+    if (!isActivelyPlayingRef.current && pendingCustomCategoriesRef.current) {
+      setCustomCategories(pendingCustomCategoriesRef.current);
+      pendingCustomCategoriesRef.current = null;
+    }
+  }, [currentScreen, isRoundCompleteOpen, isGameOverOpen]);
+
+  useEffect(() => {
+    const unsubscribe = subscribeToActiveCustomCategories((cats) => {
+      if (isActivelyPlayingRef.current) {
+        pendingCustomCategoriesRef.current = cats;
+      } else {
+        setCustomCategories(cats);
+      }
+    });
+    return () => unsubscribe();
+  }, []);
+
   const [isLeaderboardOpen, setIsLeaderboardOpen] = useState<boolean>(false);
   const [isReadyPromptOpen, setIsReadyPromptOpen] = useState<boolean>(true);
   // True once the new round's board has actually finished generating (see
@@ -693,7 +726,13 @@ export default function App() {
       perfMark('playCategoryRound start');
       if (targetCat.isCustom) {
         setSelectedCustomCategory(targetCat);
-        recordCategoryPlay(targetCat.firestoreDocId);
+        // Deferred (setTimeout 0), same reasoning as recordScore below: this
+        // fires a Firestore write right as the round is starting, alongside
+        // every other state reset in this function -- pushing it one tick
+        // out keeps the round-start frame purely local/instant.
+        setTimeout(() => {
+          recordCategoryPlay(targetCat.firestoreDocId);
+        }, 0);
       } else {
         setSelectedCustomCategory(null);
         const catIndex = INITIAL_CATEGORIES.findIndex((c) => c.id === targetCat.id);
