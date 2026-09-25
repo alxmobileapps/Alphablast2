@@ -549,12 +549,6 @@ export function ensureOneMoveOpportunity(
   categoryId: number = 1,
   formedWords?: Set<string>
 ): Tile[][] {
-  // Check if at least 1 move opportunity exists
-  const existingOpps = countOneMoveCategoryOpportunities(board, categoryId, formedWords);
-  if (existingOpps.length >= 1) {
-    return board;
-  }
-
   // getCategoryById (not INITIAL_CATEGORIES.find) so custom / community
   // categories plant their OWN words. Previously a custom category fell back
   // to INITIAL_CATEGORIES[0] ("Land Animals"), whose words never count as
@@ -563,25 +557,45 @@ export function ensureOneMoveOpportunity(
   // (up to 11 x 253 full-board scans), freezing the game for seconds after
   // a word was cleared in a custom game.
   const currentCat = getCategoryById(categoryId);
-  const deadline = Date.now() + ENSURE_OPPORTUNITY_BUDGET_MS;
-  let candidateWords = (currentCat?.words || [])
+  // Only words that can actually COUNT when completed: 3-6 letters (what
+  // the planting slots fit reliably) and not already formed -- including
+  // plural/singular forms of a formed word, which the matcher also treats
+  // as already formed (isWordOrPluralFormed).
+  //
+  // There used to be two fallbacks here when that list came up empty: plant
+  // ALREADY-FORMED words, and failing that a hardcoded animal list (CAT,
+  // DOG, ...). Neither can ever pass the verification below (formed words
+  // are excluded from matches, and the animal words aren't category words
+  // in a custom game), so every plant attempt failed and the loop always
+  // burned its full 200ms time budget -- on EVERY refill -- while also
+  // rewriting letters on tiles that weren't even moving. That's the
+  // routine state of a small custom word list late in a round (all its
+  // short words formed), and it's why custom games stuttered/flickered
+  // after each word while campaign rounds (hundreds of words) didn't.
+  // Now: if there's nothing left that could count, leave the board alone.
+  const candidateWords = (currentCat?.words || [])
     .map((w) => w.toUpperCase())
     .filter(
       (w) =>
         w.length >= 3 &&
         w.length <= 6 &&
-        (!formedWords || !formedWords.has(w))
+        !isWordOrPluralFormed(w, formedWords).isDuplicate
     );
 
   if (candidateWords.length === 0) {
-    candidateWords = (currentCat?.words || [])
-      .map((w) => w.toUpperCase())
-      .filter((w) => w.length >= 3);
+    return board;
   }
 
-  if (candidateWords.length === 0) {
-    candidateWords = ['CAT', 'DOG', 'BEAR', 'LION', 'FISH', 'BIRD', 'CRAB', 'TACO', 'PIZZA', 'DUCK'];
+  // Check if at least 1 move opportunity already exists (done after the
+  // candidate check above, so a board with nothing left to plant skips
+  // this full-board scan entirely -- it returned the board unchanged
+  // either way).
+  const existingOpps = countOneMoveCategoryOpportunities(board, categoryId, formedWords);
+  if (existingOpps.length >= 1) {
+    return board;
   }
+
+  const deadline = Date.now() + ENSURE_OPPORTUNITY_BUDGET_MS;
 
   // Anchor slots to attempt planting
   const anchorSlots = [
@@ -678,16 +692,29 @@ export function ensureOneMoveOpportunity(
 // Generate an 8x8 board that GUARANTEES at least 3 ready category words in 1 move available and 0 pre-matches
 export function generateInitialBoard(categoryId: number = 1, formedWords?: Set<string>): Tile[][] {
   const currentCat = getCategoryById(categoryId);
-  let candidateWords = (currentCat?.words || [])
+  // Only plant words that can still COUNT this round (not formed, and not a
+  // plural/singular of a formed word -- the matcher treats those as formed
+  // too). This used to fall back to the full list, formed words included,
+  // whenever fewer than 3 unformed words remained -- but formed words never
+  // register as ready moves, so the `readyMoves >= 3` check below could
+  // never pass and all 25 attempts (each a full one-move board scan) ran,
+  // plus a 200ms fallback search: a 1-3 second main-thread freeze. With a
+  // small custom word list that's the normal state late in a round, and it
+  // runs during a Fire Wipeout while the whole board is mid-animation --
+  // the white-screen flash. Campaign lists (hundreds of words) never got
+  // anywhere near it.
+  const candidateWords = (currentCat?.words || [])
     .map((w) => w.toUpperCase())
-    .filter((w) => w.length >= 3 && w.length <= 6);
+    .filter(
+      (w) =>
+        w.length >= 3 &&
+        w.length <= 6 &&
+        !isWordOrPluralFormed(w, formedWords).isDuplicate
+    );
 
-  if (formedWords && formedWords.size > 0) {
-    const unformed = candidateWords.filter((w) => !formedWords.has(w.toUpperCase()));
-    if (unformed.length >= 3) {
-      candidateWords = unformed;
-    }
-  }
+  // Ask for as many ready moves as there are words left to give (at most
+  // 3), so the success check below is actually achievable.
+  const requiredReadyMoves = Math.min(3, candidateWords.length);
 
   for (let attempt = 0; attempt < 25; attempt++) {
     // 1. Build blank 8x8 board
@@ -700,8 +727,10 @@ export function generateInitialBoard(categoryId: number = 1, formedWords?: Set<s
       board.push(row);
     }
 
-    // 2. Plant 3 to 4 distinct category words with 1-move displacement across diverse directions
-    if (candidateWords.length >= 3) {
+    // 2. Plant up to 4 distinct category words with 1-move displacement across diverse directions
+    // (previously required at least 3 candidates, so a custom list with only
+    // 1-2 words left planted nothing at all)
+    if (candidateWords.length >= 1) {
       const shuffledWords = [...candidateWords].sort(() => Math.random() - 0.5);
       
       const anchorSlots = [
@@ -714,7 +743,8 @@ export function generateInitialBoard(categoryId: number = 1, formedWords?: Set<s
       ].sort(() => Math.random() - 0.5);
 
       let plantedCount = 0;
-      for (let i = 0; i < anchorSlots.length && plantedCount < 4; i++) {
+      const maxPlants = Math.min(4, shuffledWords.length);
+      for (let i = 0; i < anchorSlots.length && plantedCount < maxPlants; i++) {
         const word = shuffledWords[plantedCount % shuffledWords.length];
         const slot = anchorSlots[i];
         if (plantOneMoveWord(board, word, slot.r, slot.c, slot.dr, slot.dc)) {
@@ -735,9 +765,15 @@ export function generateInitialBoard(categoryId: number = 1, formedWords?: Set<s
       preMatches = findValidWordsOnBoard(board, categoryId, formedWords);
     }
 
-    // 4. Verify no pre-matches and at least 3 one-move category words available
+    // 4. Verify no pre-matches and enough one-move category words available
+    // (3, or however many words are left if fewer -- see requiredReadyMoves)
+    if (preMatches.length === 0 && requiredReadyMoves === 0) {
+      // Nothing left in this category that could count -- no point scanning
+      // for ready moves that can't exist.
+      return board;
+    }
     const readyMoves = countOneMoveCategoryOpportunities(board, categoryId, formedWords);
-    if (preMatches.length === 0 && readyMoves.length >= 3) {
+    if (preMatches.length === 0 && readyMoves.length >= requiredReadyMoves) {
       return board;
     }
   }
@@ -752,11 +788,9 @@ export function generateInitialBoard(categoryId: number = 1, formedWords?: Set<s
     fallbackBoard.push(row);
   }
 
-  if (candidateWords.length >= 3) {
-    plantOneMoveWord(fallbackBoard, candidateWords[0], 1, 1, 0, 1);
-    plantOneMoveWord(fallbackBoard, candidateWords[1], 3, 2, 0, 1);
-    plantOneMoveWord(fallbackBoard, candidateWords[2], 5, 1, 1, 0);
-  }
+  if (candidateWords.length >= 1) plantOneMoveWord(fallbackBoard, candidateWords[0], 1, 1, 0, 1);
+  if (candidateWords.length >= 2) plantOneMoveWord(fallbackBoard, candidateWords[1], 3, 2, 0, 1);
+  if (candidateWords.length >= 3) plantOneMoveWord(fallbackBoard, candidateWords[2], 5, 1, 1, 0);
 
   ensureOneMoveOpportunity(fallbackBoard, categoryId, formedWords);
   return fallbackBoard;

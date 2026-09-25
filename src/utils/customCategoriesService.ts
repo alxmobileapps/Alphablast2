@@ -2,6 +2,7 @@ import { Category, CustomGameMode } from '../types';
 import { registerCustomCategory } from '../data/dictionary';
 import { db, auth } from '../firebase';
 import { ensureAuthSession } from './authService';
+import { getCreatorKeyHash } from './creatorIdentity';
 import {
   collection,
   doc,
@@ -101,6 +102,7 @@ function categoryToFirestoreData(cat: Category): DocumentData {
     isCustom: true,
     creatorName: cat.creatorName || 'Player',
     creatorUid: cat.creatorUid || null,
+    creatorKeyHash: cat.creatorKeyHash || null,
     createdAt: cat.createdAt || Date.now(),
     expiresAt: cat.expiresAt,
     firestoreDocId: cat.firestoreDocId,
@@ -126,6 +128,7 @@ function firestoreDocToCategory(docSnap: QueryDocumentSnapshot<DocumentData>): C
     isCustom: true,
     creatorName: d.creatorName || 'Player',
     creatorUid: d.creatorUid || undefined,
+    creatorKeyHash: d.creatorKeyHash || undefined,
     createdAt: Number(d.createdAt) || Date.now(),
     expiresAt: Number(d.expiresAt) || 0,
     firestoreDocId: d.firestoreDocId || docSnap.id,
@@ -177,12 +180,16 @@ export async function publishCustomCategory(
   const numericId = 20000 + Math.floor(Math.random() * 79000);
   const docId = `custom-cat-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
 
-  // Stamp the creator's stable per-device uid so only they can edit this
-  // category later (creatorName is just a free-typed display name -- any
-  // player can type anyone else's name, so it can't gate edits). Awaited
-  // here, before the category is created, so the very first published copy
-  // (local + Firestore) already carries it.
-  const authUser = await ensureAuthSession();
+  // Ownership stamp so only this device can edit the category later
+  // (creatorName is free-typed, so it can't gate edits). creatorKeyHash is
+  // the real check -- local, synchronous, never missing. The Firebase uid is
+  // best-effort only: it's attached if anonymous sign-in happens to be
+  // available, but publishing no longer waits on it or depends on it.
+  const creatorKeyHash = getCreatorKeyHash();
+  const creatorUid = auth.currentUser?.uid;
+  if (!creatorUid) {
+    void ensureAuthSession();
+  }
 
   const createdCategory: Category = {
     id: numericId,
@@ -193,7 +200,8 @@ export async function publishCustomCategory(
     color: input.color || 'purple',
     isCustom: true,
     creatorName: input.creatorName.trim().substring(0, 24) || 'Player',
-    creatorUid: authUser?.uid,
+    creatorUid,
+    creatorKeyHash,
     createdAt: now,
     expiresAt,
     firestoreDocId: docId,
@@ -217,31 +225,33 @@ export async function publishCustomCategory(
 
 /**
  * Updates an existing custom category (e.g. changing timer duration, name, icon, words).
+ * Only the device that published it may do this -- see canEditCustomCategory.
  */
 export function updateCustomCategory(
   id: number | string,
   updates: Partial<Category>
 ): Category | null {
+  const matchesId = (c: Category) => c.id === Number(id) || c.firestoreDocId === String(id);
   const existing = getStoredCategories();
-  const index = existing.findIndex((c) => c.id === Number(id) || c.firestoreDocId === String(id));
-  if (index === -1) return null;
+  const localIndex = existing.findIndex(matchesId);
 
-  const current = existing[index];
+  // Normally the creator's own device has the category in local storage.
+  // If it doesn't (e.g. local storage was cleared), fall back to the live
+  // Public Shelf copy instead of silently doing nothing.
+  const current = localIndex !== -1 ? existing[localIndex] : latestRemoteCategories.find(matchesId);
+  if (!current) {
+    throw new Error('This custom game could not be found. It may have expired.');
+  }
 
-  // Only the original publisher may edit -- match against the stable
-  // per-device uid stamped at publish time, not creatorName (a free-typed
-  // display name any player could type as anyone). A category published
-  // before this check existed has no creatorUid on file, so nobody can
-  // edit it either (safer default than falling back to "allow anyone");
-  // it's a 1-hour category, so that only matters until it expires anyway.
-  const myUid = auth.currentUser?.uid;
-  if (!current.creatorUid || !myUid || current.creatorUid !== myUid) {
+  if (!canEditCustomCategory(current)) {
     throw new Error('Only the original creator of this custom game can edit it.');
   }
 
+  // Ownership can never be changed through an edit.
+  const { creatorKeyHash: _k, creatorUid: _u, firestoreDocId: _d, ...safeUpdates } = updates;
   const updatedCategory: Category = {
     ...current,
-    ...updates,
+    ...safeUpdates,
   };
 
   if (updates.words) {
@@ -249,7 +259,11 @@ export function updateCustomCategory(
     registerCustomCategory(updatedCategory);
   }
 
-  existing[index] = updatedCategory;
+  if (localIndex !== -1) {
+    existing[localIndex] = updatedCategory;
+  } else {
+    existing.unshift(updatedCategory);
+  }
   saveStoredCategories(existing);
 
   // Keep the Public Shelf in sync with the edit
@@ -258,14 +272,52 @@ export function updateCustomCategory(
   return updatedCategory;
 }
 
+// canEditCustomCategory runs for every row of the category list, and that
+// list re-renders every second while open (its countdown), so don't
+// JSON.parse local storage per row: parse once per distinct stored value.
+let ownedKeysCache: { raw: string | null; keys: Set<string> } | null = null;
+function getLocallyPublishedKeys(): Set<string> {
+  let raw: string | null = null;
+  try {
+    raw = localStorage.getItem(STORAGE_KEY);
+  } catch {
+    raw = null;
+  }
+  if (ownedKeysCache && ownedKeysCache.raw === raw) return ownedKeysCache.keys;
+  const keys = new Set<string>();
+  // Expired entries are included on purpose -- ownership of an expired
+  // category is harmless and it keeps this cache valid across the minute.
+  try {
+    const list: Category[] = raw ? JSON.parse(raw) : [];
+    for (const c of list) keys.add(c.firestoreDocId || `id:${c.id}`);
+  } catch {
+    // corrupt local data -- no locally-owned categories
+  }
+  ownedKeysCache = { raw, keys };
+  return keys;
+}
+
 /**
- * Whether the CURRENT device is the one that published this custom category,
- * i.e. whether the Edit option should even be shown for it. Mirrors the
- * check enforced inside updateCustomCategory -- use this to hide the Edit
- * affordance for everyone else instead of showing it and letting them hit
- * the error.
+ * Whether the CURRENT device published this custom category, i.e. whether
+ * the Edit option should be shown for it (every other player simply doesn't
+ * see it). True if ANY of these hold:
+ *  1. The category is in this device's own local list -- only categories
+ *     published from this device are ever stored there. This also covers
+ *     categories published before ownership stamps existed.
+ *  2. Its creatorKeyHash matches this device's creator key (see
+ *     creatorIdentity.ts) -- synchronous, no sign-in or network needed.
+ *  3. Its creatorUid matches the current Firebase uid (best-effort; this
+ *     was the ONLY check before, and it failed for the creator whenever
+ *     anonymous sign-in wasn't available or hadn't restored yet).
  */
 export function canEditCustomCategory(category: Category): boolean {
+  const owned = getLocallyPublishedKeys();
+  if (owned.has(category.firestoreDocId || `id:${category.id}`)) {
+    return true;
+  }
+  if (category.creatorKeyHash && category.creatorKeyHash === getCreatorKeyHash()) {
+    return true;
+  }
   const myUid = auth.currentUser?.uid;
   return !!category.creatorUid && !!myUid && category.creatorUid === myUid;
 }

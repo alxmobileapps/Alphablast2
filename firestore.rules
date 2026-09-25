@@ -7,25 +7,21 @@ service cloud.firestore {
       allow create: if request.resource.data.name is string
                     && request.resource.data.words is list
                     && request.resource.data.expiresAt is number;
-      // Two different kinds of "update" have to stay legal here:
-      //  1. The creator editing their own category's content (name, words,
-      //     icon, timer, ...) -- identified by their stable per-device
-      //     Firebase Anonymous Auth uid, stamped as creatorUid at publish
-      //     time, and an update can't reassign creatorUid to someone else.
-      //     A doc published before this field existed has no creatorUid,
-      //     so it can no longer be edited by anyone either (matches the
-      //     app's own client-side check); a short-lived gap since these
-      //     categories expire after 1 hour anyway.
-      //  2. ANY player incrementing the play counter (recordCategoryPlay)
-      //     when they play someone ELSE's category -- restricting update
-      //     to the creator alone would silently break play-count tracking
-      //     for everyone but the creator, so a write that only touches
-      //     plays/updatedAt is allowed regardless of who's asking.
+      // Updates are allowed as long as they don't change who OWNS the
+      // category (creatorKeyHash / creatorUid can never be rewritten), so:
+      //  - the creator can edit their own category's content, and
+      //  - any player can bump the play counter (recordCategoryPlay).
+      // Who may edit is enforced in the app: only the publishing device
+      // sees the Edit button, and updateCustomCategory refuses otherwise
+      // (see canEditCustomCategory). The previous rule required the
+      // editor's Firebase Anonymous Auth uid to match, but the app can't
+      // rely on anonymous sign-in being available -- when it isn't, that
+      // rule rejected the creator's OWN edits. Rules can't verify the
+      // per-device creator key without writing its secret into this
+      // public document, so identity isn't re-checked here.
       allow update: if
-        (request.auth != null
-         && resource.data.creatorUid == request.auth.uid
-         && request.resource.data.creatorUid == resource.data.creatorUid)
-        || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['plays', 'updatedAt']);
+        request.resource.data.get('creatorKeyHash', null) == resource.data.get('creatorKeyHash', null)
+        && request.resource.data.get('creatorUid', null) == resource.data.get('creatorUid', null);
       allow delete: if true;
     }
 

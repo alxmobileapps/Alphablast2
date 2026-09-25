@@ -464,6 +464,10 @@ export default function App() {
   currentCategoryRef.current = currentCategory;
   const robotWordsRef = useRef<string[] | null>(robotWords);
   robotWordsRef.current = robotWords;
+  // The board state the idle clue search last came back EMPTY for -- see
+  // the inactivity monitor below. Prevents re-running that expensive scan
+  // every 500ms on a board that has no clue to give.
+  const noClueForBoardRef = useRef<Tile[][] | null>(null);
   const isResolvingRef = useRef(false);
 
   // Unified helper to add round points and instantly check/award real-time diamond milestones
@@ -622,10 +626,22 @@ export default function App() {
           : now - lastActivityTimeRef.current;
 
         if (isCluesEnabled && timeSinceEvent >= 5000 && !robotWordsRef.current && !isLifelinePromptActiveRef.current) {
-          const answers = findThreePossibleAnswers(currentBoard, currentCat.id, formedWordsRef.current);
-          if (answers.length > 0) {
-            idleCycleStepRef.current = 'clue_active';
-            setRobotWords(answers);
+          // Only search each board state once. When the search comes back
+          // empty (e.g. every word of a small custom list is already formed,
+          // or the list is all plurals), this used to re-run the full
+          // one-move scan -- tens of thousands of allocations -- every 500ms
+          // for as long as the player sat idle, causing repeated main-thread
+          // stalls (visible stutter/flicker) in custom games. The board
+          // array is replaced on every change, so identity is a reliable
+          // "has anything changed since the last empty search" check.
+          if (noClueForBoardRef.current !== currentBoard) {
+            const answers = findThreePossibleAnswers(currentBoard, currentCat.id, formedWordsRef.current);
+            if (answers.length > 0) {
+              idleCycleStepRef.current = 'clue_active';
+              setRobotWords(answers);
+            } else {
+              noClueForBoardRef.current = currentBoard;
+            }
           }
         }
       }
@@ -1189,7 +1205,22 @@ export default function App() {
           setFormedWords((prev) => new Set(prev).add(upperWord));
 
           // Update Category Progress if matched category word
-          const cat = INITIAL_CATEGORIES.find((c) => c.id === catId) || currentCategory;
+          // Read the LIVE category through currentCategoryRef, not the
+          // `currentCategory` closure: resolveBoard is a useCallback whose
+          // deps never change, so that closure was frozen at the category
+          // the app launched with (a campaign category, targetCount 10, no
+          // gameMode). Custom categories aren't in INITIAL_CATEGORIES, so
+          // they fell through to that stale campaign category -- a custom
+          // game with a 3-word target never completed at 3 (it waited for
+          // 10), and a timer-mode custom game ended early at 10 words. The
+          // player then kept playing past the end of the custom word list,
+          // which is exactly the state where the board helpers do their
+          // most expensive work (flicker / white-screen stalls).
+          const liveCat = currentCategoryRef.current;
+          const cat =
+            liveCat && liveCat.id === catId
+              ? liveCat
+              : INITIAL_CATEGORIES.find((c) => c.id === catId) || liveCat;
           if (match.isCategory) {
             categoryProgressRef.current += 1;
             setCategoryProgress(categoryProgressRef.current);
@@ -1646,7 +1677,17 @@ export default function App() {
       await new Promise((res) => setTimeout(res, 220));
 
       // STEP 3: Apply Gravity and refill
-      const { newBoard } = applyGravityAndRefill(nextBoard, cleared);
+      // Pass the current category + formed words (previously omitted, so the
+      // refill's "guarantee a move" step defaulted to category 1 and planted
+      // Land Animals words into custom boards -- words that never count, so
+      // the planting search always ran to its full time budget).
+      const { newBoard } = applyGravityAndRefill(
+        nextBoard,
+        cleared,
+        [],
+        currentCategory.id,
+        formedWordsRef.current
+      );
       nextBoard = newBoard;
       setBoard(nextBoard);
       await new Promise((res) => setTimeout(res, 350));
@@ -1757,7 +1798,17 @@ export default function App() {
       await new Promise((res) => setTimeout(res, 200));
 
       // STAGE 3: Gravity and Cascade
-      const { newBoard } = applyGravityAndRefill(nextBoard, cleared);
+      // Pass the current category + formed words (previously omitted, so the
+      // refill's "guarantee a move" step defaulted to category 1 and planted
+      // Land Animals words into custom boards -- words that never count, so
+      // the planting search always ran to its full time budget).
+      const { newBoard } = applyGravityAndRefill(
+        nextBoard,
+        cleared,
+        [],
+        currentCategory.id,
+        formedWordsRef.current
+      );
       nextBoard = newBoard;
       setBoard(nextBoard);
       await new Promise((res) => setTimeout(res, 350));
