@@ -30,20 +30,54 @@ googleProvider.setCustomParameters({
 
 const CLOUD_SYNC_KEY_STORAGE = 'alphablast_cloud_sync_key';
 
+// 8-character backup codes, letters + numbers only, with easily-confused
+// characters (0/O, 1/I) left out so a code is both hard to guess and easy
+// to read back correctly over chat or voice.
+const SYNC_KEY_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+const SYNC_KEY_LENGTH = 8;
+
+function generateSyncKey(): string {
+  let out = '';
+  const cryptoObj = typeof window !== 'undefined' ? window.crypto : undefined;
+  if (cryptoObj?.getRandomValues) {
+    const bytes = new Uint32Array(SYNC_KEY_LENGTH);
+    cryptoObj.getRandomValues(bytes);
+    for (let i = 0; i < SYNC_KEY_LENGTH; i++) {
+      out += SYNC_KEY_CHARS[bytes[i] % SYNC_KEY_CHARS.length];
+    }
+  } else {
+    for (let i = 0; i < SYNC_KEY_LENGTH; i++) {
+      out += SYNC_KEY_CHARS[Math.floor(Math.random() * SYNC_KEY_CHARS.length)];
+    }
+  }
+  return out;
+}
+
+// Used only if localStorage itself is unavailable (e.g. private browsing),
+// so repeated calls within the same page load still return the same code
+// instead of a fresh random one every time.
+let inMemoryFallbackKey: string | null = null;
+
 /**
- * Gets or generates a persistent local Cloud Sync Key (e.g. ALPHA-9842)
+ * Gets or generates a persistent local Cloud Sync / Backup Code (e.g. "K7RX3QWM").
+ * Previously a 4-digit "ALPHA-####" code (only 9,000 possibilities, easy to
+ * guess or brute-force against the fully-open Firestore `users/{id}` rule) —
+ * now a random 8-character letters+numbers code out of a ~34^8 (~1.8 trillion)
+ * space.
  */
 export function getOrCreateLocalSyncKey(): string {
   try {
     let key = localStorage.getItem(CLOUD_SYNC_KEY_STORAGE);
     if (!key) {
-      const randNum = Math.floor(1000 + Math.random() * 9000);
-      key = `ALPHA-${randNum}`;
+      key = generateSyncKey();
       localStorage.setItem(CLOUD_SYNC_KEY_STORAGE, key);
     }
     return key;
   } catch {
-    return 'ALPHA-1001';
+    if (!inMemoryFallbackKey) {
+      inMemoryFallbackKey = generateSyncKey();
+    }
+    return inMemoryFallbackKey;
   }
 }
 
