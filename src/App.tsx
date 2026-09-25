@@ -156,6 +156,14 @@ export default function App() {
     return generateInitialBoard(highestUnlocked);
   });
   const [wordHistory, setWordHistory] = useState<WordHistoryItem[]>([]);
+  // Ref mirror of wordHistory, read by the timer-mode completion handler so
+  // that effect doesn't need `wordHistory` in its dependency array (which
+  // would otherwise tear down and recreate the countdown interval every
+  // time a word is formed during a timer-mode round).
+  const wordHistoryRef = useRef<WordHistoryItem[]>([]);
+  useEffect(() => {
+    wordHistoryRef.current = wordHistory;
+  }, [wordHistory]);
   const [powerUps, setPowerUps] = useState<PowerUpInventory>(() => {
     // Power-up starting balances are always 1x — purchasing "Remove All Ads"
     // no longer doubles them (see handlePurchaseRemoveAds below).
@@ -323,6 +331,13 @@ export default function App() {
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState<boolean>(false);
   const [editingCustomCategory, setEditingCustomCategory] = useState<Category | null>(null);
   const [timerSecondsRemaining, setTimerSecondsRemaining] = useState<number>(120);
+  // Live per-second mirror of timerSecondsRemaining, updated WITHOUT calling
+  // setState -- see the "Timer gameMode countdown loop" effect below and
+  // useTickingRefValue for the full story. Keeping this in sync with the
+  // state value at every point the state is set (round start/reset, round
+  // end) means the two never drift even though only one of them re-renders
+  // App every time it changes.
+  const timerSecondsRemainingRef = useRef<number>(120);
   const [isAdModalOpen, setIsAdModalOpen] = useState<boolean>(false);
   const [isPowerUpAdOpen, setIsPowerUpAdOpen] = useState<boolean>(false);
   const [isShopOpen, setIsShopOpen] = useState<boolean>(false);
@@ -810,6 +825,7 @@ export default function App() {
 
       if (targetCat.gameMode === 'timer') {
         const initSeconds = targetCat.timerSeconds || 120;
+        timerSecondsRemainingRef.current = initSeconds;
         setTimerSecondsRemaining(initSeconds);
       }
       perfMark('fast resets done, scheduling rAF');
@@ -2637,34 +2653,52 @@ export default function App() {
   };
 
   // Timer gameMode countdown loop
+  //
+  // Used to call `setTimerSecondsRemaining` (App-level state) once a second,
+  // which re-rendered the whole App component tree once a second for the
+  // entire duration of every timer-mode custom-game round -- see
+  // useTickingRefValue.ts for the full story and why that's a real (if
+  // subtle) source of on-device flicker/jank even with GameBoard/TopInfoBar/
+  // Header's memos in place. Now decrements timerSecondsRemainingRef (a
+  // plain ref, no re-render) every second instead, and only calls
+  // setTimerSecondsRemaining -- a real, necessary re-render -- exactly once,
+  // when the round actually ends. WordHistory's and PowerUpBar's countdown
+  // badges display the live value via useTickingRefValue, ticking
+  // themselves independently of App.
   useEffect(() => {
     if (currentScreen !== 'game') return;
     if (currentCategory.gameMode !== 'timer') return;
-    if (
-      isReadyPromptOpen ||
-      isRoundCompleteOpen ||
-      isGameOverOpen ||
-      isAdModalOpen ||
-      isPowerUpAdOpen ||
-      isShopOpen ||
-      isCategoryModalOpen ||
-      isLeaderboardOpen ||
-      isProfileOpen ||
-      isSettingsOpen ||
-      isHelpOpen
-    ) {
-      return;
-    }
 
-    if (timerSecondsRemaining <= 0) {
+    const interval = setInterval(() => {
+      if (
+        isReadyPromptOpen ||
+        isRoundCompleteOpen ||
+        isGameOverOpen ||
+        isAdModalOpen ||
+        isPowerUpAdOpen ||
+        isShopOpen ||
+        isCategoryModalOpen ||
+        isLeaderboardOpen ||
+        isProfileOpen ||
+        isSettingsOpen ||
+        isHelpOpen
+      ) {
+        return;
+      }
+
+      const next = Math.max(0, timerSecondsRemainingRef.current - 1);
+      timerSecondsRemainingRef.current = next;
+      if (next > 0) return;
+
       // Timer finished! Round completed!
+      clearInterval(interval);
       haptics.roundComplete();
       const elapsedSeconds = currentCategory.timerSeconds || 120;
       setRoundTimeConsumed(elapsedSeconds);
       const finalScore = roundScoreRef.current;
       const totalWords = formedWordsRef.current.size;
-      const bestWord = wordHistory[0]?.word || '';
-      const bestWordPts = wordHistory[0]?.points || 0;
+      const bestWord = wordHistoryRef.current[0]?.word || '';
+      const bestWordPts = wordHistoryRef.current[0]?.points || 0;
 
       // Calculate timer earned stars based on words formed
       const timerEarnedStars = totalWords >= 15 ? 3 : totalWords >= 8 ? 2 : 1;
@@ -2702,12 +2736,8 @@ export default function App() {
         console.warn('Auto cloud backup error in timer mode:', err);
       });
 
+      setTimerSecondsRemaining(0);
       setIsRoundCompleteOpen(true);
-      return;
-    }
-
-    const interval = setInterval(() => {
-      setTimerSecondsRemaining((prev) => Math.max(0, prev - 1));
     }, 1000);
 
     return () => clearInterval(interval);
@@ -2717,7 +2747,6 @@ export default function App() {
     currentCategory.gameMode,
     currentCategory.timerSeconds,
     currentCategory.name,
-    timerSecondsRemaining,
     isReadyPromptOpen,
     isRoundCompleteOpen,
     isGameOverOpen,
@@ -2729,7 +2758,6 @@ export default function App() {
     isProfileOpen,
     isSettingsOpen,
     isHelpOpen,
-    wordHistory,
   ]);
 
   return (
@@ -2816,7 +2844,7 @@ export default function App() {
                     history={wordHistory}
                     category={currentCategory}
                     categoryProgress={categoryProgress}
-                    timerSecondsRemaining={timerSecondsRemaining}
+                    timerSecondsRemainingRef={timerSecondsRemainingRef}
                   />
                 </div>
 
@@ -2889,7 +2917,7 @@ export default function App() {
                     movesRemaining={movesRemaining}
                     movesGainedBonus={movesGainedBonus}
                     isTimerMode={currentCategory.gameMode === 'timer'}
-                    timerSecondsRemaining={timerSecondsRemaining}
+                    timerSecondsRemainingRef={timerSecondsRemainingRef}
                     isLifelineShining={isLifelineShining}
                     onSelectPowerUp={handleSelectPowerUp}
                     onCancelPowerUp={handleCancelPowerUp}
