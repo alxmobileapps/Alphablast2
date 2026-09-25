@@ -9,7 +9,7 @@ import {
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 import { GameProgress, saveGameProgress, getHighestUnlockedCategoryId } from './gameProgress';
-import { getUserProfile, saveUserProfile, setPlayerUniqueId, UserProfile } from './leaderboard';
+import { getUserProfile, saveUserProfile, setPlayerUniqueId, getPlayerUniqueId, UserProfile } from './leaderboard';
 
 export interface CloudUserData {
   uid: string;
@@ -21,6 +21,22 @@ export interface CloudUserData {
   gameProgress: GameProgress;
   iapReceipts?: string[];
   lastSyncedAt: number;
+  // The player's PUBLIC leaderboard id (see leaderboard.getPlayerUniqueId).
+  // Kept here in the private cloud save so restoring on another device keeps
+  // the same leaderboard identity -- the backup code / uid itself is never
+  // used as a public id any more.
+  publicPlayerId?: string;
+}
+
+/**
+ * Adopts the public leaderboard id stored in a cloud save (if it has one)
+ * and returns the id this device should use from now on.
+ */
+function adoptPublicPlayerId(cloudPublicId: unknown): string {
+  if (typeof cloudPublicId === 'string' && cloudPublicId) {
+    setPlayerUniqueId(cloudPublicId); // ignored unless it's a valid public id
+  }
+  return getPlayerUniqueId();
 }
 
 export const googleProvider = new GoogleAuthProvider();
@@ -225,11 +241,13 @@ export async function syncProgressWithCloudKey(
   let cloudExisted = false;
   let finalProgress = currentLocalProgress;
   let mergedProfile: UserProfile = { ...currentProf };
+  let cloudPublicId: string | undefined;
 
   try {
     const snap = await getDoc(userDocRef);
     if (snap.exists()) {
       const data = snap.data() as Partial<CloudUserData>;
+      cloudPublicId = data.publicPlayerId;
       if (data.gameProgress) {
         cloudExisted = true;
         finalProgress = mergeGameProgress(currentLocalProgress, data.gameProgress);
@@ -255,9 +273,10 @@ export async function syncProgressWithCloudKey(
     console.warn('Could not read existing doc, proceeding to save directly:', readErr);
   }
 
-  // Ensure current local user profile is stored and linked
-  setPlayerUniqueId(docId);
-  mergedProfile.playerId = docId;
+  // Link the profile to its PUBLIC leaderboard id -- never to docId, which
+  // contains the secret backup code.
+  const publicId = adoptPublicPlayerId(cloudPublicId);
+  mergedProfile.playerId = publicId;
   saveUserProfile(mergedProfile);
 
   const now = Date.now();
@@ -271,6 +290,7 @@ export async function syncProgressWithCloudKey(
     gameProgress: finalProgress,
     iapReceipts: finalProgress.hasRemovedAds ? ['com.wordblast.removeads'] : [],
     lastSyncedAt: now,
+    publicPlayerId: publicId,
   };
 
   await setDoc(userDocRef, cloudPayload, { merge: true });
@@ -324,7 +344,7 @@ export async function restoreWithCloudKey(
 
   saveGameProgress(merged);
   setLocalSyncKey(cleanKey);
-  setPlayerUniqueId(docId);
+  const publicId = adoptPublicPlayerId(data.publicPlayerId);
 
   // Restore player username and avatar
   const currentProf = getUserProfile();
@@ -333,7 +353,7 @@ export async function restoreWithCloudKey(
 
   const restoredProfile: UserProfile = {
     ...currentProf,
-    playerId: docId,
+    playerId: publicId,
     name: restoredName,
     avatar: restoredAvatar,
     totalPoints: Math.max(currentProf.totalPoints, data.userProfile?.totalPoints || 0),
@@ -371,12 +391,14 @@ export async function signInWithGoogleAccount(currentLocalProgress: GameProgress
 
     let finalProgress = currentLocalProgress;
     let cloudExisted = false;
+    let cloudPublicId: string | undefined;
 
     const currentProf: UserProfile = getUserProfile();
     let mergedProfile: UserProfile = { ...currentProf };
 
     if (snap.exists()) {
       const data = snap.data() as Partial<CloudUserData>;
+      cloudPublicId = data.publicPlayerId;
       if (data.gameProgress) {
         cloudExisted = true;
         finalProgress = mergeGameProgress(currentLocalProgress, data.gameProgress);
@@ -399,8 +421,10 @@ export async function signInWithGoogleAccount(currentLocalProgress: GameProgress
       }
     }
 
-    setPlayerUniqueId(user.uid);
-    mergedProfile.playerId = user.uid;
+    // Public leaderboard id, never the Firebase uid (the users/{uid} save
+    // document is writable by anyone who knows the uid).
+    const publicId = adoptPublicPlayerId(cloudPublicId);
+    mergedProfile.playerId = publicId;
     saveUserProfile(mergedProfile);
 
     const cloudPayload: CloudUserData = {
@@ -413,6 +437,7 @@ export async function signInWithGoogleAccount(currentLocalProgress: GameProgress
       gameProgress: finalProgress,
       iapReceipts: finalProgress.hasRemovedAds ? ['com.wordblast.removeads'] : [],
       lastSyncedAt: Date.now(),
+      publicPlayerId: publicId,
     };
 
     await setDoc(userDocRef, cloudPayload, { merge: true });
@@ -463,6 +488,7 @@ export async function syncProgressToCloud(progress: GameProgress): Promise<numbe
     gameProgress: progress,
     iapReceipts: progress.hasRemovedAds ? ['com.wordblast.removeads'] : [],
     lastSyncedAt: now,
+    publicPlayerId: getPlayerUniqueId(),
   };
 
   await setDoc(userDocRef, cloudPayload, { merge: true });
@@ -508,6 +534,7 @@ export async function restoreCloudProgress(localProgress: GameProgress): Promise
   }
 
   saveGameProgress(merged);
+  adoptPublicPlayerId(data.publicPlayerId);
 
   const currentProf = getUserProfile();
   const restoredProfile: UserProfile = {

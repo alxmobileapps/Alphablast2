@@ -26,12 +26,20 @@ service cloud.firestore {
     }
 
     // Global Real Player Leaderboard Entries
+    // Leaderboard entries used to be published under `sync_<BACKUP CODE>`,
+    // exposing every player's secret backup code. Entries now use a random
+    // public id (`p_...`). New/updated entries may never use a `sync_` id or
+    // playerId, and the old `sync_` entries may be deleted (the app deletes
+    // its own when it migrates; the rest are cleaned up once).
     match /global_leaderboard/{entryId} {
       allow read: if true;
       allow create, update: if request.resource.data.playerName is string
                             && request.resource.data.score is number
-                            && request.resource.data.score >= 0;
-      allow delete: if false;
+                            && request.resource.data.score >= 0
+                            && !entryId.matches('sync_.*')
+                            && !(request.resource.data.get('playerId', '') is string
+                                 && request.resource.data.get('playerId', '').matches('sync_.*'));
+      allow delete: if entryId.matches('sync_.*');
     }
 
     // Category Specific High Scores
@@ -39,8 +47,11 @@ service cloud.firestore {
       allow read: if true;
       allow create, update: if request.resource.data.playerName is string
                             && request.resource.data.score is number
-                            && request.resource.data.categoryId is number;
-      allow delete: if false;
+                            && request.resource.data.categoryId is number
+                            && !scoreId.matches('sync_.*')
+                            && !(request.resource.data.get('playerId', '') is string
+                                 && request.resource.data.get('playerId', '').matches('sync_.*'));
+      allow delete: if scoreId.matches('sync_.*');
     }
 
     // Remote App Configuration (Ads, Feature Flags)
@@ -50,8 +61,16 @@ service cloud.firestore {
     }
 
     // User Cloud Saves, Progress & IAP Purchases
+    // A cloud save's document id IS its backup code (`sync_<CODE>`), so
+    // listing this collection handed out every player's code (and with it
+    // their progress and purchases). Reading a single save by its exact id
+    // (i.e. you already know the code) still works; listing/querying the
+    // collection does not. Deleting saves is not something the app does.
     match /users/{userId} {
-      allow read, write: if true;
+      allow get: if true;
+      allow list: if false;
+      allow create, update: if true;
+      allow delete: if false;
     }
   }
 }

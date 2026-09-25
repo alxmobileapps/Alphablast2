@@ -331,6 +331,11 @@ export const CategorySelectorModal: React.FC<CategorySelectorModalProps> = ({
                               <span className="font-black text-xs sm:text-sm truncate text-white">
                                 {toPreferredSpelling(cat.name, spellingPreference)}
                               </span>
+                              {cat.passwordHash && (
+                                <span className="text-[11px] shrink-0" title="Password protected">
+                                  🔒
+                                </span>
+                              )}
                               {isTimerRush ? (
                                 <span className="bg-amber-400/20 text-amber-300 border border-amber-400/40 text-[9px] font-black px-1.5 py-0.2 rounded shrink-0">
                                   ⏱ {Math.floor((cat.timerSeconds || 120) / 60)}m Rush
