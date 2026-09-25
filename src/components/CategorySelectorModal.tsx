@@ -26,6 +26,7 @@ import { isSoundEnabled, toggleSound } from '../utils/audio';
 import { haptics } from '../utils/haptics';
 import { toPreferredSpelling } from '../data/dictionary';
 import { SpellingPreference } from '../utils/settings';
+import { canEditCustomCategory } from '../utils/customCategoriesService';
 
 interface CategorySelectorModalProps {
   isOpen: boolean;
@@ -352,7 +353,12 @@ export const CategorySelectorModal: React.FC<CategorySelectorModalProps> = ({
                         </div>
 
                         <div className="shrink-0 ml-2 flex items-center gap-1">
-                          {onEditCustomCategory && (
+                          {/* Only the player who published this category can edit it --
+                              canEditCustomCategory checks the stable per-device uid
+                              stamped at publish time, not the free-typed creatorName
+                              (anyone could type anyone else's name). Every other
+                              player simply doesn't see this button at all. */}
+                          {onEditCustomCategory && canEditCustomCategory(cat) && (
                             <button
                               type="button"
                               onClick={(e) => {
