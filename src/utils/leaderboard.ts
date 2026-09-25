@@ -3,9 +3,12 @@ import { db } from '../firebase';
 import {
   collection,
   doc,
+  getDoc,
   getDocs,
   setDoc,
+  deleteDoc,
   query,
+  where,
   orderBy,
   limit,
   serverTimestamp,
@@ -41,30 +44,154 @@ export interface UserProfile {
 const STORAGE_KEY_LEADERBOARD = 'word_blast_leaderboards_v2';
 const STORAGE_KEY_USER_PROFILE = 'word_blast_user_profile_v2';
 const STORAGE_KEY_PLAYER_ID = 'word_blast_unique_player_id';
+// Every id this device used to publish leaderboard entries under before
+// switching to a public id (see getPlayerUniqueId). Kept so old local
+// entries are still recognized as "you", and so the cleanup can retry.
+const STORAGE_KEY_LEGACY_PLAYER_IDS = 'word_blast_legacy_player_ids';
 
 export const DEFAULT_AVATARS = ['👑', '🦁', '🦊', '🦉', '⚡', '🚀', '💎', '🎯', '🔥', '🌟', '🦄', '🐲'];
 
-export function getPlayerUniqueId(): string {
+/**
+ * PUBLIC leaderboard id for this player -- the id every global_leaderboard /
+ * category_scores document is published under, which anyone can read.
+ *
+ * It used to be the player's cloud-save doc id, `sync_<BACKUP CODE>` (or,
+ * after Google sign-in, their Firebase uid). That put every player's secret
+ * backup code in plain sight on the public leaderboard, and anyone holding a
+ * code can restore -- or overwrite -- that player's progress and purchases.
+ * Now it's a random `p_...` id with no relation to the backup code. It's
+ * saved in the (private) cloud save too, so restoring a backup on another
+ * device keeps the same leaderboard identity (see authService).
+ */
+const PUBLIC_ID_PATTERN = /^(p_[a-f0-9]{20}|usr_[a-z0-9_]+)$/;
+
+export function isLegacySecretBearingId(id: string | null | undefined): boolean {
+  return !!id && id.startsWith('sync_');
+}
+
+function isPublicPlayerId(id: string | null | undefined): boolean {
+  return !!id && PUBLIC_ID_PATTERN.test(id);
+}
+
+function generatePublicPlayerId(): string {
+  const bytes = new Uint8Array(10);
+  const cryptoObj = typeof window !== 'undefined' ? window.crypto : undefined;
+  if (cryptoObj?.getRandomValues) {
+    cryptoObj.getRandomValues(bytes);
+  } else {
+    for (let i = 0; i < bytes.length; i++) bytes[i] = Math.floor(Math.random() * 256);
+  }
+  return 'p_' + Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+export function getLegacyPlayerIds(): string[] {
   try {
-    let id = localStorage.getItem(STORAGE_KEY_PLAYER_ID);
-    if (!id) {
-      id = 'usr_' + Math.random().toString(36).substring(2, 9) + '_' + Date.now().toString(36);
-      localStorage.setItem(STORAGE_KEY_PLAYER_ID, id);
-    }
-    return id;
+    const raw = localStorage.getItem(STORAGE_KEY_LEGACY_PLAYER_IDS);
+    const list = raw ? JSON.parse(raw) : [];
+    return Array.isArray(list) ? list.filter((x) => typeof x === 'string') : [];
   } catch {
-    return 'usr_guest_' + Date.now();
+    return [];
   }
 }
 
-export function setPlayerUniqueId(id: string): void {
+function rememberLegacyPlayerId(id: string): void {
   try {
-    if (id && typeof id === 'string') {
-      localStorage.setItem(STORAGE_KEY_PLAYER_ID, id.trim());
+    const list = getLegacyPlayerIds();
+    if (!list.includes(id)) {
+      list.push(id);
+      localStorage.setItem(STORAGE_KEY_LEGACY_PLAYER_IDS, JSON.stringify(list));
     }
   } catch {
     // ignore
   }
+}
+
+let fallbackPublicId: string | null = null;
+
+export function getPlayerUniqueId(): string {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY_PLAYER_ID);
+    if (isPublicPlayerId(stored)) {
+      return stored as string;
+    }
+    const id = generatePublicPlayerId();
+    localStorage.setItem(STORAGE_KEY_PLAYER_ID, id);
+    if (stored) {
+      // Was a backup-code (`sync_...`) or Firebase-uid based id: move this
+      // player's public entries over to the new id and delete the old ones.
+      rememberLegacyPlayerId(stored);
+      void migrateLegacyLeaderboardEntries(stored, id);
+    }
+    return id;
+  } catch {
+    if (!fallbackPublicId) fallbackPublicId = generatePublicPlayerId();
+    return fallbackPublicId;
+  }
+}
+
+/**
+ * Only ever accepts a PUBLIC id (see getPlayerUniqueId). Anything else --
+ * in particular a `sync_<backup code>` id -- is ignored, so a secret can
+ * never end up as this player's public leaderboard id again.
+ */
+export function setPlayerUniqueId(id: string): void {
+  try {
+    const clean = (id || '').trim();
+    if (!isPublicPlayerId(clean)) return;
+    const current = localStorage.getItem(STORAGE_KEY_PLAYER_ID);
+    if (current && current !== clean && !isPublicPlayerId(current)) {
+      rememberLegacyPlayerId(current);
+    }
+    localStorage.setItem(STORAGE_KEY_PLAYER_ID, clean);
+  } catch {
+    // ignore
+  }
+}
+
+/**
+ * Copies this player's old public leaderboard documents (published under a
+ * backup-code or uid based id) to their new public id, then deletes the old
+ * ones so the backup code is no longer publicly readable. Best-effort: the
+ * delete only succeeds once the updated firestore.rules are deployed (they
+ * allow deleting `sync_...` documents); until then the old documents are at
+ * least hidden from the in-app leaderboard (see isHiddenLegacyEntry).
+ */
+async function migrateLegacyLeaderboardEntries(oldId: string, newId: string): Promise<void> {
+  try {
+    const oldOverall = await getDoc(doc(db, 'global_leaderboard', oldId));
+    if (oldOverall.exists()) {
+      await setDoc(
+        doc(db, 'global_leaderboard', newId),
+        { ...oldOverall.data(), playerId: newId, updatedAt: serverTimestamp() },
+        { merge: true }
+      );
+      await deleteDoc(oldOverall.ref).catch(() => {});
+    }
+  } catch (err) {
+    console.warn('Leaderboard id migration (overall) notice:', err);
+  }
+
+  try {
+    const snap = await getDocs(query(collection(db, 'category_scores'), where('playerId', '==', oldId)));
+    for (const d of snap.docs) {
+      const data = d.data();
+      const categoryId = Number(data.categoryId);
+      if (!Number.isFinite(categoryId)) continue;
+      await setDoc(
+        doc(db, 'category_scores', `${newId}_cat_${categoryId}`),
+        { ...data, playerId: newId, updatedAt: serverTimestamp() },
+        { merge: true }
+      );
+      await deleteDoc(d.ref).catch(() => {});
+    }
+  } catch (err) {
+    console.warn('Leaderboard id migration (categories) notice:', err);
+  }
+}
+
+/** Old entries published under a backup code are never shown. */
+function isHiddenLegacyEntry(docId: string, playerId: unknown): boolean {
+  return isLegacySecretBearingId(docId) || (typeof playerId === 'string' && isLegacySecretBearingId(playerId));
 }
 
 // Generate realistic default pre-seeded category entries as initial foundation
@@ -189,6 +316,7 @@ function saveLocalLeaderboards(data: StoredLeaderboards): void {
 function deduplicateLeaderboardEntries(entries: LeaderboardEntry[], currentProfile: UserProfile): LeaderboardEntry[] {
   const map = new Map<string, LeaderboardEntry>();
   const currentLocalId = (currentProfile.playerId || '').trim();
+  const legacyIds = getLegacyPlayerIds();
 
   for (const entry of entries) {
     const entryId = (entry.id || '').trim();
@@ -196,7 +324,8 @@ function deduplicateLeaderboardEntries(entries: LeaderboardEntry[], currentProfi
     // Determine if this entry belongs to the current local player
     const isCurrent =
       entry.isCurrentUser === true ||
-      (Boolean(currentLocalId) && (entryId === currentLocalId || entryId.includes(currentLocalId) || currentLocalId.includes(entryId)));
+      (Boolean(currentLocalId) && (entryId === currentLocalId || entryId.includes(currentLocalId) || currentLocalId.includes(entryId))) ||
+      legacyIds.some((legacy) => Boolean(legacy) && entryId.includes(legacy));
 
     // Grouping key:
     // - The current active player collapses into '__CURRENT_USER__' (merging past local/cloud sessions)
@@ -275,7 +404,8 @@ export async function fetchLiveGlobalOverall(): Promise<LeaderboardEntry[]> {
     );
     const snap = await getDocs(q);
     if (!snap.empty) {
-      const liveList: LeaderboardEntry[] = snap.docs.map((docSnap) => {
+      const visibleDocs = snap.docs.filter((docSnap) => !isHiddenLegacyEntry(docSnap.id, docSnap.data().playerId));
+      const liveList: LeaderboardEntry[] = visibleDocs.map((docSnap) => {
         const d = docSnap.data();
         const isCurrent = docSnap.id === profile.playerId || d.playerId === profile.playerId;
         return {
@@ -324,7 +454,9 @@ export async function fetchLiveGlobalCategory(categoryId: number, categoryName?:
     );
     const snap = await getDocs(q);
     if (!snap.empty) {
-      const matchingDocs = snap.docs.filter((d) => Number(d.data().categoryId) === Number(categoryId));
+      const matchingDocs = snap.docs.filter(
+        (d) => Number(d.data().categoryId) === Number(categoryId) && !isHiddenLegacyEntry(d.id, d.data().playerId)
+      );
       if (matchingDocs.length > 0) {
         const liveList: LeaderboardEntry[] = matchingDocs.map((docSnap) => {
           const d = docSnap.data();
@@ -396,6 +528,7 @@ export function getCategoryLeaderboard(categoryId: number, categoryName?: string
 
 async function syncUserToGlobalFirestore(profile: UserProfile): Promise<void> {
   if (!profile.playerId || profile.totalPoints <= 0) return;
+  if (isLegacySecretBearingId(profile.playerId)) return; // never publish a backup code
   try {
     const docRef = doc(db, 'global_leaderboard', profile.playerId);
     await setDoc(
@@ -439,6 +572,7 @@ async function syncCategoryScoreToFirestore({
   profile: UserProfile;
 }): Promise<void> {
   if (!profile.playerId || score <= 0) return;
+  if (isLegacySecretBearingId(profile.playerId)) return; // never publish a backup code
   try {
     const docKey = `${profile.playerId}_cat_${categoryId}`;
     const docRef = doc(db, 'category_scores', docKey);

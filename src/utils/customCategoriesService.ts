@@ -2,7 +2,7 @@ import { Category, CustomGameMode } from '../types';
 import { registerCustomCategory } from '../data/dictionary';
 import { db, auth } from '../firebase';
 import { ensureAuthSession } from './authService';
-import { getCreatorKeyHash } from './creatorIdentity';
+import { getCreatorKeyHash, sha256Hex } from './creatorIdentity';
 import {
   collection,
   doc,
@@ -38,6 +38,74 @@ export interface CreateCustomCategoryInput {
   targetCount?: number;
   gameMode?: CustomGameMode;
   timerSeconds?: number;
+  // Optional. Empty / missing = anyone can play.
+  password?: string;
+}
+
+// ---------------------------------------------------------------------------
+// Optional custom-game password
+// ---------------------------------------------------------------------------
+export const CUSTOM_GAME_PASSWORD_MIN_LENGTH = 3;
+export const CUSTOM_GAME_PASSWORD_MAX_LENGTH = 20;
+const PASSWORD_UNLOCKS_STORAGE = 'alphablast_custom_game_password_unlocks_v1';
+
+function normalizePassword(password: string): string {
+  // Not case-sensitive and ignores surrounding spaces -- it's a simple game
+  // password typed on a phone keyboard, so "Cafe" and "cafe " both work.
+  return password.trim().toLowerCase();
+}
+
+/**
+ * Salted hash of a custom game's password. Only this hash is stored on the
+ * (publicly readable) category document, never the password itself; the
+ * category's own id is the salt, so the same password on two games gives
+ * two different hashes.
+ */
+export function hashCustomGamePassword(categoryKey: string, password: string): string {
+  return sha256Hex(`alphablast-custom-pw:${categoryKey}:${normalizePassword(password)}`);
+}
+
+function passwordKeyOf(category: Category): string {
+  return category.firestoreDocId || `id:${category.id}`;
+}
+
+export function checkCustomGamePassword(category: Category, password: string): boolean {
+  if (!category.passwordHash) return true;
+  return hashCustomGamePassword(passwordKeyOf(category), password) === category.passwordHash;
+}
+
+function readPasswordUnlocks(): Record<string, string> {
+  try {
+    const raw = localStorage.getItem(PASSWORD_UNLOCKS_STORAGE);
+    const parsed = raw ? JSON.parse(raw) : {};
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+/** Remember that this device entered the right password for this game. */
+export function rememberCustomGamePasswordUnlocked(category: Category): void {
+  if (!category.passwordHash) return;
+  try {
+    const unlocks = readPasswordUnlocks();
+    unlocks[passwordKeyOf(category)] = category.passwordHash;
+    localStorage.setItem(PASSWORD_UNLOCKS_STORAGE, JSON.stringify(unlocks));
+  } catch {
+    // ignore -- the player will just be asked again next time
+  }
+}
+
+/**
+ * Whether this player can start this custom game without being asked for a
+ * password: it has none, they created it, or they already typed the current
+ * password on this device (if the creator changes the password, they're
+ * asked again).
+ */
+export function canPlayCustomGameWithoutPassword(category: Category): boolean {
+  if (!category.isCustom || !category.passwordHash) return true;
+  if (canEditCustomCategory(category)) return true;
+  return readPasswordUnlocks()[passwordKeyOf(category)] === category.passwordHash;
 }
 
 /**
@@ -103,6 +171,7 @@ function categoryToFirestoreData(cat: Category): DocumentData {
     creatorName: cat.creatorName || 'Player',
     creatorUid: cat.creatorUid || null,
     creatorKeyHash: cat.creatorKeyHash || null,
+    passwordHash: cat.passwordHash || null,
     createdAt: cat.createdAt || Date.now(),
     expiresAt: cat.expiresAt,
     firestoreDocId: cat.firestoreDocId,
@@ -129,6 +198,7 @@ function firestoreDocToCategory(docSnap: QueryDocumentSnapshot<DocumentData>): C
     creatorName: d.creatorName || 'Player',
     creatorUid: d.creatorUid || undefined,
     creatorKeyHash: d.creatorKeyHash || undefined,
+    passwordHash: d.passwordHash || undefined,
     createdAt: Number(d.createdAt) || Date.now(),
     expiresAt: Number(d.expiresAt) || 0,
     firestoreDocId: d.firestoreDocId || docSnap.id,
@@ -202,6 +272,9 @@ export async function publishCustomCategory(
     creatorName: input.creatorName.trim().substring(0, 24) || 'Player',
     creatorUid,
     creatorKeyHash,
+    passwordHash: input.password && input.password.trim()
+      ? hashCustomGamePassword(docId, input.password)
+      : undefined,
     createdAt: now,
     expiresAt,
     firestoreDocId: docId,
@@ -229,7 +302,8 @@ export async function publishCustomCategory(
  */
 export function updateCustomCategory(
   id: number | string,
-  updates: Partial<Category>
+  updates: Partial<Category>,
+  passwordChange?: { newPassword?: string; removePassword?: boolean }
 ): Category | null {
   const matchesId = (c: Category) => c.id === Number(id) || c.firestoreDocId === String(id);
   const existing = getStoredCategories();
@@ -248,11 +322,18 @@ export function updateCustomCategory(
   }
 
   // Ownership can never be changed through an edit.
-  const { creatorKeyHash: _k, creatorUid: _u, firestoreDocId: _d, ...safeUpdates } = updates;
+  // The password hash is only changed through passwordChange below.
+  const { creatorKeyHash: _k, creatorUid: _u, firestoreDocId: _d, passwordHash: _p, ...safeUpdates } = updates;
   const updatedCategory: Category = {
     ...current,
     ...safeUpdates,
   };
+
+  if (passwordChange?.removePassword) {
+    updatedCategory.passwordHash = undefined;
+  } else if (passwordChange?.newPassword && passwordChange.newPassword.trim()) {
+    updatedCategory.passwordHash = hashCustomGamePassword(passwordKeyOf(updatedCategory), passwordChange.newPassword);
+  }
 
   if (updates.words) {
     updatedCategory.words = sanitizeCategoryWords(updates.words);
@@ -378,6 +459,7 @@ export function subscribeToActiveCustomCategories(
         c.expiresAt ?? '',
         c.plays ?? 0,
         c.creatorName ?? '',
+        c.passwordHash ?? '',
         (c.words || []).join(','),
       ].join('|');
 
