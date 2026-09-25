@@ -49,7 +49,7 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({
   return (
     <div
       id="game-over-modal-backdrop"
-      className="fixed inset-0 z-50 bg-[#071330]/80 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 select-none animate-fade-in"
+      className="fixed inset-0 z-50 bg-[#071330]/90 flex items-center justify-center p-3 sm:p-4 select-none animate-fade-in"
     >
       <div
         id="game-over-card"
