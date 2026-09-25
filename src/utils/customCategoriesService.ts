@@ -1,11 +1,31 @@
 import { Category, CustomGameMode } from '../types';
 import { registerCustomCategory } from '../data/dictionary';
+import { db } from '../firebase';
+import {
+  collection,
+  doc,
+  setDoc,
+  updateDoc,
+  onSnapshot,
+  query,
+  orderBy,
+  limit,
+  serverTimestamp,
+  increment,
+  type DocumentData,
+  type QueryDocumentSnapshot,
+} from 'firebase/firestore';
 
 export const CUSTOM_CATEGORY_DURATION_MS = 60 * 60 * 1000; // 1 Hour (3,600,000 ms)
 export const CUSTOM_CATEGORY_DIAMOND_COST = 10;
 export const DEFAULT_TIMER_SECONDS = 120; // 2 Minutes
 
 const STORAGE_KEY = 'word_blast_custom_categories_v2';
+
+// Global "Public Shelf" — every published custom category is written here so it
+// becomes visible, in real time, to every other device (and the website), not
+// just other browser tabs on the same machine.
+const CUSTOM_CATEGORIES_COLLECTION = 'custom_categories';
 
 export interface CreateCustomCategoryInput {
   name: string;
@@ -66,7 +86,75 @@ function saveStoredCategories(categories: Category[]): void {
 }
 
 /**
- * Creates and publishes a custom category (persisted in local storage and active for 1 hour).
+ * Converts a Category into a plain object safe to write to Firestore
+ * (Firestore rejects `undefined` field values).
+ */
+function categoryToFirestoreData(cat: Category): DocumentData {
+  const data: DocumentData = {
+    id: cat.id,
+    name: cat.name,
+    icon: cat.icon,
+    targetCount: cat.targetCount,
+    words: cat.words,
+    color: cat.color,
+    isCustom: true,
+    creatorName: cat.creatorName || 'Player',
+    createdAt: cat.createdAt || Date.now(),
+    expiresAt: cat.expiresAt,
+    firestoreDocId: cat.firestoreDocId,
+    plays: cat.plays || 0,
+    gameMode: cat.gameMode || 'target',
+    updatedAt: serverTimestamp(),
+  };
+  if (cat.timerSeconds !== undefined) {
+    data.timerSeconds = cat.timerSeconds;
+  }
+  return data;
+}
+
+function firestoreDocToCategory(docSnap: QueryDocumentSnapshot<DocumentData>): Category {
+  const d = docSnap.data();
+  return {
+    id: Number(d.id) || 0,
+    name: d.name || 'Custom Game',
+    icon: d.icon || '⭐',
+    targetCount: Number(d.targetCount) || 8,
+    words: Array.isArray(d.words) ? d.words : [],
+    color: d.color || 'purple',
+    isCustom: true,
+    creatorName: d.creatorName || 'Player',
+    createdAt: Number(d.createdAt) || Date.now(),
+    expiresAt: Number(d.expiresAt) || 0,
+    firestoreDocId: d.firestoreDocId || docSnap.id,
+    plays: Number(d.plays) || 0,
+    gameMode: d.gameMode || 'target',
+    timerSeconds: d.timerSeconds !== undefined ? Number(d.timerSeconds) : undefined,
+  };
+}
+
+/**
+ * Publishes the category to the global Firestore "Public Shelf" so it becomes
+ * visible in real time to other players' devices and to the website. Runs in
+ * the background — publishing never blocks on the network, and if it fails
+ * (offline, etc.) the category still works locally for its creator.
+ */
+function syncCategoryToFirestore(cat: Category): void {
+  if (!cat.firestoreDocId) return;
+  try {
+    setDoc(doc(db, CUSTOM_CATEGORIES_COLLECTION, cat.firestoreDocId), categoryToFirestoreData(cat), {
+      merge: true,
+    }).catch((err) => {
+      console.warn('Firestore custom category publish background notice:', err);
+    });
+  } catch (err) {
+    console.warn('Firestore custom category publish notice:', err);
+  }
+}
+
+/**
+ * Creates and publishes a custom category (persisted locally for the creator's
+ * own device, and synced to Firestore so it's active — and visible to everyone
+ * else — for 1 hour).
  */
 export async function publishCustomCategory(
   input: CreateCustomCategoryInput
@@ -110,6 +198,9 @@ export async function publishCustomCategory(
   // Register in runtime dictionary immediately
   registerCustomCategory(createdCategory);
 
+  // Publish to the shared Public Shelf (background — does not block the UI)
+  syncCategoryToFirestore(createdCategory);
+
   return createdCategory;
 }
 
@@ -137,11 +228,44 @@ export function updateCustomCategory(
 
   existing[index] = updatedCategory;
   saveStoredCategories(existing);
+
+  // Keep the Public Shelf in sync with the edit
+  syncCategoryToFirestore(updatedCategory);
+
   return updatedCategory;
 }
 
+// Cache of the most recent live Firestore snapshot, shared by every active
+// subscription so we can re-filter expired entries on a timer without
+// re-querying the network.
+let latestRemoteCategories: Category[] = [];
+
+function mergeLocalAndRemote(local: Category[], remote: Category[]): Category[] {
+  const now = Date.now();
+  const byDocId = new Map<string, Category>();
+
+  // Remote (the shared Public Shelf) is the source of truth for anything it has.
+  for (const cat of remote) {
+    if (!cat.expiresAt || cat.expiresAt > now) {
+      byDocId.set(cat.firestoreDocId || String(cat.id), cat);
+    }
+  }
+  // Fold in local-only categories (e.g. published while offline, not yet synced).
+  for (const cat of local) {
+    const key = cat.firestoreDocId || String(cat.id);
+    if (!byDocId.has(key)) {
+      byDocId.set(key, cat);
+    }
+  }
+
+  return Array.from(byDocId.values()).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+}
+
 /**
- * Subscribes to all active (unexpired) community categories with real-time updates.
+ * Subscribes to all active (unexpired) community categories with real-time
+ * updates. Combines the shared Firestore "Public Shelf" (visible to every
+ * player and to the website) with same-device local storage as an offline
+ * fallback, so publishing still works instantly even without a connection.
  */
 export function subscribeToActiveCustomCategories(
   onUpdate: (categories: Category[]) => void,
@@ -149,12 +273,13 @@ export function subscribeToActiveCustomCategories(
 ): () => void {
   try {
     const notify = () => {
-      const active = getStoredCategories();
-      active.forEach((cat) => registerCustomCategory(cat));
-      onUpdate(active);
+      const local = getStoredCategories();
+      const merged = mergeLocalAndRemote(local, latestRemoteCategories);
+      merged.forEach((cat) => registerCustomCategory(cat));
+      onUpdate(merged);
     };
 
-    // Initial emit
+    // Initial emit (local cache, so the UI has something immediately)
     notify();
 
     // Listen for cross-tab or local updates
@@ -162,15 +287,39 @@ export function subscribeToActiveCustomCategories(
     window.addEventListener('storage', handleStorage);
     window.addEventListener('custom-categories-updated', handleStorage);
 
-    // Periodic cleanup of expired categories every 30s
-    const timer = setInterval(() => {
-      notify();
-    }, 30000);
+    // Periodic re-filter so entries that just expired drop out even without
+    // a new Firestore snapshot or local write arriving.
+    const pruneTimer = setInterval(notify, 15000);
+
+    // Live subscription to the shared Public Shelf
+    let unsubscribeFirestore: () => void = () => {};
+    try {
+      const q = query(
+        collection(db, CUSTOM_CATEGORIES_COLLECTION),
+        orderBy('createdAt', 'desc'),
+        limit(100)
+      );
+      unsubscribeFirestore = onSnapshot(
+        q,
+        (snap) => {
+          latestRemoteCategories = snap.docs.map((d) => firestoreDocToCategory(d));
+          notify();
+        },
+        (err) => {
+          console.warn('Firestore custom categories live subscription notice:', err);
+          if (onError) onError(err as unknown as Error);
+        }
+      );
+    } catch (err: any) {
+      console.warn('Could not start Firestore custom categories subscription:', err);
+      if (onError) onError(err);
+    }
 
     return () => {
       window.removeEventListener('storage', handleStorage);
       window.removeEventListener('custom-categories-updated', handleStorage);
-      clearInterval(timer);
+      clearInterval(pruneTimer);
+      unsubscribeFirestore();
     };
   } catch (err: any) {
     if (onError) onError(err);
@@ -179,7 +328,8 @@ export function subscribeToActiveCustomCategories(
 }
 
 /**
- * Increments play count for a custom category.
+ * Increments play count for a custom category, both locally and on the
+ * shared Public Shelf.
  */
 export async function recordCategoryPlay(firestoreDocId?: string) {
   if (!firestoreDocId) return;
@@ -192,5 +342,14 @@ export async function recordCategoryPlay(firestoreDocId?: string) {
     }
   } catch {
     // Non-critical, ignore
+  }
+
+  try {
+    await updateDoc(doc(db, CUSTOM_CATEGORIES_COLLECTION, firestoreDocId), {
+      plays: increment(1),
+    });
+  } catch (err) {
+    // Non-critical (e.g. category was creator-local only, or offline)
+    console.warn('Firestore custom category play-count sync notice:', err);
   }
 }
