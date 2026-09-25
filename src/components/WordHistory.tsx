@@ -4,30 +4,27 @@ import { WordHistoryItem, Category } from '../types';
 import { formatPoints } from '../utils/scoring';
 import { fetchWordTrivia, AiWordTriviaResponse } from '../utils/geminiService';
 import { haptics } from '../utils/haptics';
+import { useTickingRefValue } from '../hooks/useTickingRefValue';
 
 interface WordHistoryProps {
   history: WordHistoryItem[];
   category: Category;
   categoryProgress: number;
-  timerSecondsRemaining?: number;
+  // A ref (not a plain number) so App.tsx's per-second countdown tick
+  // doesn't have to re-render App -- see useTickingRefValue.ts. This
+  // component ticks its own timer badge independently by reading the ref.
+  timerSecondsRemainingRef?: { current: number };
 }
 
 export const WordHistory: React.FC<WordHistoryProps> = ({
   history,
   category,
   categoryProgress,
-  timerSecondsRemaining,
+  timerSecondsRemainingRef,
 }) => {
   const scrollContainerRef = React.useRef<HTMLDivElement>(null);
   const isTimerMode = category.gameMode === 'timer';
   const progressPercent = Math.min(100, Math.round((categoryProgress / (category.targetCount || 1)) * 100));
-
-  const formatTimer = (seconds?: number) => {
-    if (seconds === undefined) return '2:00';
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
 
   // AI Trivia Modal State
   const [selectedWord, setSelectedWord] = useState<string | null>(null);
@@ -68,21 +65,7 @@ export const WordHistory: React.FC<WordHistoryProps> = ({
         {/* Left Badges: Combined Category Goal Status or Timer & Formed Words Count */}
         <div className="flex items-center gap-1.5 shrink-0 bg-[#081844] border border-[#1E3A8A] rounded-lg px-1.5 sm:px-2 py-0.5 shadow-inner">
           {isTimerMode ? (
-            /* Timer Rush Mode Countdown Badge */
-            <div
-              id="category-timer-status-badge"
-              className={`flex items-center gap-1 border px-1.5 py-0.5 rounded text-[11px] sm:text-xs font-black shadow-xs ${
-                (timerSecondsRemaining || 0) <= 20
-                  ? 'bg-rose-950/80 border-rose-500 text-rose-300 animate-pulse'
-                  : 'bg-[#0C2158] border-amber-400/40 text-amber-300'
-              }`}
-              title={`Timer remaining: ${formatTimer(timerSecondsRemaining)}`}
-            >
-              <Clock className={`w-3 h-3 ${((timerSecondsRemaining || 0) <= 20) ? 'text-rose-400' : 'text-amber-400'}`} />
-              <span className="font-mono text-xs font-black">
-                {formatTimer(timerSecondsRemaining)}
-              </span>
-            </div>
+            <WordHistoryTimerBadge secondsRef={timerSecondsRemainingRef} isActive={isTimerMode} />
           ) : (
             /* Category Target Goal Progress (e.g. 0/10) */
             <div
@@ -268,6 +251,39 @@ export const WordHistory: React.FC<WordHistoryProps> = ({
   );
 };
 
+function formatTimer(seconds?: number): string {
+  if (seconds === undefined) return '2:00';
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return `${mins}:${secs.toString().padStart(2, '0')}`;
+}
 
+/**
+ * Isolated so ONLY this small badge re-renders once a second in timer mode
+ * -- not the rest of WordHistory (the whole scrollable word-chip list,
+ * each with its own entrance animation). See useTickingRefValue.ts.
+ */
+const WordHistoryTimerBadge: React.FC<{ secondsRef?: { current: number }; isActive: boolean }> = ({
+  secondsRef,
+  isActive,
+}) => {
+  const timerSecondsRemaining = useTickingRefValue(secondsRef || { current: 120 }, isActive);
+  return (
+    <div
+      id="category-timer-status-badge"
+      className={`flex items-center gap-1 border px-1.5 py-0.5 rounded text-[11px] sm:text-xs font-black shadow-xs ${
+        (timerSecondsRemaining || 0) <= 20
+          ? 'bg-rose-950/80 border-rose-500 text-rose-300 animate-pulse'
+          : 'bg-[#0C2158] border-amber-400/40 text-amber-300'
+      }`}
+      title={`Timer remaining: ${formatTimer(timerSecondsRemaining)}`}
+    >
+      <Clock className={`w-3 h-3 ${((timerSecondsRemaining || 0) <= 20) ? 'text-rose-400' : 'text-amber-400'}`} />
+      <span className="font-mono text-xs font-black">
+        {formatTimer(timerSecondsRemaining)}
+      </span>
+    </div>
+  );
+};
 
 

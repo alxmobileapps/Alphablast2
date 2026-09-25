@@ -3,6 +3,7 @@ import { Shuffle, Lightbulb, ArrowLeftRight, Edit3, XCircle, Gift } from 'lucide
 import { PowerUpInventory, PowerUpType } from '../types';
 import { HammerIcon } from './HammerIcon';
 import { haptics } from '../utils/haptics';
+import { useTickingRefValue } from '../hooks/useTickingRefValue';
 
 interface PowerUpBarProps {
   inventory: PowerUpInventory;
@@ -10,7 +11,12 @@ interface PowerUpBarProps {
   movesRemaining: number;
   movesGainedBonus?: number | null;
   isTimerMode?: boolean;
-  timerSecondsRemaining?: number;
+  // A ref (not a plain number) so App.tsx's per-second countdown tick
+  // doesn't have to re-render App, GameBoard, TopInfoBar, Header, or the
+  // rest of PowerUpBar's own siblings -- see useTickingRefValue.ts. Only
+  // the small timer badge below re-renders every second, by reading the
+  // ref directly through that hook.
+  timerSecondsRemainingRef?: { current: number };
   isLifelineShining?: boolean;
   onSelectPowerUp: (type: PowerUpType) => void;
   onCancelPowerUp: () => void;
@@ -24,7 +30,7 @@ export const PowerUpBar: React.FC<PowerUpBarProps> = ({
   movesRemaining,
   movesGainedBonus,
   isTimerMode = false,
-  timerSecondsRemaining,
+  timerSecondsRemainingRef,
   isLifelineShining = false,
   onSelectPowerUp,
   onCancelPowerUp,
@@ -47,13 +53,6 @@ export const PowerUpBar: React.FC<PowerUpBarProps> = ({
       haptics.powerUp();
       onSelectPowerUp(type);
     }
-  };
-
-  const formatTimerShort = (seconds?: number) => {
-    if (seconds === undefined) return '2:00';
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
   return (
@@ -96,22 +95,7 @@ export const PowerUpBar: React.FC<PowerUpBarProps> = ({
         ) : null}
 
         {isTimerMode ? (
-          <div
-            id="powerup-timer-badge"
-            className={`min-w-[62px] xs:min-w-[70px] sm:min-w-[82px] h-10 xs:h-11 sm:h-12 px-2 rounded-xl sm:rounded-2xl flex flex-col items-center justify-center border-2 shadow-[0_4px_14px_rgba(0,0,0,0.5)] cursor-default select-none transition-all ${
-              (timerSecondsRemaining || 0) <= 20
-                ? 'bg-gradient-to-b from-rose-600 via-red-600 to-rose-950 border-rose-300 animate-pulse'
-                : 'bg-gradient-to-b from-[#F59E0B] via-[#D97706] to-[#92400E] border-[#FDE68A]'
-            }`}
-            title={`Time remaining: ${formatTimerShort(timerSecondsRemaining)}`}
-          >
-            <span className="text-sm xs:text-base sm:text-lg font-black text-white leading-none drop-shadow-[0_1px_3px_rgba(0,0,0,0.6)] font-mono">
-              {formatTimerShort(timerSecondsRemaining)}
-            </span>
-            <span className="text-[7.5px] xs:text-[8px] sm:text-[9px] font-extrabold uppercase tracking-wider text-amber-100/90 mt-0.5 leading-none">
-              TIME
-            </span>
-          </div>
+          <PowerUpTimerBadge secondsRef={timerSecondsRemainingRef} isActive={isTimerMode} />
         ) : (
           <div
             id="powerup-moves-badge"
@@ -318,5 +302,44 @@ export const PowerUpBar: React.FC<PowerUpBarProps> = ({
   );
 };
 
+function formatTimerShort(seconds?: number): string {
+  if (seconds === undefined) return '2:00';
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return `${mins}:${secs.toString().padStart(2, '0')}`;
+}
+
+/**
+ * Isolated so ONLY this small badge re-renders once a second in timer mode
+ * -- not the rest of PowerUpBar (5 power-up buttons, lifeline shine sweep,
+ * moves badge, etc.). See useTickingRefValue.ts for why this matters: a
+ * naive `useTickingRefValue` call at the top of PowerUpBar would tick the
+ * WHOLE component every second, which is exactly the per-second
+ * re-render/repaint cost this refactor exists to eliminate.
+ */
+const PowerUpTimerBadge: React.FC<{ secondsRef?: { current: number }; isActive: boolean }> = ({
+  secondsRef,
+  isActive,
+}) => {
+  const timerSecondsRemaining = useTickingRefValue(secondsRef || { current: 120 }, isActive);
+  return (
+    <div
+      id="powerup-timer-badge"
+      className={`min-w-[62px] xs:min-w-[70px] sm:min-w-[82px] h-10 xs:h-11 sm:h-12 px-2 rounded-xl sm:rounded-2xl flex flex-col items-center justify-center border-2 shadow-[0_4px_14px_rgba(0,0,0,0.5)] cursor-default select-none transition-all ${
+        (timerSecondsRemaining || 0) <= 20
+          ? 'bg-gradient-to-b from-rose-600 via-red-600 to-rose-950 border-rose-300 animate-pulse'
+          : 'bg-gradient-to-b from-[#F59E0B] via-[#D97706] to-[#92400E] border-[#FDE68A]'
+      }`}
+      title={`Time remaining: ${formatTimerShort(timerSecondsRemaining)}`}
+    >
+      <span className="text-sm xs:text-base sm:text-lg font-black text-white leading-none drop-shadow-[0_1px_3px_rgba(0,0,0,0.6)] font-mono">
+        {formatTimerShort(timerSecondsRemaining)}
+      </span>
+      <span className="text-[7.5px] xs:text-[8px] sm:text-[9px] font-extrabold uppercase tracking-wider text-amber-100/90 mt-0.5 leading-none">
+        TIME
+      </span>
+    </div>
+  );
+};
 
 
