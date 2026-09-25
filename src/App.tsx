@@ -29,6 +29,7 @@ import { isSwipeControlsEnabled, isCluesEnabled as isCluesEnabledUtil, getSpelli
 import { setDictionarySpellingPreference } from './data/dictionary';
 import { initUniversalAds, refreshBannerIfDue } from './utils/universalAds';
 import { initRemoteAdsListener } from './utils/remoteAdsService';
+import { initNativeBilling } from './utils/medianBridge';
 import { initOrientationLock } from './utils/orientation';
 import { INITIAL_CATEGORIES } from './data/categories';
 import { calculateWordPoints, calculateSpecialReactionPoints, formatPoints } from './utils/scoring';
@@ -651,6 +652,7 @@ export default function App() {
     initOrientationLock();
     startBackgroundMusic();
     initUniversalAds();
+    initNativeBilling();
     const unsubscribeAds = initRemoteAdsListener();
     return () => {
       unsubscribeAds();
