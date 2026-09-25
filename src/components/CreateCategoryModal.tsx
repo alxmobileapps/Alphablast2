@@ -6,6 +6,8 @@ import {
   publishCustomCategory,
   updateCustomCategory,
   sanitizeCategoryWords,
+  CUSTOM_GAME_PASSWORD_MIN_LENGTH,
+  CUSTOM_GAME_PASSWORD_MAX_LENGTH,
 } from '../utils/customCategoriesService';
 import { Category, CustomGameMode } from '../types';
 import { playRewardRefill, playWin } from '../utils/audio';
@@ -150,6 +152,9 @@ export const CreateCategoryModal: React.FC<CreateCategoryModalProps> = ({
     }
   });
   const [wordsInput, setWordsInput] = useState('');
+  // Optional password. When editing, blank = keep the current password.
+  const [password, setPassword] = useState('');
+  const [removePassword, setRemovePassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [currencyPrompt, setCurrencyPrompt] = useState<CurrencyPromptType>(null);
@@ -169,6 +174,8 @@ export const CreateCategoryModal: React.FC<CreateCategoryModalProps> = ({
       setTargetCount(editingCategory.targetCount || 10);
       setCreatorName(editingCategory.creatorName || 'WordMaster');
       setWordsInput((editingCategory.words || []).join(', '));
+      setPassword('');
+      setRemovePassword(false);
       setErrorMessage(null);
     } else {
       setName('');
@@ -177,9 +184,13 @@ export const CreateCategoryModal: React.FC<CreateCategoryModalProps> = ({
       setTimerSeconds(DEFAULT_TIMER_SECONDS);
       setTargetCount(10);
       setWordsInput('');
+      setPassword('');
+      setRemovePassword(false);
       setErrorMessage(null);
     }
   }, [editingCategory, isOpen]);
+
+  const hasExistingPassword = isEditing && !!editingCategory?.passwordHash;
 
   if (!isOpen) return null;
 
@@ -319,6 +330,12 @@ export const CreateCategoryModal: React.FC<CreateCategoryModalProps> = ({
       return;
     }
 
+    const trimmedPassword = password.trim();
+    if (!removePassword && trimmedPassword && trimmedPassword.length < CUSTOM_GAME_PASSWORD_MIN_LENGTH) {
+      setErrorMessage(`Password must be at least ${CUSTOM_GAME_PASSWORD_MIN_LENGTH} characters (or leave it blank so anyone can play).`);
+      return;
+    }
+
     // If creating brand new, check and deduct diamonds
     if (!isEditing) {
       if (diamonds < CUSTOM_CATEGORY_DIAMOND_COST) {
@@ -351,6 +368,9 @@ export const CreateCategoryModal: React.FC<CreateCategoryModalProps> = ({
           targetCount: gameMode === 'target' ? targetCount : 10,
           gameMode,
           timerSeconds: gameMode === 'timer' ? timerSeconds : undefined,
+        }, {
+          removePassword,
+          newPassword: removePassword ? undefined : trimmedPassword || undefined,
         });
 
         haptics.specialCreated();
@@ -370,6 +390,7 @@ export const CreateCategoryModal: React.FC<CreateCategoryModalProps> = ({
           color: 'purple',
           gameMode,
           timerSeconds: gameMode === 'timer' ? timerSeconds : undefined,
+          password: trimmedPassword || undefined,
         });
 
         haptics.specialCreated();
@@ -790,6 +811,51 @@ export const CreateCategoryModal: React.FC<CreateCategoryModalProps> = ({
               maxLength={24}
               className="w-full px-3 py-2 bg-gray-50 border-2 border-gray-200 rounded-xl text-sm font-bold text-gray-800 focus:bg-white focus:border-purple-500 focus:outline-none transition-colors"
             />
+          </div>
+
+          {/* Optional Password */}
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-black text-gray-700">
+              🔒 Password <span className="text-gray-400 font-bold">(optional)</span>
+            </label>
+            {!removePassword && (
+              <input
+                id="custom-game-password-field"
+                type="text"
+                autoComplete="off"
+                autoCapitalize="none"
+                spellCheck={false}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder={
+                  hasExistingPassword
+                    ? 'Leave blank to keep the current password'
+                    : 'Leave blank so anyone can play'
+                }
+                maxLength={CUSTOM_GAME_PASSWORD_MAX_LENGTH}
+                className="w-full px-3 py-2 bg-gray-50 border-2 border-gray-200 rounded-xl text-sm font-bold text-gray-800 focus:bg-white focus:border-purple-500 focus:outline-none transition-colors"
+              />
+            )}
+            <p className="text-[11px] text-gray-500 font-semibold leading-snug">
+              {removePassword
+                ? 'The password will be removed — anyone will be able to play.'
+                : hasExistingPassword
+                ? 'This game has a password. Type a new one to change it.'
+                : 'If you set one, players must type it before they can play. Share it with your friends.'}
+            </p>
+            {hasExistingPassword && (
+              <button
+                type="button"
+                onClick={() => {
+                  setRemovePassword((v) => !v);
+                  setPassword('');
+                  haptics.tap();
+                }}
+                className="self-start text-[11px] font-black text-purple-600 underline cursor-pointer"
+              >
+                {removePassword ? 'Keep the password' : 'Remove password'}
+              </button>
+            )}
           </div>
 
           {/* Word List Textarea */}
