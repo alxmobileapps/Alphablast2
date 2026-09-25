@@ -1,6 +1,7 @@
 import { Category, CustomGameMode } from '../types';
 import { registerCustomCategory } from '../data/dictionary';
-import { db } from '../firebase';
+import { db, auth } from '../firebase';
+import { ensureAuthSession } from './authService';
 import {
   collection,
   doc,
@@ -99,6 +100,7 @@ function categoryToFirestoreData(cat: Category): DocumentData {
     color: cat.color,
     isCustom: true,
     creatorName: cat.creatorName || 'Player',
+    creatorUid: cat.creatorUid || null,
     createdAt: cat.createdAt || Date.now(),
     expiresAt: cat.expiresAt,
     firestoreDocId: cat.firestoreDocId,
@@ -123,6 +125,7 @@ function firestoreDocToCategory(docSnap: QueryDocumentSnapshot<DocumentData>): C
     color: d.color || 'purple',
     isCustom: true,
     creatorName: d.creatorName || 'Player',
+    creatorUid: d.creatorUid || undefined,
     createdAt: Number(d.createdAt) || Date.now(),
     expiresAt: Number(d.expiresAt) || 0,
     firestoreDocId: d.firestoreDocId || docSnap.id,
@@ -174,6 +177,13 @@ export async function publishCustomCategory(
   const numericId = 20000 + Math.floor(Math.random() * 79000);
   const docId = `custom-cat-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
 
+  // Stamp the creator's stable per-device uid so only they can edit this
+  // category later (creatorName is just a free-typed display name -- any
+  // player can type anyone else's name, so it can't gate edits). Awaited
+  // here, before the category is created, so the very first published copy
+  // (local + Firestore) already carries it.
+  const authUser = await ensureAuthSession();
+
   const createdCategory: Category = {
     id: numericId,
     name: input.name.trim().substring(0, 30),
@@ -183,6 +193,7 @@ export async function publishCustomCategory(
     color: input.color || 'purple',
     isCustom: true,
     creatorName: input.creatorName.trim().substring(0, 24) || 'Player',
+    creatorUid: authUser?.uid,
     createdAt: now,
     expiresAt,
     firestoreDocId: docId,
@@ -216,6 +227,18 @@ export function updateCustomCategory(
   if (index === -1) return null;
 
   const current = existing[index];
+
+  // Only the original publisher may edit -- match against the stable
+  // per-device uid stamped at publish time, not creatorName (a free-typed
+  // display name any player could type as anyone). A category published
+  // before this check existed has no creatorUid on file, so nobody can
+  // edit it either (safer default than falling back to "allow anyone");
+  // it's a 1-hour category, so that only matters until it expires anyway.
+  const myUid = auth.currentUser?.uid;
+  if (!current.creatorUid || !myUid || current.creatorUid !== myUid) {
+    throw new Error('Only the original creator of this custom game can edit it.');
+  }
+
   const updatedCategory: Category = {
     ...current,
     ...updates,
@@ -233,6 +256,18 @@ export function updateCustomCategory(
   syncCategoryToFirestore(updatedCategory);
 
   return updatedCategory;
+}
+
+/**
+ * Whether the CURRENT device is the one that published this custom category,
+ * i.e. whether the Edit option should even be shown for it. Mirrors the
+ * check enforced inside updateCustomCategory -- use this to hide the Edit
+ * affordance for everyone else instead of showing it and letting them hit
+ * the error.
+ */
+export function canEditCustomCategory(category: Category): boolean {
+  const myUid = auth.currentUser?.uid;
+  return !!category.creatorUid && !!myUid && category.creatorUid === myUid;
 }
 
 // Cache of the most recent live Firestore snapshot, shared by every active

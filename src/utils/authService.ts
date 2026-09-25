@@ -88,9 +88,12 @@ export function setLocalSyncKey(key: string): void {
 }
 
 /**
- * Ensures anonymous auth is active if needed so Firestore writes succeed smoothly
+ * Ensures anonymous auth is active if needed so Firestore writes succeed smoothly.
+ * Exported so other modules (e.g. customCategoriesService's ownership checks)
+ * can get/wait for the same stable per-device uid without duplicating the
+ * signInAnonymously bootstrap logic.
  */
-async function ensureAuthSession(): Promise<User | null> {
+export async function ensureAuthSession(): Promise<User | null> {
   if (auth.currentUser) return auth.currentUser;
   try {
     const cred = await signInAnonymously(auth);
