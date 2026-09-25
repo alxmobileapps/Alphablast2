@@ -7,7 +7,6 @@ import {
   getSingularForms,
   getCategoryWordRegionMismatch,
 } from '../data/dictionary';
-import { INITIAL_CATEGORIES } from '../data/categories';
 
 export const BOARD_SIZE = 8;
 
@@ -526,6 +525,11 @@ function plantOneMoveWord(
   return true;
 }
 
+// Hard ceiling on how long ensureOneMoveOpportunity may search. It runs on the
+// UI thread after every refill, so an unbounded search freezes the whole game
+// (timer, board, animations) until it finishes.
+const ENSURE_OPPORTUNITY_BUDGET_MS = 200;
+
 // Ensure the board has at least 1 valid category word formable in 1 move (length >= 3, non-plural, unformed)
 export function ensureOneMoveOpportunity(
   board: Tile[][],
@@ -538,7 +542,15 @@ export function ensureOneMoveOpportunity(
     return board;
   }
 
-  const currentCat = INITIAL_CATEGORIES.find((c) => c.id === categoryId) || INITIAL_CATEGORIES[0];
+  // getCategoryById (not INITIAL_CATEGORIES.find) so custom / community
+  // categories plant their OWN words. Previously a custom category fell back
+  // to INITIAL_CATEGORIES[0] ("Land Animals"), whose words never count as
+  // matches for the custom category -- so planting attempts kept failing
+  // verification and the loop ran through slot x animal-word combinations
+  // (up to 11 x 253 full-board scans), freezing the game for seconds after
+  // a word was cleared in a custom game.
+  const currentCat = getCategoryById(categoryId);
+  const deadline = Date.now() + ENSURE_OPPORTUNITY_BUDGET_MS;
   let candidateWords = (currentCat?.words || [])
     .map((w) => w.toUpperCase())
     .filter(
@@ -577,6 +589,11 @@ export function ensureOneMoveOpportunity(
 
   for (const slot of anchorSlots) {
     for (const word of shuffledWords) {
+      // Out of time: keep the board as-is rather than freeze the game. The
+      // player still has Clue / Rearrange, and the next refill tries again.
+      if (Date.now() > deadline) {
+        return board;
+      }
       const cloned = cloneBoard(board);
       if (plantOneMoveWord(cloned, word, slot.r, slot.c, slot.dr, slot.dc)) {
         // Ensure no pre-existing match was created accidentally

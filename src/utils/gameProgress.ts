@@ -215,6 +215,58 @@ export function unlockNextRoundBlock(): GameProgress {
   return updated;
 }
 
+// ---------------------------------------------------------------------------
+// Custom (community) game ad unlocks
+//
+// Custom games are gated by their OWN rewarded ad, completely separate from
+// the every-5-rounds campaign lock above: watching the ad for a custom game
+// unlocks only that one custom game (never the next campaign rounds), and
+// watching the ad for the next 5 rounds unlocks only those rounds (never a
+// custom game). Kept in its own storage key — not in GameProgress — since
+// custom games only live for 1 hour and don't need cloud backup.
+// ---------------------------------------------------------------------------
+const STORAGE_KEY_CUSTOM_AD_UNLOCKS = 'alphablast_custom_ad_unlocks_v1';
+// Custom games expire after 1 hour; keep unlocks a little longer, then prune.
+const CUSTOM_AD_UNLOCK_TTL_MS = 2 * 60 * 60 * 1000;
+
+function customUnlockKey(cat: Pick<Category, 'id' | 'firestoreDocId'>): string {
+  return cat.firestoreDocId || String(cat.id);
+}
+
+function loadCustomAdUnlocks(): Record<string, number> {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_CUSTOM_AD_UNLOCKS);
+    const parsed = raw ? JSON.parse(raw) : {};
+    const now = Date.now();
+    const fresh: Record<string, number> = {};
+    for (const [k, t] of Object.entries(parsed || {})) {
+      if (typeof t === 'number' && now - t < CUSTOM_AD_UNLOCK_TTL_MS) fresh[k] = t;
+    }
+    return fresh;
+  } catch {
+    return {};
+  }
+}
+
+/** Whether this specific custom game was already unlocked by watching its ad. */
+export function isCustomCategoryAdUnlocked(cat: Pick<Category, 'id' | 'firestoreDocId'>): boolean {
+  return customUnlockKey(cat) in loadCustomAdUnlocks();
+}
+
+/**
+ * Called after the player watches the rewarded ad for a custom game: unlocks
+ * ONLY that custom game. Does not touch adUnlockedBlocks (campaign rounds).
+ */
+export function unlockCustomCategoryByAd(cat: Pick<Category, 'id' | 'firestoreDocId'>): void {
+  try {
+    const unlocks = loadCustomAdUnlocks();
+    unlocks[customUnlockKey(cat)] = Date.now();
+    localStorage.setItem(STORAGE_KEY_CUSTOM_AD_UNLOCKS, JSON.stringify(unlocks));
+  } catch {
+    // Non-critical: worst case the player is asked to watch the ad again
+  }
+}
+
 /**
  * Calculates the total stars earned across all categories
  */

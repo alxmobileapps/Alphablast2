@@ -201,6 +201,81 @@ export function initUniversalAds(): void {
   }
 }
 
+// ---------------------------------------------------------------------------
+// "Ads Loading... please wait" overlay
+//
+// On the native app the rewarded ad is only requested from AdMob when the
+// player taps "Watch Ad" (prepareRewardVideoAd), which can take several
+// seconds — during that time nothing on screen changed, so the button looked
+// like it hadn't registered the tap. This overlay appears the instant the
+// tap happens and is removed as soon as the ad is on screen (or fails /
+// is dismissed). Plain DOM rather than React so every Watch Ad button in the
+// app (RoundLock, AdModal, PowerUpAd, Shop) gets it from this one place.
+// ---------------------------------------------------------------------------
+const AD_LOADING_OVERLAY_ID = 'alphablast-ad-loading-overlay';
+// Safety net: never leave the overlay (and the in-flight lock) up forever
+// if AdMob never reports back for some reason.
+const AD_LOADING_MAX_MS = 30000;
+let adLoadingSafetyTimer: ReturnType<typeof setTimeout> | null = null;
+let rewardedAdInFlight = false;
+let rewardedAdInFlightSince = 0;
+// If AdMob somehow never reports Dismissed, don't lock the Watch Ad buttons
+// for the rest of the session — treat the lock as stale after this long.
+const REWARDED_IN_FLIGHT_STALE_MS = 120000;
+
+function showAdLoadingOverlay(): void {
+  if (typeof document === 'undefined') return;
+  try {
+    if (!document.getElementById(AD_LOADING_OVERLAY_ID)) {
+      const overlay = document.createElement('div');
+      overlay.id = AD_LOADING_OVERLAY_ID;
+      overlay.setAttribute('role', 'alert');
+      overlay.setAttribute('aria-live', 'assertive');
+      overlay.style.cssText = [
+        'position:fixed',
+        'inset:0',
+        'z-index:2147483647',
+        'display:flex',
+        'align-items:center',
+        'justify-content:center',
+        'background:rgba(15,23,42,0.72)',
+        'padding:16px',
+        'touch-action:none',
+      ].join(';');
+      overlay.innerHTML = `
+        <style>@keyframes alphablastAdSpin{to{transform:rotate(360deg)}}</style>
+        <div style="background:#ffffff;border:4px solid #e5e7eb;border-radius:24px;padding:24px 28px;max-width:320px;width:100%;text-align:center;box-shadow:0 20px 40px rgba(0,0,0,0.35);font-family:inherit;">
+          <div style="width:44px;height:44px;margin:0 auto 14px;border-radius:50%;border:5px solid #c7d2fe;border-top-color:#4f46e5;animation:alphablastAdSpin 0.8s linear infinite;"></div>
+          <div style="font-size:20px;font-weight:900;color:#2D3748;margin-bottom:4px;">Ads Loading...</div>
+          <div style="font-size:14px;font-weight:600;color:#6b7280;">please wait</div>
+        </div>`;
+      // Swallow taps so the player can't fire the button again underneath
+      overlay.addEventListener('click', (e) => e.stopPropagation());
+      document.body.appendChild(overlay);
+    }
+  } catch {
+    // Purely cosmetic — never let the overlay break the ad flow
+  }
+  if (adLoadingSafetyTimer) clearTimeout(adLoadingSafetyTimer);
+  adLoadingSafetyTimer = setTimeout(() => {
+    hideAdLoadingOverlay();
+    rewardedAdInFlight = false;
+  }, AD_LOADING_MAX_MS);
+}
+
+function hideAdLoadingOverlay(): void {
+  if (adLoadingSafetyTimer) {
+    clearTimeout(adLoadingSafetyTimer);
+    adLoadingSafetyTimer = null;
+  }
+  if (typeof document === 'undefined') return;
+  try {
+    document.getElementById(AD_LOADING_OVERLAY_ID)?.remove();
+  } catch {
+    // ignore
+  }
+}
+
 /**
  * Request & Display a Rewarded Video Ad
  */
@@ -215,6 +290,21 @@ export function showUniversalRewardedAd(options: {
 
   // 1. Native AdMob (Capacitor Android app) — highest priority & Play policy compliant
   if (nativeAdsEnabled()) {
+    // A rewarded ad is already loading/showing — ignore repeat taps on the
+    // Watch Ad button instead of requesting a second ad on top of it.
+    if (rewardedAdInFlight && Date.now() - rewardedAdInFlightSince < REWARDED_IN_FLIGHT_STALE_MS) return;
+    rewardedAdInFlight = true;
+    rewardedAdInFlightSince = Date.now();
+
+    // Show "Ads Loading... please wait" immediately, in the same tap, before
+    // any of the (slow) AdMob work below starts.
+    showAdLoadingOverlay();
+
+    const finishFlow = () => {
+      hideAdLoadingOverlay();
+      rewardedAdInFlight = false;
+    };
+
     void (async () => {
       try {
         const { AdMob, RewardAdPluginEvents } = await loadAdMob();
@@ -231,6 +321,7 @@ export function showUniversalRewardedAd(options: {
 
         const dismissedListener = await AdMob.addListener(RewardAdPluginEvents.Dismissed, () => {
           cleanup.forEach((fn) => fn());
+          finishFlow();
           if (!rewarded && onDismiss) onDismiss();
         });
         cleanup.push(() => dismissedListener.remove());
@@ -238,16 +329,35 @@ export function showUniversalRewardedAd(options: {
         const failedListener = await AdMob.addListener(RewardAdPluginEvents.FailedToLoad, (err: any) => {
           console.warn('[UniversalAds] Native rewarded failed to load:', err);
           cleanup.forEach((fn) => fn());
+          finishFlow();
           if (onError) onError(err?.message || 'Rewarded ad failed to load');
           else if (fallbackToInteractiveModal) fallbackToInteractiveModal();
           else onReward();
         });
         cleanup.push(() => failedListener.remove());
 
+        // Take the loading overlay down the moment the ad is actually on
+        // screen (or failed to show). Looked up defensively so a plugin
+        // version without these events can't break the build or the ad.
+        const events = RewardAdPluginEvents as unknown as Record<string, string | undefined>;
+        for (const evt of [events.Showed, events.FailedToShow]) {
+          if (!evt) continue;
+          try {
+            const l = await (AdMob as any).addListener(evt, () => hideAdLoadingOverlay());
+            cleanup.push(() => l.remove());
+          } catch {
+            // ignore — the other hide paths below still cover it
+          }
+        }
+
         await AdMob.prepareRewardVideoAd({ adId: ADS_CONFIG.ADMOB_ANDROID.REWARDED_ID });
         await AdMob.showRewardVideoAd();
+        // By the time show() resolves the ad has been displayed, so the
+        // overlay is never needed past this point.
+        hideAdLoadingOverlay();
       } catch (e: any) {
         console.warn('[UniversalAds] Native rewarded ad error:', e);
+        finishFlow();
         if (onError) onError(e?.message || String(e));
         else if (fallbackToInteractiveModal) fallbackToInteractiveModal();
         else onReward();

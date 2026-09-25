@@ -272,10 +272,43 @@ export function subscribeToActiveCustomCategories(
   onError?: (err: Error) => void
 ): () => void {
   try {
+    // notify() runs on a 15s timer, on every Firestore snapshot and on every
+    // local write. Only push a new list into React (which re-renders the
+    // whole App, mid-game included) and only re-index a category's words
+    // when something actually changed — otherwise the game got a needless
+    // full re-render every 15 seconds while playing.
+    let lastListSignature = '';
+    const registeredSignatures = new Map<number, string>();
+    const categorySignature = (c: Category) =>
+      [
+        c.firestoreDocId || c.id,
+        c.name,
+        c.icon,
+        c.color,
+        c.targetCount,
+        c.gameMode,
+        c.timerSeconds ?? '',
+        c.expiresAt ?? '',
+        c.plays ?? 0,
+        c.creatorName ?? '',
+        (c.words || []).join(','),
+      ].join('|');
+
     const notify = () => {
       const local = getStoredCategories();
       const merged = mergeLocalAndRemote(local, latestRemoteCategories);
-      merged.forEach((cat) => registerCustomCategory(cat));
+      const sigs = merged.map(categorySignature);
+
+      merged.forEach((cat, i) => {
+        if (registeredSignatures.get(cat.id) !== sigs[i]) {
+          registerCustomCategory(cat);
+          registeredSignatures.set(cat.id, sigs[i]);
+        }
+      });
+
+      const listSignature = sigs.join('\n');
+      if (listSignature === lastListSignature) return;
+      lastListSignature = listSignature;
       onUpdate(merged);
     };
 
