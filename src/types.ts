@@ -46,10 +46,13 @@ export interface Category {
   color: string;
   isCustom?: boolean;
   creatorName?: string;
-  // Stable per-device Firebase Anonymous Auth uid of whoever published/last
-  // owns this custom category -- creatorName is just a display name (any
-  // player can type any name, including someone else's), so it can't be
-  // used to decide who is allowed to edit a category. creatorUid can.
+  // Who may edit this custom category. creatorName is just a display name
+  // (anyone can type anyone's name), so it can't be used for that.
+  // creatorKeyHash: SHA-256 of the publishing device's creator secret (see
+  // utils/creatorIdentity.ts) -- the primary ownership check.
+  // creatorUid: Firebase Anonymous Auth uid, best-effort only (it's null
+  // whenever anonymous sign-in isn't available), kept as a secondary check.
+  creatorKeyHash?: string;
   creatorUid?: string;
   createdAt?: number;
   expiresAt?: number;
