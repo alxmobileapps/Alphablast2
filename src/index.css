@@ -63,66 +63,81 @@ html.native-app *::after {
 }
 
 /*
- * Lighter special effects for CUSTOM GAMES in the Android app only
- * (.fx-lite is put on the gameplay area in App.tsx when the current
- * category is a custom game; html.native-app is set in main.tsx). Normal
- * rounds and the website keep every effect.
+ * Lighter special effects across the WHOLE Android app -- every round,
+ * custom or normal (html.native-app is set in main.tsx). The website
+ * keeps every effect; only the native app is affected.
  *
- * Custom games lag in the app while normal rounds don't. What's removed
- * here is purely decorative -- no game logic waits on any CSS animation
- * (there are no animationend handlers anywhere; every gameplay step is
- * timed in JS), so the game plays exactly the same, just with less for
- * the phone's WebView to redraw every frame:
- *  - the running light around every special tile (an SVG stroke animation
- *    that has to be repainted every single frame, per special tile);
+ * This used to be scoped to a `.fx-lite` class put only on custom-game
+ * gameplay (the symptom first reported), applied via a
+ * `html.native-app .fx-lite X` descendant selector. Two problems with
+ * that: (1) normal campaign rounds can trigger the exact same effects --
+ * a 6+ letter word's Fire Wipeout burst doesn't care whether the round is
+ * custom -- so they ran at full, un-lightened cost there too; (2)
+ * ReadyPrompt (the "Ready?" screen shown before every round) renders as
+ * its own top-level element, never nested inside the gameplay `<main>`
+ * that carried `.fx-lite`, so its category-pill zoom/shine/sparkle
+ * effects never matched the descendant selector even during a custom
+ * game. Selecting directly off `html.native-app` (no `.fx-lite` ancestor
+ * required) fixes both: it always applies in the app, regardless of
+ * round type or where in the tree the element sits.
+ *
+ * What's removed here is purely decorative -- no game logic waits on any
+ * CSS animation (there are no animationend handlers anywhere; every
+ * gameplay step is timed in JS), so the game plays exactly the same, just
+ * with less for the phone's WebView to redraw every frame:
  *  - looping pulses/bounces/pings, glows, lightning flickers, orbiting
  *    stars, sweeping shine beams;
- *  - the Fire Wipeout heat-glow / burn / 3D flip on all 64 tiles at once;
+ *  - the Fire Wipeout heat-glow / burn / 3D flip on all board tiles at
+ *    once;
  *  - every CSS filter (drop-shadow glows, brightness) and text-shadow glow.
  * Short one-shot gameplay animations (tile drop, swap, pop, break,
  * knock-off) stay, so moves still read clearly.
+ *
+ * The running-edge-light SVG stroke animation around special tiles (the
+ * single most expensive one -- a fresh repaint every frame, per special
+ * tile) isn't just hidden here anymore: GameBoard.tsx no longer renders
+ * that component at all inside the app, on any round, so there's no DOM
+ * node or animation for the app to pay for in the first place.
  */
-html.native-app .fx-lite *,
-html.native-app .fx-lite *::before,
-html.native-app .fx-lite *::after {
+html.native-app *,
+html.native-app *::before,
+html.native-app *::after {
   filter: none !important;
   text-shadow: none !important;
 }
 
-html.native-app .fx-lite .animate-edge-light,
-html.native-app .fx-lite .animate-edge-light-fast,
-html.native-app .fx-lite .animate-ping,
-html.native-app .fx-lite .animate-ember-float,
-html.native-app .fx-lite .animate-flame-lick,
-html.native-app .fx-lite .animate-board-shine-sweep,
-html.native-app .fx-lite .animate-light-beam-sweep,
-html.native-app .fx-lite .animate-shine-beam,
-html.native-app .fx-lite .animate-shining-blast {
+html.native-app .animate-ping,
+html.native-app .animate-ember-float,
+html.native-app .animate-flame-lick,
+html.native-app .animate-board-shine-sweep,
+html.native-app .animate-light-beam-sweep,
+html.native-app .animate-shine-beam,
+html.native-app .animate-shining-blast {
   /* Hidden rather than frozen: the beams/flashes here are white light
      sweeps whose un-animated resting state would sit on screen as a white
      stripe; the rest are purely decorative particles. */
   display: none !important;
 }
 
-html.native-app .fx-lite .animate-pulse,
-html.native-app .fx-lite .animate-bounce,
-html.native-app .fx-lite .animate-electric-shock,
-html.native-app .fx-lite .animate-electric-pulse,
-html.native-app .fx-lite .animate-lightning,
-html.native-app .fx-lite .animate-star-orbit,
-html.native-app .fx-lite .animate-sparkle-gleam,
-html.native-app .fx-lite .animate-spin-slow,
-html.native-app .fx-lite .animate-tile-heat-glow,
-html.native-app .fx-lite .animate-letter-heat-glow,
-html.native-app .fx-lite .animate-fire-burn,
-html.native-app .fx-lite .animate-fire-text-glow,
-html.native-app .fx-lite .animate-tile-flip,
-html.native-app .fx-lite .animate-merge-pulse,
-html.native-app .fx-lite .animate-clue-glow,
-html.native-app .fx-lite .animate-clue-sparkle,
-html.native-app .fx-lite .animate-clue-word-blink,
-html.native-app .fx-lite .animate-category-zoom-shine,
-html.native-app .fx-lite .animate-lifeline-zoom-shine {
+html.native-app .animate-pulse,
+html.native-app .animate-bounce,
+html.native-app .animate-electric-shock,
+html.native-app .animate-electric-pulse,
+html.native-app .animate-lightning,
+html.native-app .animate-star-orbit,
+html.native-app .animate-sparkle-gleam,
+html.native-app .animate-spin-slow,
+html.native-app .animate-tile-heat-glow,
+html.native-app .animate-letter-heat-glow,
+html.native-app .animate-fire-burn,
+html.native-app .animate-fire-text-glow,
+html.native-app .animate-tile-flip,
+html.native-app .animate-merge-pulse,
+html.native-app .animate-clue-glow,
+html.native-app .animate-clue-sparkle,
+html.native-app .animate-clue-word-blink,
+html.native-app .animate-category-zoom-shine,
+html.native-app .animate-lifeline-zoom-shine {
   animation: none !important;
   will-change: auto !important;
 }

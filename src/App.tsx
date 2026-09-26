@@ -1462,15 +1462,17 @@ export default function App() {
             ...prev,
           ]);
 
-          // Handle 6+ letter word: COMPLETE BOARD CLEAR
-          if (match.word.length >= 6) {
+          // Handle 7+ letter word: COMPLETE BOARD CLEAR (was 6+ -- raised so
+          // the heaviest effect in the game triggers less often; kept in
+          // sync with the specialGenerated thresholds in boardLogic.ts)
+          if (match.word.length >= 7) {
             hasBoardClear = true;
             playBoardClear();
             triggerExplosion(4, 4, 'board_wipe');
             break;
           }
 
-          // Handle 4-Letter Bomb or 5-Letter Card generation
+          // Handle 5-Letter Bomb or 6-Letter Card generation
           if (match.specialGenerated && match.specialLocation) {
             haptics.specialCreated();
             spawnSpecials.push({
@@ -1556,7 +1558,7 @@ export default function App() {
           setTimeout(() => setMovesGainedBonus(null), 1300);
         }
 
-        // REQUIREMENT: When the board is cleared due to 6+ letter word (Fire Wipeout):
+        // REQUIREMENT: When the board is cleared due to 7+ letter word (Fire Wipeout):
         // 1. All individual letters catch fire and incinerate simultaneously (sabay-sabay).
         // 2. The tiles flip in 3D simultaneously (sabay-sabay din) revealing the new set of letters!
         // 3. "FIRE WIPE OUT!" appears in fire letters without rectangle margin.
@@ -3006,13 +3008,13 @@ export default function App() {
                 )}
               </div>
             ) : (
-            /* fx-lite: lighter special effects for custom games in the
-               Android app (see the `.fx-lite` rules in index.css). */
+            /* Lighter special effects now apply app-wide (every round, not
+               just custom games) directly off html.native-app in
+               index.css, so this container no longer needs its own class
+               to opt in. */
             <main
               key={roundKey}
-              className={`flex-1 min-h-0 w-full max-w-4xl mx-auto px-2 sm:px-4 py-1 sm:py-1.5 flex flex-col justify-between sm:justify-evenly items-center overflow-hidden ${
-                currentCategory.isCustom ? 'fx-lite' : ''
-              }`}
+              className="flex-1 min-h-0 w-full max-w-4xl mx-auto px-2 sm:px-4 py-1 sm:py-1.5 flex flex-col justify-between sm:justify-evenly items-center overflow-hidden"
             >
               {/* Main Center Area: Formed Words Bar + Maximized 8x8 Board + Power-Up Bar (Cohesive unit scaled to available height) */}
               <div
