@@ -116,8 +116,11 @@ const MAX_MOVES = 7;
 const MAX_AD_REFILLS = 4;
 const REFILL_MOVES_AMOUNT = 5;
 
-// Coins a custom game costs to unlock on the website (no ads there).
+// Website-only unlock prices (AdMob doesn't run in a browser, so these
+// replace the rewarded ad there): a custom game costs coins, the next block
+// of campaign rounds costs diamonds.
 const CUSTOM_GAME_WEB_COIN_COST = 25;
+const ROUND_BLOCK_WEB_DIAMOND_COST = 1;
 
 export default function App() {
   // Saved device game progress
@@ -990,6 +993,20 @@ export default function App() {
     if (!res.success) return;
     setGameProgress(res.progress);
     unlockCustomCategoryByAd(pendingTargetCategory);
+    setIsRoundLockOpen(false);
+    playCategoryRound(pendingTargetCategory);
+    setPendingTargetCategory(null);
+  }, [pendingTargetCategory, playCategoryRound]);
+
+  // Browser only: unlock the next ROUNDS_PER_UNLOCK_BLOCK campaign rounds
+  // with diamonds instead of a rewarded ad (same unlock the ad gives).
+  const handleUnlockRoundBlockWithDiamonds = useCallback(() => {
+    if (!pendingTargetCategory || pendingTargetCategory.isCustom) return;
+    const res = deductDiamonds(ROUND_BLOCK_WEB_DIAMOND_COST);
+    if (!res.success) return;
+    // unlockNextRoundBlock re-reads the saved progress (already minus the
+    // diamond) and returns it with the new block unlocked.
+    setGameProgress(unlockNextRoundBlock());
     setIsRoundLockOpen(false);
     playCategoryRound(pendingTargetCategory);
     setPendingTargetCategory(null);
@@ -3341,14 +3358,22 @@ export default function App() {
         onUnlocked={handleRoundsUnlocked}
         onClose={handleRoundLockDismissed}
         onOpenShop={handleOpenShopFromRoundLock}
-        coinUnlock={
-          pendingTargetCategory?.isCustom && !isCapacitorNative()
+        paidUnlock={
+          isCapacitorNative() || !pendingTargetCategory
+            ? undefined
+            : pendingTargetCategory.isCustom
             ? {
+                currency: 'coins',
                 cost: CUSTOM_GAME_WEB_COIN_COST,
-                coins: gameProgress.coins || 0,
+                balance: gameProgress.coins || 0,
                 onPay: handleUnlockCustomGameWithCoins,
               }
-            : undefined
+            : {
+                currency: 'diamonds',
+                cost: ROUND_BLOCK_WEB_DIAMOND_COST,
+                balance: gameProgress.diamonds || 0,
+                onPay: handleUnlockRoundBlockWithDiamonds,
+              }
         }
       />
 

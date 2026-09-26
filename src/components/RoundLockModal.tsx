@@ -12,11 +12,13 @@ interface RoundLockModalProps {
   onUnlocked: () => void;
   onClose: () => void;
   onOpenShop?: () => void;
-  // Website only, custom games only: pay coins instead of watching an ad
-  // (AdMob doesn't run in a browser). When set, replaces the ad option.
-  coinUnlock?: {
+  // Website only: pay instead of watching an ad (AdMob doesn't run in a
+  // browser). Coins for a custom game, diamonds for the next round block.
+  // When set, replaces the ad option.
+  paidUnlock?: {
+    currency: 'coins' | 'diamonds';
     cost: number;
-    coins: number;
+    balance: number;
     onPay: () => void;
   };
 }
@@ -35,7 +37,7 @@ export const RoundLockModal: React.FC<RoundLockModalProps> = ({
   onUnlocked,
   onClose,
   onOpenShop,
-  coinUnlock,
+  paidUnlock,
 }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [timeLeft, setTimeLeft] = useState(5);
@@ -60,6 +62,13 @@ export const RoundLockModal: React.FC<RoundLockModalProps> = ({
   }, [isPlaying, timeLeft]);
 
   if (!isOpen) return null;
+
+  const payIcon = paidUnlock?.currency === 'diamonds' ? '💎' : '🪙';
+  const payName =
+    paidUnlock?.currency === 'diamonds'
+      ? paidUnlock.cost === 1 ? 'diamond' : 'diamonds'
+      : 'coins';
+  const canPay = !!paidUnlock && paidUnlock.balance >= paidUnlock.cost;
 
   const handleStartWatch = () => {
     haptics.tap();
@@ -99,12 +108,17 @@ export const RoundLockModal: React.FC<RoundLockModalProps> = ({
               {customGameName ? 'Custom Game Locked!' : 'Rounds Locked!'}
             </h2>
             <p className="text-gray-600 text-xs sm:text-sm mb-5 leading-relaxed">
-              {coinUnlock && customGameName ? (
+              {paidUnlock ? (
                 <>
-                  Use <strong className="text-amber-600 font-black">{coinUnlock.cost} coins</strong> to unlock{' '}
-                  <strong className="text-indigo-600 font-black">{customGameName}</strong>.
+                  Use <strong className="text-amber-600 font-black">{paidUnlock.cost} {payName}</strong> to unlock{' '}
+                  <strong className="text-indigo-600 font-black">
+                    {customGameName || `the next ${roundsPerCycle} rounds`}
+                  </strong>
+                  .
                   <br />
-                  <span className="text-gray-500">You have {coinUnlock.coins} 🪙</span>
+                  <span className="text-gray-500">
+                    You have {paidUnlock.balance} {payIcon}
+                  </span>
                 </>
               ) : customGameName ? (
                 <>
@@ -118,36 +132,52 @@ export const RoundLockModal: React.FC<RoundLockModalProps> = ({
             </p>
 
             <div className="flex flex-col gap-2.5">
-              {coinUnlock ? (
+              {paidUnlock ? (
                 <>
                   <button
-                    id="coin-unlock-custom-game-btn"
+                    id="paid-unlock-btn"
                     onClick={() => {
-                      if (coinUnlock.coins < coinUnlock.cost) return;
+                      if (!canPay) return;
                       haptics.tap();
-                      coinUnlock.onPay();
+                      paidUnlock.onPay();
                     }}
-                    disabled={coinUnlock.coins < coinUnlock.cost}
+                    disabled={!canPay}
                     className={`w-full py-3.5 px-6 rounded-2xl text-white font-black text-sm sm:text-base shadow-md flex items-center justify-center gap-2 transition-transform ${
-                      coinUnlock.coins >= coinUnlock.cost
+                      canPay
                         ? 'bg-amber-500 hover:bg-amber-600 active:scale-95 cursor-pointer'
                         : 'bg-gray-300 cursor-not-allowed'
                     }`}
                   >
-                    <span>Use {coinUnlock.cost} 🪙 to Play</span>
+                    <span>
+                      {customGameName
+                        ? `Use ${paidUnlock.cost} ${payIcon} to Play`
+                        : `Use ${paidUnlock.cost} ${payIcon} to Unlock ${roundsPerCycle} Rounds`}
+                    </span>
                   </button>
-                  {coinUnlock.coins < coinUnlock.cost && (
+                  {!canPay && (
                     <p className="text-xs font-bold text-rose-500">
-                      Not enough coins. You need {coinUnlock.cost - coinUnlock.coins} more.
+                      Not enough {paidUnlock.currency}. You need {paidUnlock.cost - paidUnlock.balance} more.
                     </p>
                   )}
-                  {coinUnlock.coins < coinUnlock.cost && onOpenShop && (
+                  {/* Custom game short on coins: point to the Store for more. */}
+                  {!canPay && paidUnlock.currency === 'coins' && onOpenShop && (
                     <button
-                      id="coin-unlock-open-shop-btn"
+                      id="paid-unlock-open-shop-btn"
                       onClick={onOpenShop}
                       className="w-full py-3 px-6 rounded-2xl bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-xs sm:text-sm border-2 border-gray-200 flex items-center justify-center gap-2 transition-colors active:scale-95 cursor-pointer"
                     >
                       <span>Get More Coins</span>
+                    </button>
+                  )}
+                  {/* Round block: the other option is buying Ads Free. */}
+                  {paidUnlock.currency === 'diamonds' && onOpenShop && (
+                    <button
+                      id="paid-unlock-remove-ads-btn"
+                      onClick={onOpenShop}
+                      className="w-full py-3 px-6 rounded-2xl bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-xs sm:text-sm border-2 border-gray-200 flex items-center justify-center gap-2 transition-colors active:scale-95 cursor-pointer"
+                    >
+                      <ShieldCheck className="w-4 h-4 text-indigo-500" />
+                      <span>Or Buy Ads Free to Unlock Everything</span>
                     </button>
                   )}
                 </>
