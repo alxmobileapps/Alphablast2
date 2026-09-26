@@ -12,6 +12,13 @@ interface RoundLockModalProps {
   onUnlocked: () => void;
   onClose: () => void;
   onOpenShop?: () => void;
+  // Website only, custom games only: pay coins instead of watching an ad
+  // (AdMob doesn't run in a browser). When set, replaces the ad option.
+  coinUnlock?: {
+    cost: number;
+    coins: number;
+    onPay: () => void;
+  };
 }
 
 /**
@@ -28,6 +35,7 @@ export const RoundLockModal: React.FC<RoundLockModalProps> = ({
   onUnlocked,
   onClose,
   onOpenShop,
+  coinUnlock,
 }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [timeLeft, setTimeLeft] = useState(5);
@@ -91,7 +99,14 @@ export const RoundLockModal: React.FC<RoundLockModalProps> = ({
               {customGameName ? 'Custom Game Locked!' : 'Rounds Locked!'}
             </h2>
             <p className="text-gray-600 text-xs sm:text-sm mb-5 leading-relaxed">
-              {customGameName ? (
+              {coinUnlock && customGameName ? (
+                <>
+                  Use <strong className="text-amber-600 font-black">{coinUnlock.cost} coins</strong> to unlock{' '}
+                  <strong className="text-indigo-600 font-black">{customGameName}</strong>.
+                  <br />
+                  <span className="text-gray-500">You have {coinUnlock.coins} 🪙</span>
+                </>
+              ) : customGameName ? (
                 <>
                   Watch a short ad to unlock <strong className="text-indigo-600 font-black">{customGameName}</strong>.
                 </>
@@ -103,6 +118,41 @@ export const RoundLockModal: React.FC<RoundLockModalProps> = ({
             </p>
 
             <div className="flex flex-col gap-2.5">
+              {coinUnlock ? (
+                <>
+                  <button
+                    id="coin-unlock-custom-game-btn"
+                    onClick={() => {
+                      if (coinUnlock.coins < coinUnlock.cost) return;
+                      haptics.tap();
+                      coinUnlock.onPay();
+                    }}
+                    disabled={coinUnlock.coins < coinUnlock.cost}
+                    className={`w-full py-3.5 px-6 rounded-2xl text-white font-black text-sm sm:text-base shadow-md flex items-center justify-center gap-2 transition-transform ${
+                      coinUnlock.coins >= coinUnlock.cost
+                        ? 'bg-amber-500 hover:bg-amber-600 active:scale-95 cursor-pointer'
+                        : 'bg-gray-300 cursor-not-allowed'
+                    }`}
+                  >
+                    <span>Use {coinUnlock.cost} 🪙 to Play</span>
+                  </button>
+                  {coinUnlock.coins < coinUnlock.cost && (
+                    <p className="text-xs font-bold text-rose-500">
+                      Not enough coins. You need {coinUnlock.cost - coinUnlock.coins} more.
+                    </p>
+                  )}
+                  {coinUnlock.coins < coinUnlock.cost && onOpenShop && (
+                    <button
+                      id="coin-unlock-open-shop-btn"
+                      onClick={onOpenShop}
+                      className="w-full py-3 px-6 rounded-2xl bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-xs sm:text-sm border-2 border-gray-200 flex items-center justify-center gap-2 transition-colors active:scale-95 cursor-pointer"
+                    >
+                      <span>Get More Coins</span>
+                    </button>
+                  )}
+                </>
+              ) : (
+              <>
               <button
                 id="watch-unlock-ad-btn"
                 onClick={handleStartWatch}
@@ -121,6 +171,8 @@ export const RoundLockModal: React.FC<RoundLockModalProps> = ({
                   <ShieldCheck className="w-4 h-4 text-indigo-500" />
                   <span>Or Remove Ads to Unlock Everything</span>
                 </button>
+              )}
+              </>
               )}
 
               <button
