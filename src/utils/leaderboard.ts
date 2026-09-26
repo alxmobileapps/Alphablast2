@@ -644,7 +644,7 @@ export function recordScore({
   highestWordPoints: number;
   isRoundComplete?: boolean;
   timeConsumedSeconds?: number;
-}): { newOverallRank: number; newCategoryRank: number } {
+}): { newOverallRank: number; newCategoryRank: number; upload: Promise<void> } {
   const profile = getUserProfile();
   const data = loadLocalLeaderboards();
 
@@ -740,23 +740,31 @@ export function recordScore({
   // about their in-game experience needs the live network round-trip — only
   // the shared leaderboard does, and that can wait until the round result is
   // final.
+  //
+  // `upload` resolves once both writes have finished (or failed -- both
+  // functions already swallow their own errors), so the round-end screen
+  // can wait for them before showing results.
+  let upload: Promise<void> = Promise.resolve();
   if (isRoundComplete) {
-    syncUserToGlobalFirestore(profile);
-    syncCategoryScoreToFirestore({
-      categoryId,
-      categoryName,
-      score: bestScore,
-      wordsCount,
-      highestWord,
-      highestWordPoints,
-      timeConsumedSeconds,
-      profile,
-    });
+    upload = Promise.allSettled([
+      syncUserToGlobalFirestore(profile),
+      syncCategoryScoreToFirestore({
+        categoryId,
+        categoryName,
+        score: bestScore,
+        wordsCount,
+        highestWord,
+        highestWordPoints,
+        timeConsumedSeconds,
+        profile,
+      }),
+    ]).then(() => undefined);
   }
 
   return {
     newOverallRank: newOverallRank > 0 ? newOverallRank : 1,
     newCategoryRank: newCategoryRank > 0 ? newCategoryRank : 1,
+    upload,
   };
 }
 
