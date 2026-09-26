@@ -2972,9 +2972,13 @@ export default function App() {
                 )}
               </div>
             ) : (
+            /* fx-lite: lighter special effects for custom games in the
+               Android app (see the `.fx-lite` rules in index.css). */
             <main
               key={roundKey}
-              className="flex-1 min-h-0 w-full max-w-4xl mx-auto px-2 sm:px-4 py-1 sm:py-1.5 flex flex-col justify-between sm:justify-evenly items-center overflow-hidden"
+              className={`flex-1 min-h-0 w-full max-w-4xl mx-auto px-2 sm:px-4 py-1 sm:py-1.5 flex flex-col justify-between sm:justify-evenly items-center overflow-hidden ${
+                currentCategory.isCustom ? 'fx-lite' : ''
+              }`}
             >
               {/* Main Center Area: Formed Words Bar + Maximized 8x8 Board + Power-Up Bar (Cohesive unit scaled to available height) */}
               <div
