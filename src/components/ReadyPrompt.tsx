@@ -128,7 +128,9 @@ export const ReadyPrompt: React.FC<ReadyPromptProps> = ({
             <span>Ready?</span>
           </h2>
           <p className="text-xs sm:text-sm font-medium text-cyan-200/80 mb-6 max-w-[240px] mx-auto leading-relaxed">
-            Form words in any of 8 directions. The timer starts when you press GO!
+            {isBoardReady
+              ? 'Form words in any of 8 directions. The timer starts when you press GO!'
+              : 'Game Board loading... please wait.'}
           </p>
 
           {/* Action Row: Small Home Button + "GO!" Button with 3D tactile finish */}
@@ -164,7 +166,7 @@ export const ReadyPrompt: React.FC<ReadyPromptProps> = ({
               ) : (
                 <>
                   <div className="w-6 h-6 rounded-full border-[3px] border-white/90 border-t-transparent animate-spin" />
-                  <span className="text-lg sm:text-xl drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]">Preparing...</span>
+                  <span className="text-lg sm:text-xl drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]">Loading...</span>
                 </>
               )}
             </button>

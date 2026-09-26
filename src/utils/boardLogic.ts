@@ -689,6 +689,9 @@ export function ensureOneMoveOpportunity(
   return board;
 }
 
+// See generateInitialBoard's retry loop.
+const GENERATE_BOARD_BUDGET_MS = 60;
+
 // Generate an 8x8 board that GUARANTEES at least 3 ready category words in 1 move available and 0 pre-matches
 export function generateInitialBoard(categoryId: number = 1, formedWords?: Set<string>): Tile[][] {
   const currentCat = getCategoryById(categoryId);
@@ -716,7 +719,23 @@ export function generateInitialBoard(categoryId: number = 1, formedWords?: Set<s
   // 3), so the success check below is actually achievable.
   const requiredReadyMoves = Math.min(3, candidateWords.length);
 
+  // Wall-clock budget for the retry loop below. It runs on the UI thread
+  // (round start, Fire Wipeout, Play Again), so nothing on screen can paint
+  // until it returns. A campaign category (hundreds of words) almost always
+  // succeeds on the first attempt (~10ms measured). A small custom word
+  // list often can't reach 3 ready moves, so it used to run all 25
+  // attempts -- each one two full-board scans -- measured at up to ~220ms
+  // on a fast desktop CPU, i.e. roughly a second on a phone. That freeze
+  // is custom-game-only, which is why custom games feel slower.
+  // Now: stop at the budget and use the best clean board found so far.
+  const deadline = Date.now() + GENERATE_BOARD_BUDGET_MS;
+  let bestBoard: Tile[][] | null = null;
+  let bestReadyMoves = -1;
+
   for (let attempt = 0; attempt < 25; attempt++) {
+    if (bestBoard && bestReadyMoves >= 1 && Date.now() > deadline) {
+      return bestBoard;
+    }
     // 1. Build blank 8x8 board
     const board: Tile[][] = [];
     for (let r = 0; r < BOARD_SIZE; r++) {
@@ -776,6 +795,19 @@ export function generateInitialBoard(categoryId: number = 1, formedWords?: Set<s
     if (preMatches.length === 0 && readyMoves.length >= requiredReadyMoves) {
       return board;
     }
+    // Clean (no pre-matches) but short of the target: remember the best one
+    // in case the budget runs out before a perfect board turns up.
+    if (preMatches.length === 0 && readyMoves.length > bestReadyMoves) {
+      bestBoard = board;
+      bestReadyMoves = readyMoves.length;
+    }
+  }
+
+  // All 25 attempts done without a perfect board: the best clean one is
+  // still better than the fallback below (which also runs the up-to-200ms
+  // ensureOneMoveOpportunity search).
+  if (bestBoard && bestReadyMoves >= 1) {
+    return bestBoard;
   }
 
   // Fallback: build a fresh board and explicitly plant 3 single-move words
