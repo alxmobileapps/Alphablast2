@@ -6,6 +6,7 @@ import { ThinkingRobot } from './ThinkingRobot';
 import { FireFlameGraphic } from './FireFlameGraphic';
 import { FireWipeoutAnnouncement } from './FireWipeoutAnnouncement';
 import { haptics } from '../utils/haptics';
+import { isCapacitorNative } from '../utils/universalAds';
 
 interface GameBoardProps {
   board: Tile[][];
@@ -138,6 +139,13 @@ const GameBoardImpl: React.FC<GameBoardProps> = ({
   const lastTouchTimeRef = useRef<number>(0);
   const lastSwipeTimeRef = useRef<number>(0);
   const boardRef = useRef<HTMLDivElement>(null);
+
+  // Computed once per render (not once per tile below): the running edge
+  // light around special tiles is never rendered inside the Android app --
+  // it's a per-frame-repainted SVG stroke animation per special tile, the
+  // single most expensive decorative effect on the board (see index.css).
+  // The website keeps it; only the native app skips mounting it.
+  const isNativeApp = isCapacitorNative();
 
   // Gesture tracking for Swipe to Swap
   const pointerStateRef = useRef<{
@@ -511,21 +519,25 @@ const GameBoardImpl: React.FC<GameBoardProps> = ({
                     const knockX = Math.sin((knockAngle * Math.PI) / 180) * 35;
                     const knockY = -Math.abs(Math.cos((knockAngle * Math.PI) / 180) * 45) - 15;
 
-                    // Running light border effects on edges according to special type & yellow tiles
+                    // Running light border effects on edges according to special type & yellow tiles.
+                    // Skipped entirely inside the Android app (isNativeApp) -- see its
+                    // declaration above for why.
                     let edgeLight: React.ReactNode = null;
-                    if (tile.isElectrified) {
-                      edgeLight = <RunningEdgeLight color1="#22d3ee" color2="#ffffff" fast={true} intensity="high" />;
-                    } else if (tile.special === 'bomb') {
-                      edgeLight = <RunningEdgeLight color1="#f97316" color2="#fef08a" fast={false} intensity="normal" />;
-                    } else if (tile.special === 'card') {
-                      edgeLight = <RunningEdgeLight color1="#c084fc" color2="#67e8f9" fast={false} intensity="normal" />;
-                    } else if (tile.special === 'highlighted') {
-                      edgeLight = <RunningEdgeLight color1="#38bdf8" color2="#ffffff" fast={false} intensity="normal" />;
-                    } else if (tile.special === 'shining') {
-                      // Yellow / Golden Tile running edge light
-                      edgeLight = <RunningEdgeLight color1="#f59e0b" color2="#fef08a" fast={false} intensity="high" />;
-                    } else if (tile.isMerged) {
-                      edgeLight = <RunningEdgeLight color1="#38bdf8" color2="#ffffff" fast={false} intensity="normal" />;
+                    if (!isNativeApp) {
+                      if (tile.isElectrified) {
+                        edgeLight = <RunningEdgeLight color1="#22d3ee" color2="#ffffff" fast={true} intensity="high" />;
+                      } else if (tile.special === 'bomb') {
+                        edgeLight = <RunningEdgeLight color1="#f97316" color2="#fef08a" fast={false} intensity="normal" />;
+                      } else if (tile.special === 'card') {
+                        edgeLight = <RunningEdgeLight color1="#c084fc" color2="#67e8f9" fast={false} intensity="normal" />;
+                      } else if (tile.special === 'highlighted') {
+                        edgeLight = <RunningEdgeLight color1="#38bdf8" color2="#ffffff" fast={false} intensity="normal" />;
+                      } else if (tile.special === 'shining') {
+                        // Yellow / Golden Tile running edge light
+                        edgeLight = <RunningEdgeLight color1="#f59e0b" color2="#fef08a" fast={false} intensity="high" />;
+                      } else if (tile.isMerged) {
+                        edgeLight = <RunningEdgeLight color1="#38bdf8" color2="#ffffff" fast={false} intensity="normal" />;
+                      }
                     }
 
                     const breakingBlockAnimationClass = tile.isBreakingBlock ? 'animate-block-break z-30' : '';

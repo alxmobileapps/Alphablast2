@@ -144,7 +144,7 @@ const TopInfoBarImpl: React.FC<TopInfoBarProps> = ({
         <div className="flex items-center gap-1.5 min-w-0 flex-1">
           <Sparkles className="w-3.5 h-3.5 text-amber-300 shrink-0 animate-pulse" />
           <span className="text-[10px] sm:text-[11px] font-bold text-slate-200 truncate">
-            Tap specials (<span className="text-amber-300 font-extrabold">💣 💳 🌟 ⚡</span>) • 6+ words trigger Fire Wipeout
+            Tap specials (<span className="text-amber-300 font-extrabold">💣 💳 🌟 ⚡</span>) • 7+ words trigger Fire Wipeout
           </span>
         </div>
       </div>

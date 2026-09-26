@@ -135,7 +135,7 @@ export const WordHistory: React.FC<WordHistoryProps> = ({
                   {item.specialCreated === 'bomb' && (
                     <span
                       className="p-0.5 rounded bg-orange-950/80 text-[#FF6B35] border border-orange-500/50"
-                      title="4-Letter Bomb"
+                      title="5-Letter Bomb"
                     >
                       <Bomb className="w-3 h-3" />
                     </span>
@@ -143,7 +143,7 @@ export const WordHistory: React.FC<WordHistoryProps> = ({
                   {item.specialCreated === 'card' && (
                     <span
                       className="p-0.5 rounded bg-purple-950/80 text-[#C084FC] border border-purple-500/50"
-                      title="5-Letter Card"
+                      title="6-Letter Card"
                     >
                       <CreditCard className="w-3 h-3" />
                     </span>
@@ -151,7 +151,7 @@ export const WordHistory: React.FC<WordHistoryProps> = ({
                   {item.specialCreated === 'board_clear' && (
                     <span
                       className="p-0.5 rounded bg-rose-950/80 text-rose-400 border border-rose-500/50"
-                      title="6+ Board Clear"
+                      title="7+ Board Clear"
                     >
                       <Flame className="w-3 h-3" />
                     </span>

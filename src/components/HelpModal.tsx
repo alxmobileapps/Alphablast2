@@ -84,7 +84,7 @@ export const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
                   <strong className="text-white">Moves & Bonus Moves:</strong> Each round starts with <strong className="text-cyan-300">7 moves</strong> (capped at 7 max). Every valid formed word grants <strong className="text-emerald-400">+5 bonus moves</strong> (not to exceed 7 max)!
                 </li>
                 <li>
-                  <strong className="text-white">Special Power Tiles:</strong> 4-letter words leave a <strong className="text-rose-400">Bomb (Red)</strong>, 5-letter words create an <strong className="text-purple-400">Electrocute Tile (Violet)</strong>, and 6+ letters trigger a full <strong className="text-amber-400">Fiery Inferno Board Wipe</strong>!
+                  <strong className="text-white">Special Power Tiles:</strong> 5-letter words leave a <strong className="text-rose-400">Bomb (Red)</strong>, 6-letter words create an <strong className="text-purple-400">Electrocute Tile (Violet)</strong>, and 7+ letters trigger a full <strong className="text-amber-400">Fiery Inferno Board Wipe</strong>!
                 </li>
               </ul>
             </div>
@@ -95,33 +95,33 @@ export const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
                 2. Word Length Power-Ups
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                {/* 4-Letter Bomb */}
+                {/* 5-Letter Bomb */}
                 <div className="bg-[#071330] border border-rose-500/40 rounded-xl p-3 shadow-sm">
                   <div className="flex items-center gap-1.5 text-rose-300 font-black mb-1">
                     <Bomb className="w-4 h-4 text-rose-400" />
-                    <span>4-Letter: Bomb (Red)</span>
+                    <span>5-Letter: Bomb (Red)</span>
                   </div>
                   <p className="text-[11px] text-blue-200/80 font-medium leading-normal">
                     Leaves a Red Bomb tile (no letter text). When swapped with any adjacent tile, it <strong className="text-white">destroys a 3 × 3 area</strong> centered on that tile!
                   </p>
                 </div>
 
-                {/* 5-Letter Special Card */}
+                {/* 6-Letter Special Card */}
                 <div className="bg-[#071330] border border-purple-500/40 rounded-xl p-3 shadow-sm">
                   <div className="flex items-center gap-1.5 text-purple-300 font-black mb-1">
                     <Zap className="w-4 h-4 text-purple-400" />
-                    <span>5-Letter: Electrocute (Violet)</span>
+                    <span>6-Letter: Electrocute (Violet)</span>
                   </div>
                   <p className="text-[11px] text-blue-200/80 font-medium leading-normal">
                     Leaves a Violet Electrocute tile (no letter text). Swapping it with any letter <strong className="text-white">destroys all occurrences of that letter</strong> across the board with electric discharge!
                   </p>
                 </div>
 
-                {/* 6+ Letter Board Wipe */}
+                {/* 7+ Letter Board Wipe */}
                 <div className="bg-[#071330] border border-amber-500/40 rounded-xl p-3 shadow-sm">
                   <div className="flex items-center gap-1.5 text-amber-300 font-black mb-1">
                     <Flame className="w-4 h-4 text-amber-400" />
-                    <span>6+ Letter: Fire Wipe</span>
+                    <span>7+ Letter: Fire Wipe</span>
                   </div>
                   <p className="text-[11px] text-blue-200/80 font-medium leading-normal">
                     Ignites the entire board in flames — <strong className="text-white">each letter catches fire and burns away</strong> before refilling the board!
