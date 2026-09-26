@@ -287,11 +287,13 @@ export function findCategoryWordsWithDuplicateCheck(
 
             let specialGenerated: SpecialTileType | 'board_clear' | undefined = undefined;
 
-            if (len === 4) {
+            // Shifted up by one letter each (was 4/5/6+) so the heaviest
+            // effect -- the full-board Fire Wipeout -- fires less often.
+            if (len === 5) {
               specialGenerated = 'bomb';
-            } else if (len === 5) {
+            } else if (len === 6) {
               specialGenerated = 'card';
-            } else if (len >= 6) {
+            } else if (len >= 7) {
               specialGenerated = 'board_clear';
             }
 
@@ -386,9 +388,10 @@ export function findCategoryWordsCrossingTiles(
             if (dupCheck.isDuplicate) continue;
 
             let specialGenerated: SpecialTileType | 'board_clear' | undefined = undefined;
-            if (len === 4) specialGenerated = 'bomb';
-            else if (len === 5) specialGenerated = 'card';
-            else if (len >= 6) specialGenerated = 'board_clear';
+            // Kept in sync with findCategoryWordsWithDuplicateCheck above.
+            if (len === 5) specialGenerated = 'bomb';
+            else if (len === 6) specialGenerated = 'card';
+            else if (len >= 7) specialGenerated = 'board_clear';
 
             const midIndex = Math.floor(len / 2);
             matches.push({
