@@ -62,6 +62,71 @@ html.native-app *::after {
   backdrop-filter: none !important;
 }
 
+/*
+ * Lighter special effects for CUSTOM GAMES in the Android app only
+ * (.fx-lite is put on the gameplay area in App.tsx when the current
+ * category is a custom game; html.native-app is set in main.tsx). Normal
+ * rounds and the website keep every effect.
+ *
+ * Custom games lag in the app while normal rounds don't. What's removed
+ * here is purely decorative -- no game logic waits on any CSS animation
+ * (there are no animationend handlers anywhere; every gameplay step is
+ * timed in JS), so the game plays exactly the same, just with less for
+ * the phone's WebView to redraw every frame:
+ *  - the running light around every special tile (an SVG stroke animation
+ *    that has to be repainted every single frame, per special tile);
+ *  - looping pulses/bounces/pings, glows, lightning flickers, orbiting
+ *    stars, sweeping shine beams;
+ *  - the Fire Wipeout heat-glow / burn / 3D flip on all 64 tiles at once;
+ *  - every CSS filter (drop-shadow glows, brightness) and text-shadow glow.
+ * Short one-shot gameplay animations (tile drop, swap, pop, break,
+ * knock-off) stay, so moves still read clearly.
+ */
+html.native-app .fx-lite *,
+html.native-app .fx-lite *::before,
+html.native-app .fx-lite *::after {
+  filter: none !important;
+  text-shadow: none !important;
+}
+
+html.native-app .fx-lite .animate-edge-light,
+html.native-app .fx-lite .animate-edge-light-fast,
+html.native-app .fx-lite .animate-ping,
+html.native-app .fx-lite .animate-ember-float,
+html.native-app .fx-lite .animate-flame-lick,
+html.native-app .fx-lite .animate-board-shine-sweep,
+html.native-app .fx-lite .animate-light-beam-sweep,
+html.native-app .fx-lite .animate-shine-beam,
+html.native-app .fx-lite .animate-shining-blast {
+  /* Hidden rather than frozen: the beams/flashes here are white light
+     sweeps whose un-animated resting state would sit on screen as a white
+     stripe; the rest are purely decorative particles. */
+  display: none !important;
+}
+
+html.native-app .fx-lite .animate-pulse,
+html.native-app .fx-lite .animate-bounce,
+html.native-app .fx-lite .animate-electric-shock,
+html.native-app .fx-lite .animate-electric-pulse,
+html.native-app .fx-lite .animate-lightning,
+html.native-app .fx-lite .animate-star-orbit,
+html.native-app .fx-lite .animate-sparkle-gleam,
+html.native-app .fx-lite .animate-spin-slow,
+html.native-app .fx-lite .animate-tile-heat-glow,
+html.native-app .fx-lite .animate-letter-heat-glow,
+html.native-app .fx-lite .animate-fire-burn,
+html.native-app .fx-lite .animate-fire-text-glow,
+html.native-app .fx-lite .animate-tile-flip,
+html.native-app .fx-lite .animate-merge-pulse,
+html.native-app .fx-lite .animate-clue-glow,
+html.native-app .fx-lite .animate-clue-sparkle,
+html.native-app .fx-lite .animate-clue-word-blink,
+html.native-app .fx-lite .animate-category-zoom-shine,
+html.native-app .fx-lite .animate-lifeline-zoom-shine {
+  animation: none !important;
+  will-change: auto !important;
+}
+
 /* Retain crisp, clean standard sans font specifically for board tile letters */
 .board-tile-font {
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif !important;
