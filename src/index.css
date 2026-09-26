@@ -39,6 +39,29 @@ body {
   -webkit-user-select: none;
 }
 
+/*
+ * Android app only (html.native-app is set in main.tsx when running inside
+ * the Capacitor WebView; the website in Chrome is untouched).
+ *
+ * A screen recording from the app showed elements with `backdrop-blur-*`
+ * (the yellow "Clue:" pill, the top info bars, the power-up bar) drawn as
+ * solid white rectangles for a frame at a time, and the app's dark navy
+ * background missing behind them for the whole recording -- while the same
+ * site in Chrome on the same phone renders fine. backdrop-filter is the
+ * most expensive thing the compositor does (it has to read back and blur
+ * everything underneath, again every time anything underneath changes,
+ * which is constantly during a round), and the Android System WebView has
+ * a much smaller GPU budget for it than Chrome does. Every one of these
+ * elements already has an 80-95% opaque background, so the blur is barely
+ * visible anyway -- dropping it in the app costs almost nothing visually.
+ */
+html.native-app *,
+html.native-app *::before,
+html.native-app *::after {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+
 /* Retain crisp, clean standard sans font specifically for board tile letters */
 .board-tile-font {
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif !important;
