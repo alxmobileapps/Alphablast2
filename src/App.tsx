@@ -28,7 +28,7 @@ import { perfMark, perfResetBaseline } from './utils/perfDebug';
 import { PortraitLockOverlay } from './components/PortraitLockOverlay';
 import { isSwipeControlsEnabled, isCluesEnabled as isCluesEnabledUtil, getSpellingPreference, SpellingPreference } from './utils/settings';
 import { setDictionarySpellingPreference } from './data/dictionary';
-import { initUniversalAds, refreshBannerIfDue } from './utils/universalAds';
+import { initUniversalAds, refreshBannerIfDue, isCapacitorNative } from './utils/universalAds';
 import { initRemoteAdsListener } from './utils/remoteAdsService';
 import { initNativeBilling } from './utils/medianBridge';
 import { initOrientationLock } from './utils/orientation';
@@ -115,6 +115,9 @@ const INITIAL_MOVES = 7;
 const MAX_MOVES = 7;
 const MAX_AD_REFILLS = 4;
 const REFILL_MOVES_AMOUNT = 5;
+
+// Coins a custom game costs to unlock on the website (no ads there).
+const CUSTOM_GAME_WEB_COIN_COST = 25;
 
 export default function App() {
   // Saved device game progress
@@ -976,6 +979,20 @@ export default function App() {
       playCategoryRound(pendingTargetCategory);
       setPendingTargetCategory(null);
     }
+  }, [pendingTargetCategory, playCategoryRound]);
+
+  // Browser only: AdMob doesn't run on the website, so a custom game there
+  // is unlocked with coins instead of a rewarded ad. Unlocks that one custom
+  // game, same as the ad does in the app.
+  const handleUnlockCustomGameWithCoins = useCallback(() => {
+    if (!pendingTargetCategory?.isCustom) return;
+    const res = deductCoins(CUSTOM_GAME_WEB_COIN_COST);
+    if (!res.success) return;
+    setGameProgress(res.progress);
+    unlockCustomCategoryByAd(pendingTargetCategory);
+    setIsRoundLockOpen(false);
+    playCategoryRound(pendingTargetCategory);
+    setPendingTargetCategory(null);
   }, [pendingTargetCategory, playCategoryRound]);
 
   const handleRoundLockDismissed = useCallback(() => {
@@ -3324,6 +3341,15 @@ export default function App() {
         onUnlocked={handleRoundsUnlocked}
         onClose={handleRoundLockDismissed}
         onOpenShop={handleOpenShopFromRoundLock}
+        coinUnlock={
+          pendingTargetCategory?.isCustom && !isCapacitorNative()
+            ? {
+                cost: CUSTOM_GAME_WEB_COIN_COST,
+                coins: gameProgress.coins || 0,
+                onPay: handleUnlockCustomGameWithCoins,
+              }
+            : undefined
+        }
       />
 
       {/* Bottom Banner Ad across the screen */}
