@@ -42,6 +42,17 @@ type PendingPurchase = {
 let nativeBillingReady: Promise<boolean> | null = null;
 const pendingPurchases = new Map<string, PendingPurchase>();
 
+/**
+ * The real reason the LAST ensureNativeBillingReady() attempt failed, if any.
+ * purchaseNative()'s generic "store is not ready" message used to throw this
+ * away entirely, so every failure looked identical whether the plugin never
+ * loaded, Play Billing itself rejected initialize(), or something else threw
+ * — impossible to tell apart from a screenshot of the toast. Surfacing the
+ * real message lets us tell which of those actually happened instead of
+ * guessing.
+ */
+let lastBillingInitError: string | null = null;
+
 function isCapacitorNativeBilling(): boolean {
   return typeof window !== 'undefined' && !!window.Capacitor?.isNativePlatform?.();
 }
@@ -107,6 +118,8 @@ function ensureNativeBillingReady(): Promise<boolean> {
   const attempt = (async (): Promise<boolean> => {
     const CdvPurchase = await waitForCdvPurchase();
     if (!CdvPurchase) {
+      lastBillingInitError =
+        'Billing plugin never loaded (window.CdvPurchase was never injected within 10s) — this build likely does not have cordova-plugin-purchase compiled in.';
       console.warn('[NativeBilling] window.CdvPurchase not found (cordova-plugin-purchase not installed/synced)');
       return false;
     }
@@ -160,11 +173,23 @@ function ensureNativeBillingReady(): Promise<boolean> {
 
       const initErrors = await store.initialize([Platform.GOOGLE_PLAY]);
       if (Array.isArray(initErrors) && initErrors.length > 0) {
+        // Play Billing itself reported a problem connecting (e.g. no Play
+        // Store account signed in, app not recognized by Play as installed
+        // from a track with Billing enabled, Play services unavailable).
+        // This used to be logged and then silently ignored, treating the
+        // store as "ready" anyway — which just deferred the real error to a
+        // confusing "item not available" message later. Surface it now.
+        lastBillingInitError = initErrors
+          .map((e: any) => e?.message || (typeof e === 'string' ? e : JSON.stringify(e)))
+          .join('; ');
         console.warn('[NativeBilling] initialize() reported errors:', initErrors);
+        return false;
       }
+      lastBillingInitError = null;
       console.log('[NativeBilling] cdv-purchase store initialized');
       return true;
-    } catch (e) {
+    } catch (e: any) {
+      lastBillingInitError = e?.message || String(e);
       console.warn('[NativeBilling] Failed to set up store:', e);
       return false;
     }
@@ -191,7 +216,23 @@ async function purchaseNative(
   const ready = await ensureNativeBillingReady();
   const CdvPurchase = window.CdvPurchase;
   if (!ready || !CdvPurchase) {
-    callback(false, { status: 'error', productId, error: 'The store is not ready yet. Please check your connection and try again.' });
+    // Include the real underlying reason (see lastBillingInitError) instead
+    // of only the generic "not ready" text, so a screenshot of this toast
+    // actually says WHY instead of looking identical for every possible
+    // cause (plugin not built in, Play Billing rejected init, no network...).
+    // Sanitized so it can't accidentally contain "Android"/"Google Play" —
+    // ShopModal treats those words as "we're not even in the app" and would
+    // swap this whole message for the generic install-from-Play-Store popup,
+    // hiding the real diagnostic even though we ARE inside the native app
+    // here (that's the only way purchaseNative() runs at all).
+    const detail = lastBillingInitError
+      ? ` (${lastBillingInitError.replace(/google play/gi, 'the store').replace(/android/gi, 'this device')})`
+      : '';
+    callback(false, {
+      status: 'error',
+      productId,
+      error: `The store is not ready yet. Please check your connection and try again.${detail}`,
+    });
     return;
   }
 
