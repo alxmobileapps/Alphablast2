@@ -408,6 +408,18 @@ export default function App() {
   // playCategoryRound below) — the "Ready?" prompt uses this to keep the
   // GO! button disabled until there's really a board to play on.
   const [isBoardReady, setIsBoardReady] = useState<boolean>(true);
+  // Round end: the board is taken off screen and a plain "Clearing Game
+  // Board... please wait." panel is shown while the round's results upload
+  // (see finishRoundBehindClearingScreen). isBoardCleared stays true until
+  // the next round starts, so the finished board isn't drawn again behind
+  // the results modal.
+  const [isBoardCleared, setIsBoardCleared] = useState<boolean>(false);
+  const [isClearingBoard, setIsClearingBoard] = useState<boolean>(false);
+  // Bumped at the start of every round and used as the React `key` of the
+  // gameplay area, so each round starts from freshly mounted components
+  // instead of reusing the previous round's.
+  const [roundKey, setRoundKey] = useState<number>(0);
+  const roundEndingRef = useRef(false);
   const [isRollingTiles, setIsRollingTiles] = useState<boolean>(false);
   const [isRoundLockOpen, setIsRoundLockOpen] = useState<boolean>(false);
   const [pendingTargetCategory, setPendingTargetCategory] = useState<Category | null>(null);
@@ -867,6 +879,10 @@ export default function App() {
       // blank screen, and ReadyPrompt keeps its GO! button disabled
       // (isBoardReady) until the real board underneath is actually ready.
       setIsBoardReady(false);
+      setIsBoardCleared(false);
+      setIsClearingBoard(false);
+      roundEndingRef.current = false;
+      setRoundKey((k) => k + 1);
       requestAnimationFrame(() => {
         perfMark('1st rAF fired');
         requestAnimationFrame(() => {
@@ -992,6 +1008,39 @@ export default function App() {
     },
     [requestOpenCategory]
   );
+
+  /**
+   * Round end: take the board off screen, show "Clearing Game Board...
+   * please wait." while this round's results upload, then open the results
+   * modal. The board (every tile with its animations and glows) is by far
+   * the heaviest thing on screen; unmounting it here means the phone only
+   * has a plain panel to draw while the round-end work runs. Waits for the
+   * uploads to finish, but never longer than MAX_WAIT_MS (a slow or offline
+   * connection must not trap the player here), and shows the panel for at
+   * least MIN_SHOW_MS so it doesn't just flicker by.
+   */
+  const finishRoundBehindClearingScreen = useCallback((uploads: Promise<unknown>[]) => {
+    // Only once per round (a cascade can match again after the last target
+    // word; the timer effect can re-run). Reset in playCategoryRound.
+    if (roundEndingRef.current) return;
+    roundEndingRef.current = true;
+    const MIN_SHOW_MS = 800;
+    const MAX_WAIT_MS = 5000;
+    const shownAt = Date.now();
+    setIsBoardCleared(true);
+    setIsClearingBoard(true);
+    perfMark('Round end: clearing screen shown, waiting for uploads');
+
+    const timeout = new Promise<void>((resolve) => setTimeout(resolve, MAX_WAIT_MS));
+    Promise.race([Promise.allSettled(uploads), timeout]).then(() => {
+      const remaining = Math.max(0, MIN_SHOW_MS - (Date.now() - shownAt));
+      setTimeout(() => {
+        perfMark('Round end: uploads done, opening RoundCompleteModal');
+        setIsClearingBoard(false);
+        setIsRoundCompleteOpen(true);
+      }, remaining);
+    });
+  }, []);
 
   // Process Matches, Specials, Gravity & Cascades
   const resolveBoard = useCallback(
@@ -1293,7 +1342,7 @@ export default function App() {
               perfMark('setGameProgress + setNewlyUnlockedCategory called');
 
               // Auto backup progress to cloud every round completion
-              syncProgressToCloud(latestProgress).catch((err) => {
+              const cloudBackupUpload = syncProgressToCloud(latestProgress).catch((err) => {
                 console.warn('Auto cloud backup error:', err);
               });
               perfMark('syncProgressToCloud() fired (async, not awaited)');
@@ -1325,13 +1374,22 @@ export default function App() {
                 isRoundComplete: true,
                 timeConsumedSeconds: elapsedSeconds,
               };
-              setTimeout(() => {
-                recordScore(recordScoreArgs);
-              }, 0);
+              const leaderboardUpload = new Promise<void>((resolve) => {
+                setTimeout(() => {
+                  try {
+                    recordScore(recordScoreArgs).upload.then(() => resolve());
+                  } catch (err) {
+                    console.warn('recordScore error:', err);
+                    resolve();
+                  }
+                }, 0);
+              });
 
+              // The 700ms lets the last word's clear animation play out
+              // before the board is taken off screen.
               setTimeout(() => {
-                perfMark('700ms setTimeout FIRED, opening RoundCompleteModal');
-                setIsRoundCompleteOpen(true);
+                perfMark('700ms setTimeout FIRED, showing clearing screen');
+                finishRoundBehindClearingScreen([cloudBackupUpload, leaderboardUpload]);
               }, 700);
               perfMark('700ms setTimeout for RoundCompleteModal scheduled');
             }
@@ -1590,7 +1648,7 @@ export default function App() {
 
       return activeBoard;
     },
-    [triggerBanner, highlightOneMoveOpportunity]
+    [triggerBanner, highlightOneMoveOpportunity, finishRoundBehindClearingScreen]
   );
 
   // Perform a Swap between two adjacent tiles
@@ -2758,6 +2816,10 @@ export default function App() {
         return;
       }
 
+      // Already finished and waiting behind the clearing screen -- don't
+      // finish the round a second time if this effect re-runs meanwhile.
+      if (roundEndingRef.current) return;
+
       const next = Math.max(0, timerSecondsRemainingRef.current - 1);
       timerSecondsRemainingRef.current = next;
       if (next > 0) return;
@@ -2792,24 +2854,29 @@ export default function App() {
         setNewlyUnlockedCategory(completionResult.newlyUnlockedCategory);
       }
 
-      recordScore({
-        categoryId: currentCategory.id,
-        categoryName: currentCategory.name,
-        categoryScore: finalScore,
-        wordsCount: totalWords,
-        highestWord: bestWord,
-        highestWordPoints: bestWordPts,
-        isRoundComplete: true,
-        timeConsumedSeconds: elapsedSeconds,
-      });
+      let leaderboardUpload: Promise<void> = Promise.resolve();
+      try {
+        leaderboardUpload = recordScore({
+          categoryId: currentCategory.id,
+          categoryName: currentCategory.name,
+          categoryScore: finalScore,
+          wordsCount: totalWords,
+          highestWord: bestWord,
+          highestWordPoints: bestWordPts,
+          isRoundComplete: true,
+          timeConsumedSeconds: elapsedSeconds,
+        }).upload;
+      } catch (err) {
+        console.warn('recordScore error in timer mode:', err);
+      }
 
       // Auto backup progress to cloud every round completion
-      syncProgressToCloud(latestProgress).catch((err) => {
+      const cloudBackupUpload = syncProgressToCloud(latestProgress).catch((err) => {
         console.warn('Auto cloud backup error in timer mode:', err);
       });
 
       setTimerSecondsRemaining(0);
-      setIsRoundCompleteOpen(true);
+      finishRoundBehindClearingScreen([cloudBackupUpload, leaderboardUpload]);
     }, 1000);
 
     return () => clearInterval(interval);
@@ -2851,7 +2918,9 @@ export default function App() {
                 const targetIdx = foundIdx >= 0 ? foundIdx : categoryIndex;
                 const targetCat = INITIAL_CATEGORIES[targetIdx] || currentCategory;
 
-                if (currentCategory.id !== targetCat.id || categoryProgress === 0) {
+                // roundEndingRef: that round already finished (its board was
+                // cleared off screen), so there's nothing to resume.
+                if (currentCategory.id !== targetCat.id || categoryProgress === 0 || roundEndingRef.current) {
                   playCategoryRound(targetCat);
                 } else {
                   setIsReadyPromptOpen(true);
@@ -2886,7 +2955,27 @@ export default function App() {
             />
 
             {/* Main Gameplay Container: Vertically balanced to fit all screen ratios & iPad without overlapping banner ads */}
-            <main className="flex-1 min-h-0 w-full max-w-4xl mx-auto px-2 sm:px-4 py-1 sm:py-1.5 flex flex-col justify-between sm:justify-evenly items-center overflow-hidden">
+            {/* While a round's board is being built (!isBoardReady) or cleared
+                away at round end (isClearingBoard), show a plain status panel
+                instead of the board. isBoardCleared keeps the finished board
+                off screen behind the results modal until the next round. */}
+            {isClearingBoard || isBoardCleared || !isBoardReady ? (
+              <div className="flex-1 min-h-0 w-full flex items-center justify-center px-4">
+                {(isClearingBoard || !isBoardReady) && (
+                  <div className="flex flex-col items-center gap-3 px-6 py-5 rounded-2xl bg-[#0C2158] border-2 border-[#1E3A8A] text-white text-center">
+                    <div className="w-8 h-8 rounded-full border-4 border-white/90 border-t-transparent animate-spin" />
+                    <p className="font-black text-base sm:text-lg">
+                      {isClearingBoard ? 'Clearing Game Board...' : 'Game Board loading...'}
+                    </p>
+                    <p className="text-xs sm:text-sm text-blue-200 font-bold">Please wait.</p>
+                  </div>
+                )}
+              </div>
+            ) : (
+            <main
+              key={roundKey}
+              className="flex-1 min-h-0 w-full max-w-4xl mx-auto px-2 sm:px-4 py-1 sm:py-1.5 flex flex-col justify-between sm:justify-evenly items-center overflow-hidden"
+            >
               {/* Main Center Area: Formed Words Bar + Maximized 8x8 Board + Power-Up Bar (Cohesive unit scaled to available height) */}
               <div
                 className={`flex flex-col items-center justify-center gap-1 sm:gap-1.5 my-auto w-full mx-auto shrink-0 ${
@@ -2999,6 +3088,7 @@ export default function App() {
                 </div>
               </div>
             </main>
+            )}
           </div>
         )}
       </div>
@@ -3039,6 +3129,9 @@ export default function App() {
             alertedRegionMismatchSetsRef.current.clear();
             const freshBoard = generateInitialBoard(targetCat.id);
             setBoard(freshBoard);
+            setIsBoardCleared(false);
+            setIsClearingBoard(false);
+            roundEndingRef.current = false;
             roundStartTimeRef.current = Date.now();
             setRoundTimeConsumed(0);
           }
