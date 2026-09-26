@@ -5,6 +5,20 @@ import './index.css';
 import {perfMark} from './utils/perfDebug';
 
 /**
+ * Mark the page when it's running inside the Android app (Capacitor
+ * WebView) so index.css can turn off effects that only misrender there.
+ * See the `html.native-app` rule in index.css for why. Done before the
+ * first render so the class is in place before anything paints.
+ */
+try {
+  if ((window as any).Capacitor?.isNativePlatform?.()) {
+    document.documentElement.classList.add('native-app');
+  }
+} catch {
+  // never let this block the app from starting
+}
+
+/**
  * DIAGNOSTIC: catch every uncaught JS error / unhandled promise rejection
  * and every React render crash, and log it into the same on-screen perfMark
  * overlay already used to chase the round-completion white-screen freeze.
