@@ -60,8 +60,8 @@ export const HomeMenu: React.FC<HomeMenuProps> = ({
       className="h-full flex-1 w-full bg-[#050D24] text-white flex flex-col items-center justify-between p-2 sm:p-3 pb-2 select-none overflow-hidden relative max-w-md mx-auto"
     >
       {/* Background Ambient Lighting */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-2xl h-60 bg-gradient-to-b from-[#0EA5E9]/25 via-[#1E3A8A]/15 to-transparent pointer-events-none blur-2xl" />
-      <div className="absolute bottom-10 left-1/4 w-60 h-60 bg-purple-900/20 pointer-events-none blur-2xl" />
+      <div className="fx-ambient-glow absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-2xl h-60 bg-gradient-to-b from-[#0EA5E9]/25 via-[#1E3A8A]/15 to-transparent pointer-events-none blur-2xl" />
+      <div className="fx-ambient-glow absolute bottom-10 left-1/4 w-60 h-60 bg-purple-900/20 pointer-events-none blur-2xl" />
 
       {/* Top Profile & Currency Bar */}
       <div className="w-full flex items-center justify-between gap-2 z-10 pt-0.5 shrink-0">
@@ -119,7 +119,7 @@ export const HomeMenu: React.FC<HomeMenuProps> = ({
         {/* AlphaBlast Logo - Large Prominent Sizing */}
         <div className="flex flex-col items-center mb-2 sm:mb-3 relative w-full px-2">
           <div className="relative group w-full flex flex-col items-center justify-center">
-            <div className="absolute -inset-2 bg-gradient-to-r from-cyan-500/30 via-amber-400/30 to-sky-500/30 rounded-3xl blur-lg opacity-40 group-hover:opacity-75 transition duration-300 pointer-events-none" />
+            <div className="fx-ambient-glow absolute -inset-2 bg-gradient-to-r from-cyan-500/30 via-amber-400/30 to-sky-500/30 rounded-3xl blur-lg opacity-40 group-hover:opacity-75 transition duration-300 pointer-events-none" />
             <img
               src={alphablastLogoImage}
               onError={(e) => {

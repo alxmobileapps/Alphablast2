@@ -42,12 +42,12 @@ export const CurrencyPromptModal: React.FC<CurrencyPromptModalProps> = ({
       <div className="bg-[#0B1E52] border-3 border-[#1E3A8A] rounded-3xl max-w-sm w-full shadow-[0_15px_50px_rgba(0,0,0,0.8)] relative overflow-hidden flex flex-col text-white animate-scale-in">
         {/* Decorative Top Accent Glow */}
         <div
-          className={`absolute -top-12 -left-12 w-36 h-36 rounded-full blur-2xl pointer-events-none opacity-40 ${
+          className={`fx-ambient-glow absolute -top-12 -left-12 w-36 h-36 rounded-full blur-2xl pointer-events-none opacity-40 ${
             isBuyCoins ? 'bg-amber-400' : 'bg-cyan-400'
           }`}
         />
         <div
-          className={`absolute -bottom-12 -right-12 w-36 h-36 rounded-full blur-2xl pointer-events-none opacity-30 ${
+          className={`fx-ambient-glow absolute -bottom-12 -right-12 w-36 h-36 rounded-full blur-2xl pointer-events-none opacity-30 ${
             isBuyCoins ? 'bg-yellow-500' : 'bg-blue-500'
           }`}
         />
