@@ -28,6 +28,8 @@ import { playRewardRefill, playSpecialCard, playWin } from '../utils/audio';
 import { haptics } from '../utils/haptics';
 import { purchaseIAP, purchaseMedianIAP } from '../utils/medianBridge';
 import { showUniversalRewardedAd } from '../utils/universalAds';
+import { getOrCreateLocalSyncKey } from '../utils/authService';
+import { PurchaseBackupReminderModal } from './PurchaseBackupReminderModal';
 
 interface ShopModalProps {
   isOpen: boolean;
@@ -86,6 +88,12 @@ export const ShopModal: React.FC<ShopModalProps> = ({
   // Web Billing Notice Modal State
   const [webBillingModal, setWebBillingModal] = useState<boolean>(false);
 
+  // Post-Purchase Backup Code Reminder -- shown only after a real-money IAP
+  // actually succeeds (Remove Ads / a Diamond Pack), never for free grants
+  // like the daily diamond claim or ad rewards (those also call
+  // onAddDiamonds, so this is gated here rather than in App.tsx's handler).
+  const [showBackupReminder, setShowBackupReminder] = useState<boolean>(false);
+
   useEffect(() => {
     let timer: NodeJS.Timeout;
     if (isVideoAdModalOpen && videoAdTimeLeft > 0) {
@@ -120,6 +128,7 @@ export const ShopModal: React.FC<ShopModalProps> = ({
           haptics.specialCreated();
           playWin();
           showNotification('All Ads Removed! +100 Diamonds & All Rounds Unlocked!');
+          setShowBackupReminder(true);
         }
       } else {
         if (res?.error && (res.error.includes('Android') || res.error.includes('Google Play'))) {
@@ -227,6 +236,7 @@ export const ShopModal: React.FC<ShopModalProps> = ({
         haptics.specialCreated();
         playWin();
         showNotification(`Purchased ${label}! +${amount} 💎 Diamonds Added!`);
+        setShowBackupReminder(true);
       } else {
         if (res?.error && (res.error.includes('Android') || res.error.includes('Google Play'))) {
           setWebBillingModal(true);
@@ -885,6 +895,13 @@ export const ShopModal: React.FC<ShopModalProps> = ({
             </div>
           </div>
         )}
+
+        {/* Post-Purchase Backup Code Reminder */}
+        <PurchaseBackupReminderModal
+          isOpen={showBackupReminder}
+          code={getOrCreateLocalSyncKey()}
+          onClose={() => setShowBackupReminder(false)}
+        />
       </div>
     </div>
   );
