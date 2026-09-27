@@ -140,9 +140,9 @@ export const ReadyPrompt: React.FC<ReadyPromptProps> = ({
                 id="ready-prompt-home-button"
                 onClick={handleHomeClick}
                 title="Return to Home Menu"
-                className="h-[54px] sm:h-[60px] w-[54px] sm:w-[60px] shrink-0 rounded-2xl bg-gradient-to-b from-[#1E293B] via-[#0F172A] to-[#020617] hover:from-[#334155] hover:to-[#0F172A] border-t-2 border-l border-slate-500/70 border-r border-slate-800 border-b-[5px] border-b-black active:border-b-[2px] active:translate-y-[3px] text-slate-200 hover:text-white shadow-lg transition-all duration-150 flex items-center justify-center cursor-pointer group"
+                className="h-[54px] sm:h-[60px] w-[54px] sm:w-[60px] shrink-0 rounded-2xl bg-gradient-to-b from-[#38BDF8] via-[#1E3A8A] to-[#0C2158] hover:from-[#7DD3FC] hover:via-[#2447A8] hover:to-[#132E75] border-t-2 border-l border-white/80 border-r border-cyan-400/60 border-b-[5px] border-b-[#034C70] active:border-b-[2px] active:translate-y-[3px] text-white shadow-[0_4px_16px_rgba(56,189,248,0.5)] transition-all duration-150 flex items-center justify-center cursor-pointer group"
               >
-                <Home className="w-6 h-6 sm:w-7 sm:h-7 text-cyan-300 group-hover:scale-110 drop-shadow transition-transform" />
+                <Home className="w-6 h-6 sm:w-7 sm:h-7 text-white group-hover:scale-110 drop-shadow-[0_2px_4px_rgba(0,0,0,0.4)] transition-transform" />
               </button>
             )}
 

@@ -3000,10 +3000,19 @@ export default function App() {
                 {(isClearingBoard || !isBoardReady) && (
                   <div className="flex flex-col items-center gap-3 px-6 py-5 rounded-2xl bg-[#0C2158] border-2 border-[#1E3A8A] text-white text-center">
                     <div className="w-8 h-8 rounded-full border-4 border-white/90 border-t-transparent animate-spin" />
-                    <p className="font-black text-base sm:text-lg">
-                      {isClearingBoard ? 'Clearing Game Board...' : 'Game Board loading...'}
-                    </p>
-                    <p className="text-xs sm:text-sm text-blue-200 font-bold">Please wait.</p>
+                    {/* "Clearing Game Board..." text removed per user request --
+                        the spinner card alone still covers the board-teardown
+                        gap (see finishRoundBehindClearingScreen above), it's
+                        just silent now. The "Game Board loading..." text at
+                        round START stays, since that's a longer, more
+                        informative wait (board generation) the player benefits
+                        from being told about. */}
+                    {!isClearingBoard && (
+                      <>
+                        <p className="font-black text-base sm:text-lg">Game Board loading...</p>
+                        <p className="text-xs sm:text-sm text-blue-200 font-bold">Please wait.</p>
+                      </>
+                    )}
                   </div>
                 )}
               </div>

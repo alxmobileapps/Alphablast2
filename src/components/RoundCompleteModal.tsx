@@ -5,6 +5,7 @@ import { Category, WordHistoryItem } from '../types';
 import { playWin } from '../utils/audio';
 import { formatPoints } from '../utils/scoring';
 import { perfMark } from '../utils/perfDebug';
+import { isCapacitorNative } from '../utils/universalAds';
 
 /**
  * DIAGNOSTIC CONTEXT for the animationIterationCount overrides below:
@@ -116,22 +117,39 @@ export const RoundCompleteModal: React.FC<RoundCompleteModalProps> = ({
       // already used to defer board generation for the round-transition
       // fix) means the worst case is "confetti starts a frame late", not
       // "the modal is invisible while confetti's canvas redraws pile up".
-      requestAnimationFrame(() => {
-        perfMark('RoundCompleteModal: 1st rAF fired');
+      // SKIPPED ENTIRELY in the native app: canvas-confetti draws every
+      // particle on every frame via its own requestAnimationFrame loop for a
+      // couple of seconds after it starts, on the same main thread/compositor
+      // the WebView uses to paint everything else. Deferring its START (the
+      // double rAF below) only prevented it from firing in the exact same
+      // commit as this modal mounting -- it did nothing about the cost of the
+      // draw loop itself once it's running. That loop starts at the EXACT
+      // moment (round complete -> this modal opens) the diagnostic comment
+      // above says the multi-second blank-white freeze was recorded at, and
+      // by the time that freeze was investigated, every other suspect in this
+      // modal (the bounce/pulse animations) had already been bounded/disabled
+      // (see index.css's html.native-app animation:none rule) without fully
+      // resolving it -- confetti is the one remaining piece of sustained,
+      // per-frame render work left unaddressed at that exact moment. It's
+      // purely decorative, so skipping it in-app costs nothing functionally.
+      if (!isCapacitorNative()) {
         requestAnimationFrame(() => {
-          perfMark('RoundCompleteModal: 2nd rAF fired, calling confetti()');
-          try {
-            confetti({
-              particleCount: 120,
-              spread: 80,
-              origin: { y: 0.6 },
-            });
-          } catch {
-            // Confetti fallback
-          }
-          perfMark('RoundCompleteModal: confetti() returned');
+          perfMark('RoundCompleteModal: 1st rAF fired');
+          requestAnimationFrame(() => {
+            perfMark('RoundCompleteModal: 2nd rAF fired, calling confetti()');
+            try {
+              confetti({
+                particleCount: 120,
+                spread: 80,
+                origin: { y: 0.6 },
+              });
+            } catch {
+              // Confetti fallback
+            }
+            perfMark('RoundCompleteModal: confetti() returned');
+          });
         });
-      });
+      }
     }
   }, [isOpen]);
 
@@ -153,7 +171,7 @@ export const RoundCompleteModal: React.FC<RoundCompleteModalProps> = ({
     >
       <div
         id="round-complete-card"
-        className="bg-white border-2 sm:border-3 border-[#7DD3FC] rounded-3xl max-w-sm sm:max-w-md w-full shadow-[0_20px_50px_rgba(2,132,199,0.4)] relative flex flex-col max-h-[90vh] overflow-hidden text-center text-[#2D3748] animate-scale-up"
+        className="bg-[#0C2158] border-2 sm:border-3 border-[#7DD3FC] rounded-3xl max-w-sm sm:max-w-md w-full shadow-[0_20px_50px_rgba(2,132,199,0.4)] relative flex flex-col max-h-[90vh] overflow-hidden text-center text-white animate-scale-up"
       >
         {/* Scrollable Content Container */}
         <div className="overflow-y-auto custom-scrollbar p-4 sm:p-5 flex-1 space-y-2.5">
@@ -166,10 +184,10 @@ export const RoundCompleteModal: React.FC<RoundCompleteModalProps> = ({
               <Trophy className="w-6 h-6 sm:w-7 sm:h-7" />
             </div>
 
-            <h2 className="text-xl sm:text-2xl font-black text-[#0F172A] tracking-tight leading-tight">
+            <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight leading-tight">
               {category.gameMode === 'timer' ? "TIME'S UP! RUSH CLEARED!" : 'ROUND CLEARED!'}
             </h2>
-            <div className="inline-flex items-center gap-1 text-[#059669] font-black text-xs sm:text-sm mt-0.5">
+            <div className="inline-flex items-center gap-1 text-emerald-300 font-black text-xs sm:text-sm mt-0.5">
               <span>{category.icon}</span>
               {category.gameMode === 'timer' ? (
                 <span>{category.name} ({history.length} words found in {formatTime(timeConsumed)})</span>
@@ -179,7 +197,7 @@ export const RoundCompleteModal: React.FC<RoundCompleteModalProps> = ({
             </div>
 
             {/* Earned Stars Rating */}
-            <div className="flex items-center justify-center gap-1.5 mt-2 bg-amber-50 border border-amber-300/80 px-3 py-1 rounded-full shadow-inner">
+            <div className="flex items-center justify-center gap-1.5 mt-2 bg-amber-900/30 border border-amber-400/40 px-3 py-1 rounded-full shadow-inner">
               {Array.from({ length: 3 }).map((_, i) => {
                 const isEarned = i < earnedStars;
                 return (
@@ -188,13 +206,13 @@ export const RoundCompleteModal: React.FC<RoundCompleteModalProps> = ({
                     className={`w-6 h-6 transition-all transform ${
                       isEarned
                         ? 'fill-amber-400 text-amber-500 scale-110 drop-shadow-[0_2px_4px_rgba(245,158,11,0.5)] animate-pulse'
-                        : 'text-gray-300 fill-gray-100'
+                        : 'text-white/20 fill-white/10'
                     }`}
                     style={isEarned ? { animationIterationCount: 3 } : undefined}
                   />
                 );
               })}
-              <span className="font-futuristic text-xs font-black text-amber-900 ml-1 tracking-wider">
+              <span className="font-futuristic text-xs font-black text-amber-200 ml-1 tracking-wider">
                 {earnedStars} / 3 STARS
               </span>
             </div>
@@ -202,37 +220,37 @@ export const RoundCompleteModal: React.FC<RoundCompleteModalProps> = ({
 
           {/* Newly Unlocked Category Banner if any */}
           {newlyUnlockedCategory && (
-            <div className="bg-emerald-50 border border-emerald-300 rounded-xl p-2 sm:p-2.5 text-emerald-900 flex items-center justify-between shadow-xs">
+            <div className="bg-emerald-900/30 border border-emerald-500/40 rounded-xl p-2 sm:p-2.5 text-emerald-100 flex items-center justify-between shadow-xs">
               <div className="flex items-center gap-2 text-left min-w-0">
                 <div className="w-7 h-7 rounded-lg bg-emerald-500 text-white flex items-center justify-center text-sm font-black shadow-xs shrink-0">
                   <Unlock className="w-4 h-4" />
                 </div>
                 <div className="min-w-0">
-                  <span className="text-[9px] font-extrabold uppercase tracking-wider text-emerald-700 block leading-none mb-0.5">
+                  <span className="text-[9px] font-extrabold uppercase tracking-wider text-emerald-300 block leading-none mb-0.5">
                     NEW ROUND UNLOCKED!
                   </span>
-                  <span className="font-black text-xs text-emerald-950 truncate flex items-center gap-1 leading-tight">
+                  <span className="font-black text-xs text-emerald-50 truncate flex items-center gap-1 leading-tight">
                     <span>{newlyUnlockedCategory.icon}</span>
                     <span className="truncate">#{newlyUnlockedCategory.id}: {newlyUnlockedCategory.name}</span>
                   </span>
                 </div>
               </div>
-              <span className="text-[10px] font-black bg-emerald-200 text-emerald-900 px-2 py-0.5 rounded-md shrink-0">
+              <span className="text-[10px] font-black bg-emerald-500/30 text-emerald-100 px-2 py-0.5 rounded-md shrink-0">
                 OPEN
               </span>
             </div>
           )}
 
           {/* Points Pill Banner */}
-          <div className="bg-gradient-to-r from-amber-50 to-yellow-50 border border-amber-300 rounded-xl p-2 sm:p-2.5 flex items-center justify-between shadow-xs">
+          <div className="bg-gradient-to-r from-amber-900/40 to-yellow-900/30 border border-amber-400/40 rounded-xl p-2 sm:p-2.5 flex items-center justify-between shadow-xs">
             <div className="flex items-center gap-2">
               <span className="text-lg">🏆</span>
               <div className="text-left">
-                <span className="text-[9px] font-extrabold uppercase tracking-wider text-amber-800/80 block leading-none">
+                <span className="text-[9px] font-extrabold uppercase tracking-wider text-amber-300/90 block leading-none">
                   ROUND SCORE
                 </span>
-                <span className="font-mono text-base sm:text-lg font-black text-amber-900 leading-tight">
-                  {formatPoints(score)} <span className="text-[10px] font-bold text-amber-700">PTS</span>
+                <span className="font-mono text-base sm:text-lg font-black text-amber-100 leading-tight">
+                  {formatPoints(score)} <span className="text-[10px] font-bold text-amber-300">PTS</span>
                 </span>
               </div>
             </div>
@@ -250,7 +268,7 @@ export const RoundCompleteModal: React.FC<RoundCompleteModalProps> = ({
           {/* Score Diamond Milestone Celebration Banner if achieved */}
           {(diamondMilestoneAwarded || diamond10kAwarded) && (
             <div
-              className="bg-gradient-to-r from-cyan-50 via-blue-50 to-indigo-50 border border-cyan-300 rounded-xl p-2 sm:p-2.5 text-cyan-900 flex items-center justify-between shadow-xs animate-pulse"
+              className="bg-gradient-to-r from-cyan-900/40 via-blue-900/30 to-indigo-900/30 border border-cyan-400/40 rounded-xl p-2 sm:p-2.5 text-cyan-100 flex items-center justify-between shadow-xs animate-pulse"
               style={{ animationIterationCount: 3 }}
             >
               <div className="flex items-center gap-2 text-left">
@@ -258,15 +276,15 @@ export const RoundCompleteModal: React.FC<RoundCompleteModalProps> = ({
                   💎
                 </div>
                 <div>
-                  <span className="text-[9px] font-extrabold uppercase tracking-wider text-cyan-700 block leading-none mb-0.5">
+                  <span className="text-[9px] font-extrabold uppercase tracking-wider text-cyan-300 block leading-none mb-0.5">
                     ROUND REWARD
                   </span>
-                  <span className="font-black text-xs text-cyan-950 block leading-tight">
+                  <span className="font-black text-xs text-cyan-50 block leading-tight">
                     +{diamondMilestoneAwarded ? diamondMilestoneAwarded.count : 1} {diamondMilestoneAwarded && diamondMilestoneAwarded.count > 1 ? 'Diamonds' : 'Diamond'} Awarded!
                   </span>
                 </div>
               </div>
-              <span className="text-[10px] font-black bg-cyan-200 text-cyan-950 px-2 py-0.5 rounded-lg shadow-xs">
+              <span className="text-[10px] font-black bg-cyan-500/30 text-cyan-100 px-2 py-0.5 rounded-lg shadow-xs">
                 +{diamondMilestoneAwarded ? diamondMilestoneAwarded.count : 1} 💎
               </span>
             </div>
@@ -274,36 +292,36 @@ export const RoundCompleteModal: React.FC<RoundCompleteModalProps> = ({
 
           {/* Converted Leftover Assets to Coins */}
           {convertedCoins && convertedCoins.total > 0 && (
-            <div className="bg-amber-50/90 border border-amber-300 rounded-xl p-2 sm:p-2.5 text-amber-950 flex items-center justify-between shadow-xs">
+            <div className="bg-amber-900/30 border border-amber-400/40 rounded-xl p-2 sm:p-2.5 text-amber-100 flex items-center justify-between shadow-xs">
               <div className="flex items-center gap-2 text-left">
                 <div className="w-7 h-7 rounded-lg bg-amber-400 text-amber-950 flex items-center justify-center text-sm font-black shadow-xs shrink-0">
                   🪙
                 </div>
                 <div>
-                  <span className="text-[9px] font-extrabold uppercase tracking-wider text-amber-800 block leading-none mb-0.5">
+                  <span className="text-[9px] font-extrabold uppercase tracking-wider text-amber-300 block leading-none mb-0.5">
                     ROUND BONUS COINS
                   </span>
-                  <span className="text-[10px] sm:text-[11px] font-bold text-amber-900 leading-tight">
+                  <span className="text-[10px] sm:text-[11px] font-bold text-amber-100 leading-tight">
                     {convertedCoins.coloredTiles} colored + {convertedCoins.powerups} power-up ➔{' '}
-                    <strong className="font-black text-amber-950">+{convertedCoins.total} 🪙</strong>
+                    <strong className="font-black text-amber-50">+{convertedCoins.total} 🪙</strong>
                   </span>
                 </div>
               </div>
-              <span className="text-[10px] font-black bg-amber-300 text-amber-950 px-2 py-0.5 rounded-lg shadow-xs">
+              <span className="text-[10px] font-black bg-amber-500/30 text-amber-100 px-2 py-0.5 rounded-lg shadow-xs">
                 +{convertedCoins.total} 🪙
               </span>
             </div>
           )}
 
           {/* Currency summary strip */}
-          <div className="bg-slate-100 border border-slate-200 rounded-xl px-2.5 py-1.5 flex items-center justify-between shadow-inner">
+          <div className="bg-[#071330] border border-[#1E3A8A] rounded-xl px-2.5 py-1.5 flex items-center justify-between shadow-inner">
             <div className="flex items-center gap-2.5">
-              <div className="flex items-center gap-1 font-mono text-xs font-black text-amber-800">
+              <div className="flex items-center gap-1 font-mono text-xs font-black text-amber-300">
                 <span>🪙</span>
                 <span>{coins}</span>
               </div>
-              <div className="h-3 w-px bg-slate-300" />
-              <div className="flex items-center gap-1 font-mono text-xs font-black text-cyan-800">
+              <div className="h-3 w-px bg-[#1E3A8A]" />
+              <div className="flex items-center gap-1 font-mono text-xs font-black text-cyan-300">
                 <span>💎</span>
                 <span>{diamonds}</span>
               </div>
@@ -311,7 +329,7 @@ export const RoundCompleteModal: React.FC<RoundCompleteModalProps> = ({
             {onOpenShop && (
               <button
                 onClick={onOpenShop}
-                className="text-[10px] font-black text-blue-600 hover:text-blue-800 underline flex items-center gap-0.5 cursor-pointer"
+                className="text-[10px] font-black text-cyan-300 hover:text-cyan-200 underline flex items-center gap-0.5 cursor-pointer"
               >
                 <span>Store</span>
                 <span>➔</span>
@@ -320,31 +338,31 @@ export const RoundCompleteModal: React.FC<RoundCompleteModalProps> = ({
           </div>
 
           {/* Stats card */}
-          <div className="bg-gray-50 border border-gray-200 rounded-xl p-2 grid grid-cols-4 gap-1 text-center">
+          <div className="bg-[#071330] border border-[#1E3A8A] rounded-xl p-2 grid grid-cols-4 gap-1 text-center">
             <div>
-              <span className="text-[9px] text-gray-500 font-bold block uppercase truncate">Target</span>
-              <span className="font-mono text-sm sm:text-base font-black text-[#38A169]">
+              <span className="text-[9px] text-slate-400 font-bold block uppercase truncate">Target</span>
+              <span className="font-mono text-sm sm:text-base font-black text-emerald-400">
                 {categoryWords.length}
               </span>
             </div>
             <div>
-              <span className="text-[9px] text-gray-500 font-bold block uppercase truncate">Words</span>
-              <span className="font-mono text-sm sm:text-base font-black text-[#FF6B35]">
+              <span className="text-[9px] text-slate-400 font-bold block uppercase truncate">Words</span>
+              <span className="font-mono text-sm sm:text-base font-black text-orange-400">
                 {history.length}
               </span>
             </div>
             <div>
-              <span className="text-[9px] text-gray-500 font-bold block uppercase truncate">Time</span>
-              <span className="font-mono text-sm sm:text-base font-black text-indigo-600 flex items-center justify-center gap-0.5">
+              <span className="text-[9px] text-slate-400 font-bold block uppercase truncate">Time</span>
+              <span className="font-mono text-sm sm:text-base font-black text-indigo-300 flex items-center justify-center gap-0.5">
                 <Clock className="w-3 h-3" />
                 <span>{formatTime(timeConsumed)}</span>
               </span>
             </div>
             <div>
-              <span className="text-[9px] text-gray-500 font-bold block uppercase truncate">
+              <span className="text-[9px] text-slate-400 font-bold block uppercase truncate">
                 {category.gameMode === 'timer' ? 'Mode' : 'Moves'}
               </span>
-              <span className="font-mono text-xs sm:text-sm font-black text-[#3182CE] truncate flex items-center justify-center">
+              <span className="font-mono text-xs sm:text-sm font-black text-sky-300 truncate flex items-center justify-center">
                 {category.gameMode === 'timer' ? '⏱ Timer' : movesRemaining}
               </span>
             </div>
@@ -352,17 +370,17 @@ export const RoundCompleteModal: React.FC<RoundCompleteModalProps> = ({
 
           {/* Category Words List Pills */}
           <div className="text-left">
-            <span className="text-[10px] text-gray-500 font-black uppercase tracking-wider block mb-1">
+            <span className="text-[10px] text-slate-400 font-black uppercase tracking-wider block mb-1">
               Target Words Formed:
             </span>
             <div className="flex flex-wrap gap-1 max-h-16 overflow-y-auto custom-scrollbar p-0.5">
               {categoryWords.map((w) => (
                 <span
                   key={w.id}
-                  className="px-1.5 py-0.5 rounded-md bg-green-100 border border-green-300 text-green-900 font-mono text-[11px] font-black flex items-center gap-1"
+                  className="px-1.5 py-0.5 rounded-md bg-emerald-900/30 border border-emerald-500/40 text-emerald-100 font-mono text-[11px] font-black flex items-center gap-1"
                 >
                   <span>{w.word}</span>
-                  {w.points ? <span className="text-[8px] text-green-700 font-bold">+{formatPoints(w.points)}</span> : null}
+                  {w.points ? <span className="text-[8px] text-emerald-300 font-bold">+{formatPoints(w.points)}</span> : null}
                 </span>
               ))}
             </div>
@@ -370,15 +388,15 @@ export const RoundCompleteModal: React.FC<RoundCompleteModalProps> = ({
         </div>
 
         {/* Action Buttons Footer */}
-        <div className="p-3 sm:p-4 bg-gray-50 border-t border-gray-200 flex gap-2 shrink-0">
+        <div className="p-3 sm:p-4 bg-[#071330] border-t border-[#1E3A8A] flex gap-2 shrink-0">
           {category.id >= 1000 || category.isCustom ? (
             <>
               <button
                 id="custom-round-home-btn"
                 onClick={onGoHome || onNextRound}
-                className="flex-1 py-2.5 px-3 rounded-xl bg-white hover:bg-gray-100 border border-gray-300 text-[#2D3748] font-black text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs active:scale-95"
+                className="flex-1 py-2.5 px-3 rounded-xl bg-[#0C2158] hover:bg-[#132E75] border border-[#1E3A8A] text-white font-black text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs active:scale-95"
               >
-                <Home className="w-4 h-4 text-blue-600" />
+                <Home className="w-4 h-4 text-cyan-300" />
                 <span>Home</span>
               </button>
 
@@ -393,9 +411,20 @@ export const RoundCompleteModal: React.FC<RoundCompleteModalProps> = ({
             </>
           ) : (
             <>
+              {onGoHome && (
+                <button
+                  id="round-complete-home-btn"
+                  onClick={onGoHome}
+                  title="Return to Home Menu"
+                  className="shrink-0 w-11 sm:w-12 rounded-xl bg-gradient-to-b from-[#38BDF8] to-[#0C2158] hover:from-[#7DD3FC] hover:to-[#132E75] border border-cyan-300/70 text-white shadow-[0_2px_12px_rgba(56,189,248,0.45)] flex items-center justify-center transition-transform active:scale-95 cursor-pointer"
+                >
+                  <Home className="w-4 h-4 sm:w-5 sm:h-5" />
+                </button>
+              )}
+
               <button
                 onClick={onReplayRound}
-                className="flex-1 py-2.5 px-3 rounded-xl bg-white hover:bg-gray-100 border border-gray-300 text-[#2D3748] font-black text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs active:scale-95"
+                className="flex-1 py-2.5 px-3 rounded-xl bg-[#0C2158] hover:bg-[#132E75] border border-[#1E3A8A] text-white font-black text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs active:scale-95"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
                 <span>Replay</span>
