@@ -106,6 +106,23 @@ html.native-app *::after {
   text-shadow: none !important;
 }
 
+/*
+ * REGRESSION FIX: the blanket `filter: none !important` above also strips
+ * filter: blur(...) -- which several screens (HomeMenu, ShopModal,
+ * CurrencyPromptModal, CategorySelectorModal, PortraitLockOverlay) use on
+ * plain colored <div>s purely to turn them into soft, out-of-focus ambient
+ * background glows. Losing the blur left the raw, unblurred div showing
+ * through instead: a hard-edged rectangle/circle of flat color sitting on
+ * screen (e.g. the purple box beneath the Home menu card). These divs are
+ * marked with .fx-ambient-glow wherever they're used, so they can just be
+ * hidden outright in the app -- they're purely decorative (no text/controls
+ * inside them), so removing them costs nothing functionally, fixes the
+ * visual bug, and is cheaper than paying for the blur besides.
+ */
+html.native-app .fx-ambient-glow {
+  display: none !important;
+}
+
 html.native-app .animate-ping,
 html.native-app .animate-ember-float,
 html.native-app .animate-flame-lick,
