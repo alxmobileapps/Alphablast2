@@ -59,7 +59,7 @@ export const PortraitLockOverlay: React.FC = () => {
       {/* Animated Phone Rotation Graphic */}
       <div className="relative mb-6 flex items-center justify-center">
         {/* Glow */}
-        <div className="absolute -inset-4 rounded-full bg-sky-500/20 blur-xl animate-pulse" />
+        <div className="fx-ambient-glow absolute -inset-4 rounded-full bg-sky-500/20 blur-xl animate-pulse" />
 
         <div className="relative w-24 h-24 rounded-3xl bg-slate-900 border-2 border-sky-400/40 shadow-2xl flex items-center justify-center">
           <div className="animate-[spin_4s_ease-in-out_infinite] flex items-center justify-center">

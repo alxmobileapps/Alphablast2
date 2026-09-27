@@ -774,8 +774,8 @@ export const ShopModal: React.FC<ShopModalProps> = ({
               {/* Video Simulated Stage */}
               <div className="w-full aspect-video bg-gradient-to-br from-indigo-950 to-slate-900 border-2 border-indigo-500/40 rounded-2xl flex flex-col items-center justify-center p-3 relative overflow-hidden shadow-inner mb-4">
                 {/* Background animated glow */}
-                <div className="absolute -top-10 -right-10 w-32 h-32 bg-purple-500/20 rounded-full blur-xl animate-pulse" />
-                <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-cyan-500/20 rounded-full blur-xl animate-pulse" />
+                <div className="fx-ambient-glow absolute -top-10 -right-10 w-32 h-32 bg-purple-500/20 rounded-full blur-xl animate-pulse" />
+                <div className="fx-ambient-glow absolute -bottom-10 -left-10 w-32 h-32 bg-cyan-500/20 rounded-full blur-xl animate-pulse" />
 
                 {!videoAdCompleted ? (
                   <>

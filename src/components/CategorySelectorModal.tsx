@@ -251,7 +251,7 @@ export const CategorySelectorModal: React.FC<CategorySelectorModalProps> = ({
               className="bg-gradient-to-br from-[#1E1B4B] via-[#0C2158] to-[#172554] border-2 border-[#818CF8]/60 rounded-2xl p-3.5 sm:p-4 shadow-[0_4px_20px_rgba(99,102,241,0.25)] relative overflow-hidden"
             >
               {/* Background ambient badge glow */}
-              <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/10 rounded-full blur-2xl pointer-events-none" />
+              <div className="fx-ambient-glow absolute top-0 right-0 w-32 h-32 bg-purple-500/10 rounded-full blur-2xl pointer-events-none" />
 
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3 relative z-10">
                 <div className="flex items-center gap-2.5 min-w-0">
